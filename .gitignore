@@ -1,0 +1,25 @@
+# Gradle / Java
+backend/.gradle/
+backend/build/
+*.class
+
+# Node / Vue
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+
+# 환경·비밀
+.env
+*.local.yml
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# (보류 기능을 켜면) 세션 로그 — 로컬 보존용, 커밋 안 함
+logs/

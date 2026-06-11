@@ -1,0 +1,181 @@
+{
+  "project": "월급 배분 관리 서비스 (Spring Boot 3 + PostgreSQL 16 + Vue 3, 1인 사이드 프로젝트)",
+  "_notes": "백로그_Phase0-1.md + 요구사항정의서.md에서 도출. 에이전트는 entry의 `passes` 필드만 바꾼다. 완료 정의 = 해당 verify 통과. owner_only=true 항목은 통째로 구현 금지 — 설계 리뷰·테스트 케이스·부분 보조만(CLAUDE.md 작업 분담). 골든 fixture는 절대 수정 금지 — 깨지면 코드가 틀린 것.",
+  "definition_of_done": {
+    "backend": "./gradlew verify (test + ArchUnit + spotless + build) 통과",
+    "frontend": "npm run verify (eslint + vue-tsc + vitest + build) 통과",
+    "golden": "골든 fixture(폭포 기대값, 적금 만기 3,731,976 / 2,476,986, PaydayResolver 공휴일·말일) 무수정 통과"
+  },
+  "features": [
+    {
+      "id": "HARNESS-verify",
+      "phase": 0,
+      "category": "harness",
+      "description": "./gradlew verify(test+spotless+ArchUnit+build)와 npm run verify(eslint+vue-tsc+vitest+build)를 각각 한 명령으로 구성",
+      "verify": "두 명령이 빈 프로젝트에서 초록불로 끝난다",
+      "passes": true
+    },
+    {
+      "id": "HARNESS-archunit",
+      "phase": 0,
+      "category": "harness",
+      "description": "ArchUnit: domain 패키지 프레임워크 의존 금지 + 금액 필드 double/float 금지 + LocalDate.now() 직접 호출 검출(checkstyle 정규식 또는 ArchUnit)",
+      "verify": "위반 코드를 넣으면 verify가 실패함을 테스트로 확인",
+      "passes": false
+    },
+    {
+      "id": "HARNESS-golden",
+      "phase": 0,
+      "category": "harness",
+      "description": "골든 fixture 작성: 노션 실데이터 → 폭포 기대값 JSON, 적금 만기(3,731,976 / 2,476,986), PaydayResolver 공휴일·말일 케이스. 시드 스크립트로 docker compose up 후 즉시 동작 확인 가능",
+      "verify": "골든 테스트가 존재하고 통과(이후 절대 수정 금지)",
+      "passes": false
+    },
+    {
+      "id": "HARNESS-claude",
+      "phase": 0,
+      "category": "harness",
+      "description": ".claude/ 설정 적용: settings.json 권한(gradlew/npm/docker compose 허용, force push·flyway clean 차단), PostToolUse 포맷 훅, PreToolUse 마이그레이션·골든 보호 훅, /task 커맨드. CLAUDE.md 실행 명령 사전을 실제 명령으로 채움",
+      "verify": "훅이 실제로 발동(기존 V*.sql 편집 차단 등), /task 동작",
+      "passes": false
+    },
+    {
+      "id": "ENV-setup",
+      "phase": 0,
+      "category": "env",
+      "description": "GitHub repo + docs 입주 + 브랜치 전략. Spring Boot 3(Java 21, web/security/jpa/validation/oauth2-client) + docker-compose(PostgreSQL 16) + Flyway V1__init.sql(ERD 11테이블) + Vue3/Vite/Pinia/router + vue-i18n(ko.json) + 디자인 토큰(CSS 변수, Pretendard) + 기본 컴포넌트(Card, MoneyText, BottomSheet, ProgressBar, BottomNav) + GitHub Actions(=로컬 verify)",
+      "verify": "docker compose up 후 빈 대시보드까지 기동, CI가 로컬 verify와 동일 검사",
+      "passes": false
+    },
+    {
+      "id": "AUTH-01",
+      "phase": 0,
+      "category": "backend",
+      "description": "카카오·구글 OAuth2 로그인 + JWT 발급. OAuthUserInfo 인터페이스 + Kakao/Google/Naver 어댑터(네이버 비활성), 로그인 성공 핸들러 → users upsert → JWT",
+      "verify": "./gradlew verify 통과 + 카카오/구글 로그인 흐름 통합 테스트",
+      "passes": false
+    },
+    {
+      "id": "AUTH-03",
+      "phase": 0,
+      "category": "backend",
+      "description": "unique(provider, provider_id)로 공급자별 계정 분리 동작",
+      "verify": "동일 인물 다른 소셜 계정이 별개로 생성되는 테스트 통과",
+      "passes": false
+    },
+    {
+      "id": "SCR-01",
+      "phase": 0,
+      "category": "frontend",
+      "description": "로그인 페이지 + JWT 저장·인터셉터 + 가드 라우팅",
+      "verify": "npm run verify 통과 + 로그인→대시보드 라우팅 E2E",
+      "passes": false
+    },
+    {
+      "id": "SET-04",
+      "phase": 1,
+      "category": "backend",
+      "description": "accounts CRUD + 소유권 검증 공통 처리 (계좌번호 등 금융 식별 정보 저장 금지)",
+      "verify": "./gradlew verify 통과 + 소유권 위반 차단 테스트",
+      "passes": false
+    },
+    {
+      "id": "ITEM-01",
+      "phase": 1,
+      "category": "backend",
+      "description": "budget_items CRUD(생성·조회) — 카테고리/이름/금액/대상 통장/시작일",
+      "verify": "./gradlew verify 통과 + 생성·조회 통합 테스트",
+      "passes": false
+    },
+    {
+      "id": "ITEM-09",
+      "phase": 1,
+      "category": "backend",
+      "description": "soft delete(status=DELETED) + 조회 필터. 과거 스냅샷·리포트 불변",
+      "verify": "./gradlew verify 통과 + 삭제 후 과거 기록 보존 테스트",
+      "passes": false
+    },
+    {
+      "id": "ITEM-02",
+      "phase": 1,
+      "category": "backend",
+      "description": "end_date 보유 항목 ARCHIVED 전환 배치(@Scheduled, KST, 멱등)",
+      "verify": "./gradlew verify 통과 + 배치 재실행 멱등 테스트(Clock 주입)",
+      "passes": false
+    },
+    {
+      "id": "FLOW-01",
+      "phase": 1,
+      "category": "backend",
+      "owner_only": true,
+      "description": "WaterfallService: 카테고리 그룹·소계·잔액 캐스케이드 계산 + 단위 테스트. [소유자 직접 작성 — 에이전트는 설계 리뷰·테스트 케이스·순수 계산 클래스 골격만]",
+      "verify": "골든 폭포 fixture 통과 + 단위 테스트(빈 항목/초과/카테고리 누락)",
+      "passes": false
+    },
+    {
+      "id": "FLOW-03",
+      "phase": 1,
+      "category": "backend",
+      "owner_only": true,
+      "description": "비상금/생활비 분배: EMERGENCY 일반 항목, LIVING은 나머지 계산값(구현규칙 3장) + users.living_account_id로 LIVING 라인 생성. [분배 규칙은 소유자 검토]",
+      "verify": "골든 fixture에서 LIVING planned_amount 일치",
+      "passes": false
+    },
+    {
+      "id": "FLOW-02",
+      "phase": 1,
+      "category": "backend",
+      "description": "overAllocated 판정 + 응답 포함, 유연성 순 조정 후보. GET /me/waterfall 응답 조립(API명세 3장)",
+      "verify": "./gradlew verify 통과 + 초과 케이스 응답 테스트",
+      "passes": false
+    },
+    {
+      "id": "SCR-02",
+      "phase": 1,
+      "category": "frontend",
+      "description": "온보딩 스텝1: 실수령액·월급일·조정 규칙 입력",
+      "verify": "npm run verify 통과 + 입력 검증(payday 1~31 등) E2E",
+      "passes": false
+    },
+    {
+      "id": "SCR-03",
+      "phase": 1,
+      "category": "frontend",
+      "description": "홈: 남는 돈 헤더 + 폭포 리스트 + 카운트업",
+      "verify": "npm run verify 통과 + 폭포 표시 E2E(서버 응답 기준)",
+      "passes": false
+    },
+    {
+      "id": "MOD-01",
+      "phase": 1,
+      "category": "frontend",
+      "description": "항목 폼 v1(공통 필드만 — 저축 조건부 필드는 Phase 5, 외화 도우미는 Phase 3)",
+      "verify": "npm run verify 통과 + 생성→목록 반영 E2E",
+      "passes": false
+    },
+    {
+      "id": "MOD-03",
+      "phase": 1,
+      "category": "frontend",
+      "description": "통장 폼",
+      "verify": "npm run verify 통과 + 통장 생성→목록 E2E",
+      "passes": false
+    },
+    {
+      "id": "SCR-07",
+      "phase": 1,
+      "category": "frontend",
+      "description": "전체 탭 골격(통장·항목 목록·설정 진입)",
+      "verify": "npm run verify 통과 + 탭 네비게이션 E2E",
+      "passes": false
+    },
+    {
+      "id": "VERIFY-notion-match",
+      "phase": 1,
+      "category": "verification",
+      "description": "본인 노션 데이터 전체 입력 → 모든 폭포 단계 잔액이 노션과 일치",
+      "verify": "수동: 브라우저에서 전 단계 잔액이 노션 숫자와 동일함을 확인(폭포 단위 테스트 별도 통과)",
+      "passes": false
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+# 로컬 개발용 — PostgreSQL 16. 앱 컨테이너(backend/frontend)는 배포 단계에서 추가.
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: salary-db
+    environment:
+      POSTGRES_DB: salary
+      POSTGRES_USER: salary
+      POSTGRES_PASSWORD: salary
+    ports:
+      - "5432:5432"
+    volumes:
+      - salary-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U salary -d salary"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  salary-db-data:

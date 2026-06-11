@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: salary
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/salary}
+    username: ${DB_USERNAME:salary}
+    password: ${DB_PASSWORD:salary}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate # 스키마는 Flyway만 만진다
+    open-in-view: false
+
+  flyway:
+    validate-on-migrate: true # 적용된 마이그레이션 변경 시 기동 거부 (마이그레이션 불변의 본 방어선)

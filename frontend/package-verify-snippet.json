@@ -1,0 +1,9 @@
+{
+  "_readme": "Vue 프로젝트 생성(create-vue: TS·Pinia·Router·Vitest·ESLint 선택) 후 package.json scripts에 합칠 조각. npm run verify = 완료 정의.",
+  "scripts": {
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "vue-tsc --noEmit",
+    "test:run": "vitest run",
+    "verify": "npm run lint && npm run typecheck && npm run test:run && npm run build"
+  }
+}

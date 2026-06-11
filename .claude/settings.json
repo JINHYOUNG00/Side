@@ -1,0 +1,98 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Edit",
+      "Write",
+      "Bash(./gradlew *)",
+      "PowerShell(.\\gradlew *)",
+      "PowerShell(gradlew *)",
+      "PowerShell(gradlew.bat *)",
+      "Bash(npm install:*)",
+      "Bash(npm run *:*)",
+      "Bash(npm test:*)",
+      "PowerShell(npm install *)",
+      "PowerShell(npm run *)",
+      "PowerShell(npm test *)",
+      "Bash(npx prettier:*)",
+      "Bash(npx eslint:*)",
+      "Bash(npx vue-tsc:*)",
+      "Bash(npx vitest:*)",
+      "PowerShell(npx prettier *)",
+      "PowerShell(npx eslint *)",
+      "PowerShell(npx vue-tsc *)",
+      "PowerShell(npx vitest *)",
+      "Bash(docker compose up:*)",
+      "Bash(docker compose build:*)",
+      "Bash(docker compose logs:*)",
+      "Bash(docker compose ps:*)",
+      "Bash(docker compose restart:*)",
+      "PowerShell(docker compose up *)",
+      "PowerShell(docker compose build *)",
+      "PowerShell(docker compose logs *)",
+      "PowerShell(docker compose ps *)",
+      "PowerShell(docker compose restart *)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git switch:*)",
+      "Bash(git branch:*)",
+      "PowerShell(git add *)",
+      "PowerShell(git commit *)",
+      "PowerShell(git status *)",
+      "PowerShell(git diff *)",
+      "PowerShell(git log *)",
+      "PowerShell(git switch *)",
+      "PowerShell(git branch *)",
+      "Bash(curl -s http://localhost* *)",
+      "PowerShell(curl http://localhost* *)",
+      "PowerShell(Invoke-WebRequest http://localhost* *)"
+    ],
+    "deny": [
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "PowerShell(git push --force *)",
+      "PowerShell(git push -f *)",
+      "Bash(flyway clean:*)",
+      "Bash(./gradlew flywayClean:*)",
+      "PowerShell(.\\gradlew flywayClean *)",
+      "PowerShell(gradlew flywayClean *)",
+      "Bash(rm -rf:*)",
+      "PowerShell(Remove-Item * -Recurse*)",
+      "Bash(docker compose down -v:*)",
+      "Bash(docker compose down --volumes:*)",
+      "PowerShell(docker compose down -v *)",
+      "PowerShell(docker compose down --volumes *)",
+      "Bash(./gradlew goldenLock*)",
+      "PowerShell(.\\gradlew goldenLock *)",
+      "PowerShell(gradlew goldenLock *)",
+      "PowerShell(gradlew.bat goldenLock *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/format.ps1"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/protect-migrations.ps1"
+          }
+        ]
+      }
+    ]
+  }
+}

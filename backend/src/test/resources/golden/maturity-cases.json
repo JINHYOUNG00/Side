@@ -1,0 +1,31 @@
+{
+  "_readme": [
+    "골든 fixture — 검증된 실데이터 기반 '정답'. 코드를 여기에 맞추는 것이지, 이걸 코드에 맞추는 게 아니다.",
+    "소유자가 input(월 납입액·연이율·개월수·세금유형)을 실제 값으로 채운다. expected는 검증된 실제 값.",
+    "파일 추가·수정 후에는 반드시 ./gradlew goldenLock 으로 manifest를 갱신해야 verify가 통과한다.",
+    "계획된 fixture: maturity-cases.json(이 파일), waterfall-cases.json(폭포 단계별 잔액), payday-cases.json(공휴일·말일).",
+    "기대값은 구현규칙 1장 공식(단리 이자 → 원 미만 반올림 → 15.4% 세금 → 원 미만 반올림) 기준 — 은행 실수령과 수원 단위 차이 가능(ITEM-05 고지 대상)."
+  ],
+  "cases": [
+    {
+      "name": "적금A 만기 — 12개월 · 연 8% · 일반과세",
+      "input": {
+        "monthlyAmount": 300000,
+        "annualRatePct": 8.0,
+        "months": 12,
+        "taxType": "NORMAL_15_4"
+      },
+      "expectedMaturityAmount": 3731976
+    },
+    {
+      "name": "적금B 만기 — 12개월 · 연 7% · 일반과세",
+      "input": {
+        "monthlyAmount": 200000,
+        "annualRatePct": 7.0,
+        "months": 12,
+        "taxType": "NORMAL_15_4"
+      },
+      "expectedMaturityAmount": 2476986
+    }
+  ]
+}
