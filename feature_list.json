@@ -21,7 +21,7 @@
       "category": "harness",
       "description": "ArchUnit: domain 패키지 프레임워크 의존 금지 + 금액 필드 double/float 금지 + LocalDate.now() 직접 호출 검출(checkstyle 정규식 또는 ArchUnit)",
       "verify": "위반 코드를 넣으면 verify가 실패함을 테스트로 확인",
-      "passes": false
+      "passes": true
     },
     {
       "id": "HARNESS-golden",

@@ -13,6 +13,13 @@
 - 메모:       추가한 Flyway 버전, 새 상수, 결정사항, 주의점
 -->
 
+## 2026-06-13  —  [HARNESS-archunit] 규칙 음성 테스트 + 윈도우 golden 무결성 복구
+- 한 일: ① main에서 `./gradlew verify`가 빨간불이었음 — GoldenFixtureIntegrityTest가 sha256 불일치. 원인은 `core.autocrlf=true`+`.gitattributes` 부재로 golden fixture가 CRLF로 체크아웃돼 바이트 해시가 깨진 것(내용은 정당). repo 루트에 `.gitattributes` 추가(golden 경로 `eol=lf` 고정)하고 작업 트리 재정규화로 복구 — fixture 수정·재lock 없이. ② HARNESS-archunit 마무리: 기존 ArchitectureTest(규칙2 double/float·규칙9 domain 순수)와 checkstyle(규칙3 now() 금지)은 있었으나 "위반 시 실패" 증명이 없었음. `RuleEnforcementTest` 추가 — com.ngsoft.salary 밖 `archfixtures` 위반 픽스처(double 필드 / domain 패키지의 스프링 의존)를 명시 임포트해 두 ArchRule이 실제로 AssertionError를 던지는지, checkstyle 정규식을 config에서 읽어 인자 없는 now()는 잡고 now(clock)는 통과하는지 검증.
+- 초록불: `./gradlew verify` BUILD SUCCESSFUL (RuleEnforcementTest 3/3, 골든 무결성 통과). `npm run verify` 통과(npm install 후). JAVA_HOME이 삭제된 jdk-11을 가리켜 JDK 22로 우회 실행.
+- passes 전환: HARNESS-archunit → true.
+- 다음: HARNESS-golden(골든 fixture 폭포 기대값·PaydayResolver 케이스 + 시드 스크립트) → HARNESS-claude → ENV-setup. (owner 메모는 AUTH-01을 가리켰으나 트래커 순서상 harness 항목이 먼저 — 협의.)
+- 메모: ① 음성 테스트 픽스처는 com.ngsoft.salary 밖 `archfixtures`/`archfixtures.domain`에 둬야 전역 @AnalyzeClasses 스캔에 안 걸린다. ② 테스트 소스에 `LocalDate.now()` 리터럴을 두면 checkstyle이 잡으므로(=규칙 작동 방증) 문자열을 런타임 합성. ③ checkstyle.xml 파싱 시 외부 DTD(checkstyle.org) 로드 비활성화 — 오프라인 동작. ④ 환경 JAVA_HOME 고장(jdk-11 경로 없음) — 영구 수정 권장.
+
 ## 2026-06-11  —  [HARNESS-verify] Phase 0 골격 생성 + verify 게이트 가동
 - 한 일: zip 해제(D:\01_PROJECT\07_SALARY_APP) + git init. Spring Initializr(Boot 3.5.15·Java 21·Gradle 8.14.5) 골격을 backend/에 병합, `com.example.salary`→`com.ngsoft.salary` 전부 치환. settings.gradle에 foojay-resolver 추가(로컬 JDK 17뿐이라 toolchain이 JDK 21 자동 다운로드). application.yml 작성(flyway validate-on-migrate, datasource는 DB_* 환경변수+로컬 기본값). create-vue로 frontend/ 생성 후 verify 스크립트 병합. golden/maturity-cases.json input을 실데이터로 채움 — 단리→15.4% 공식으로 기대값 3,731,976 / 2,476,986 일치 교차검증. 공개 레포 대비 비식별화: 실수령액·적금 상품명·정밀 지출액을 합산이 맞는 가상 수치 세트로 교체(목업·API명세·개발계획·fixture). docker-compose.yml(PostgreSQL 16) 추가. CLAUDE.md 실행 명령 사전·README 실행 방법 채움.
 - 초록불: `npm run verify` 완전 통과(oxlint·eslint 0건, vue-tsc, vitest 1건, build). `./gradlew verify`도 완전 통과 — 소유자가 goldenLock 직접 실행(같은 날)해 golden.sha256 생성 후 BUILD SUCCESSFUL 확인. 골든 케이스: 적금 만기 3,731,976 / 2,476,986.
