@@ -151,7 +151,7 @@
       "category": "frontend",
       "description": "항목 폼 v1(공통 필드만 — 저축 조건부 필드는 Phase 5, 외화 도우미는 Phase 3)",
       "verify": "npm run verify 통과 + 생성→목록 반영 E2E",
-      "passes": false
+      "passes": true
     },
     {
       "id": "MOD-03",
