@@ -127,7 +127,7 @@
       "owner_only": true,
       "description": "비상금/생활비 분배: EMERGENCY 일반 항목, LIVING은 나머지 계산값(구현규칙 3장) + users.living_account_id로 LIVING 라인 생성. [분배 규칙은 소유자 검토]",
       "verify": "골든 fixture에서 LIVING planned_amount 일치",
-      "passes": false
+      "passes": true
     },
     {
       "id": "FLOW-02",
