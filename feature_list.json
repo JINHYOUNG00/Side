@@ -77,7 +77,7 @@
       "category": "backend",
       "description": "accounts CRUD + 소유권 검증 공통 처리 (계좌번호 등 금융 식별 정보 저장 금지)",
       "verify": "./gradlew verify 통과 + 소유권 위반 차단 테스트",
-      "passes": false
+      "passes": true
     },
     {
       "id": "ITEM-01",
