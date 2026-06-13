@@ -25,6 +25,13 @@ const router = createRouter({
       meta: { public: true, chrome: false },
     },
     {
+      // SCR-02 온보딩 스텝1 — 첫 가입 직후 기본 정보 등록(실수령액·월급일·조정 규칙). 인증 필수.
+      path: '/onboarding',
+      name: 'onboarding',
+      component: () => import('@/views/OnboardingView.vue'),
+      meta: { chrome: false },
+    },
+    {
       // SCR-07 전체 — 허브. 하단 탭 '전체'에서 진입, 통장·항목 관리로 분기.
       path: '/menu',
       name: 'menu',

@@ -28,10 +28,9 @@ onMounted(async () => {
   }
 
   try {
-    await auth.loginWithCode(provider, code)
-    // 로그인 후 홈으로. 첫 가입(isNewUser)은 온보딩(SCR-02)으로 분기 예정 — 라우트는 Phase 1.
-    // 분기 신호는 auth.isNewUser에 보관됨.
-    await router.replace({ name: 'home' })
+    const session = await auth.loginWithCode(provider, code)
+    // 첫 가입(isNewUser)은 온보딩(SCR-02)으로, 기존 사용자는 홈으로 분기.
+    await router.replace({ name: session.isNewUser ? 'onboarding' : 'home' })
   } catch (e) {
     backToLogin(e instanceof ApiError ? e.code : 'INTERNAL_ERROR')
   }

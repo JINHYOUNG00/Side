@@ -143,7 +143,7 @@
       "category": "frontend",
       "description": "온보딩 스텝1: 실수령액·월급일·조정 규칙 입력",
       "verify": "npm run verify 통과 + 입력 검증(payday 1~31 등) E2E",
-      "passes": false
+      "passes": true
     },
     {
       "id": "SCR-03",

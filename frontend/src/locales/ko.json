@@ -35,6 +35,25 @@
     "emptyTitle": "아직 배분 계획이 없어요",
     "emptyBody": "월급과 배분 항목을 설정하면 여기에 폭포가 그려져요"
   },
+  "onboarding": {
+    "loading": "불러오는 중이에요",
+    "adjustment": {
+      "PREV_BUSINESS_DAY": "전 영업일에 받아요",
+      "NEXT_BUSINESS_DAY": "다음 영업일에 받아요",
+      "NONE": "그대로예요"
+    },
+    "step1": {
+      "title": "월급, 실수령으로\n얼마 받으세요?",
+      "incomePlaceholder": "예: 2,500,000",
+      "payday": "월급일",
+      "dayN": "{day}일",
+      "lastDay": "말일",
+      "custom": "직접 입력",
+      "paydayPlaceholder": "1 ~ 31",
+      "adjustment": "월급일이 주말·공휴일이면",
+      "next": "다음"
+    }
+  },
   "menu": {
     "title": "전체",
     "accounts": "통장 관리",

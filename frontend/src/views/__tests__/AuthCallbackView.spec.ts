@@ -44,6 +44,13 @@ describe('AuthCallbackView (로그인 → 대시보드 라우팅)', () => {
     expect(replaceSpy).toHaveBeenCalledWith({ name: 'home' })
   })
 
+  it('첫 가입(isNewUser)이면 온보딩(SCR-02)으로 분기한다', async () => {
+    vi.mocked(authApi.login).mockResolvedValue({ accessToken: 'jwt', isNewUser: true })
+    await mountAt('/login/callback/kakao?code=xyz')
+
+    expect(replaceSpy).toHaveBeenCalledWith({ name: 'onboarding' })
+  })
+
   it('교환 실패(ApiError) 시 로그인으로 복귀하며 error 코드를 전달한다', async () => {
     vi.mocked(authApi.login).mockRejectedValue(new ApiError('OAUTH_EXCHANGE_FAILED', {}, 502))
     await mountAt('/login/callback/kakao?code=xyz')

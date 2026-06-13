@@ -35,6 +35,25 @@
     "emptyTitle": "No allocation plan yet",
     "emptyBody": "Set your income and budget items to see the waterfall here"
   },
+  "onboarding": {
+    "loading": "Loading",
+    "adjustment": {
+      "PREV_BUSINESS_DAY": "The previous business day",
+      "NEXT_BUSINESS_DAY": "The next business day",
+      "NONE": "On the same day"
+    },
+    "step1": {
+      "title": "What's your take-home\npay each month?",
+      "incomePlaceholder": "e.g. 2,500,000",
+      "payday": "Payday",
+      "dayN": "Day {day}",
+      "lastDay": "Last day",
+      "custom": "Custom",
+      "paydayPlaceholder": "1 - 31",
+      "adjustment": "If payday falls on a weekend or holiday",
+      "next": "Next"
+    }
+  },
   "menu": {
     "title": "All",
     "accounts": "Manage accounts",
