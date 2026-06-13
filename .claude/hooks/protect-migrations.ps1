@@ -1,4 +1,4 @@
-# PreToolUse(Edit|Write): 기존 Flyway 마이그레이션 수정 차단 (Windows/PowerShell).
+﻿# PreToolUse(Edit|Write): 기존 Flyway 마이그레이션 수정 차단 (Windows/PowerShell).
 # 새 V{n}__*.sql 생성은 허용 — 이미 존재하는 파일 편집만 막는다.
 # exit 2 = 차단.
 $ErrorActionPreference = "SilentlyContinue"
