@@ -13,6 +13,7 @@ public enum ErrorCode {
     OAUTH_EXCHANGE_FAILED(HttpStatus.BAD_GATEWAY),
     NOT_FOUND(HttpStatus.NOT_FOUND),
     ACCOUNT_LIMIT_EXCEEDED(HttpStatus.CONFLICT),
+    ITEM_LIMIT_EXCEEDED(HttpStatus.CONFLICT),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR);
 
     private final HttpStatus status;

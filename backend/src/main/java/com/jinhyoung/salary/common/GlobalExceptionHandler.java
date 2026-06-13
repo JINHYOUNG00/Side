@@ -2,6 +2,7 @@ package com.jinhyoung.salary.common;
 
 import java.util.Map;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -20,6 +21,13 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
+        return ResponseEntity.status(ErrorCode.VALIDATION_FAILED.status())
+                .body(new ApiErrorResponse(ErrorCode.VALIDATION_FAILED.name(), Map.of()));
+    }
+
+    /** 본문 역직렬화 실패(미지원 enum 값·잘못된 날짜 형식 등)도 코드 기반 VALIDATION_FAILED로 통일. */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiErrorResponse> handleNotReadable(HttpMessageNotReadableException ex) {
         return ResponseEntity.status(ErrorCode.VALIDATION_FAILED.status())
                 .body(new ApiErrorResponse(ErrorCode.VALIDATION_FAILED.name(), Map.of()));
     }

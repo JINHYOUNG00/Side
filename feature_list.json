@@ -85,7 +85,7 @@
       "category": "backend",
       "description": "budget_items CRUD(생성·조회) — 카테고리/이름/금액/대상 통장/시작일",
       "verify": "./gradlew verify 통과 + 생성·조회 통합 테스트",
-      "passes": false
+      "passes": true
     },
     {
       "id": "ITEM-09",
