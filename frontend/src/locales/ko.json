@@ -32,6 +32,20 @@
   },
   "home": {
     "remaining": "남는 돈",
+    "loading": "불러오는 중이에요",
+    "incomeOf": "월급 {income}원의 {percent}%",
+    "emergency": "비상금",
+    "living": "생활비",
+    "envelope": "봉투 적립",
+    "count": "{n}건",
+    "overAllocated": {
+      "banner": "배분이 월급을 {amount}원 초과했어요. 아래에서 줄일 항목을 골라보세요"
+    },
+    "flex": {
+      "0": "유연",
+      "1": "중간",
+      "2": "고정"
+    },
     "emptyTitle": "아직 배분 계획이 없어요",
     "emptyBody": "월급과 배분 항목을 설정하면 여기에 폭포가 그려져요"
   },

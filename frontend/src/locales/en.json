@@ -32,6 +32,20 @@
   },
   "home": {
     "remaining": "Remaining",
+    "loading": "Loading",
+    "incomeOf": "{percent}% of your {income} KRW salary",
+    "emergency": "Emergency",
+    "living": "Living",
+    "envelope": "Envelopes",
+    "count": "{n}",
+    "overAllocated": {
+      "banner": "Allocation exceeds your salary by {amount} KRW. Pick something to reduce below"
+    },
+    "flex": {
+      "0": "Flexible",
+      "1": "Medium",
+      "2": "Fixed"
+    },
     "emptyTitle": "No allocation plan yet",
     "emptyBody": "Set your income and budget items to see the waterfall here"
   },

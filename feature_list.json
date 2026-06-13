@@ -151,7 +151,7 @@
       "category": "frontend",
       "description": "홈: 남는 돈 헤더 + 폭포 리스트 + 카운트업",
       "verify": "npm run verify 통과 + 폭포 표시 E2E(서버 응답 기준)",
-      "passes": false
+      "passes": true
     },
     {
       "id": "MOD-01",
