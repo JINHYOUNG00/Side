@@ -21,6 +21,11 @@ public enum OAuthProvider {
         return enabled;
     }
 
+    /** 설정·경로 변수용 소문자 키(kakao/google/naver). app.oauth.{key} 매핑에 사용. */
+    public String key() {
+        return name().toLowerCase(Locale.ROOT);
+    }
+
     /** 경로 변수(kakao/google/naver) → enum. 대소문자 무시. 미지원이면 예외. */
     public static OAuthProvider from(String raw) {
         if (raw == null || raw.isBlank()) {

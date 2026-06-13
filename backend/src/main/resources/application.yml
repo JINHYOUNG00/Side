@@ -14,3 +14,22 @@ spring:
 
   flyway:
     validate-on-migrate: true # 적용된 마이그레이션 변경 시 기동 거부 (마이그레이션 불변의 본 방어선)
+
+# 인증(AUTH-01). 실제 시크릿은 운영 환경변수로만 주입 — 저장소엔 dev 기본값(로컬 전용).
+app:
+  jwt:
+    secret: ${JWT_SECRET:local-dev-only-jwt-secret-please-override-32+bytes!!}
+    ttl: ${JWT_TTL:PT1H} # 1시간, 리프레시 토큰은 v1 생략(ADR-03)
+  oauth:
+    kakao:
+      token-uri: ${KAKAO_TOKEN_URI:https://kauth.kakao.com/oauth/token}
+      user-info-uri: ${KAKAO_USER_INFO_URI:https://kapi.kakao.com/v2/user/me}
+      client-id: ${KAKAO_CLIENT_ID:}
+      client-secret: ${KAKAO_CLIENT_SECRET:}
+      redirect-uri: ${KAKAO_REDIRECT_URI:}
+    google:
+      token-uri: ${GOOGLE_TOKEN_URI:https://oauth2.googleapis.com/token}
+      user-info-uri: ${GOOGLE_USER_INFO_URI:https://www.googleapis.com/oauth2/v3/userinfo}
+      client-id: ${GOOGLE_CLIENT_ID:}
+      client-secret: ${GOOGLE_CLIENT_SECRET:}
+      redirect-uri: ${GOOGLE_REDIRECT_URI:}

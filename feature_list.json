@@ -53,7 +53,7 @@
       "category": "backend",
       "description": "카카오·구글 OAuth2 로그인 + JWT 발급. OAuthUserInfo 인터페이스 + Kakao/Google/Naver 어댑터(네이버 비활성), 로그인 성공 핸들러 → users upsert → JWT",
       "verify": "./gradlew verify 통과 + 카카오/구글 로그인 흐름 통합 테스트",
-      "passes": false
+      "passes": true
     },
     {
       "id": "AUTH-03",
@@ -61,7 +61,7 @@
       "category": "backend",
       "description": "unique(provider, provider_id)로 공급자별 계정 분리 동작",
       "verify": "동일 인물 다른 소셜 계정이 별개로 생성되는 테스트 통과",
-      "passes": false
+      "passes": true
     },
     {
       "id": "SCR-01",
