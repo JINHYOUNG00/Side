@@ -30,6 +30,12 @@ const router = createRouter({
       name: 'accounts',
       component: () => import('@/views/AccountsView.vue'),
     },
+    {
+      // MOD-01 항목 전체 목록(추가·삭제 폼). SCR-07 전체 탭에서 진입.
+      path: '/items',
+      name: 'items',
+      component: () => import('@/views/ItemsView.vue'),
+    },
   ],
 })
 

@@ -27,6 +27,7 @@
     "OAUTH_EXCHANGE_FAILED": "Sign-in failed. Please try again",
     "NOT_FOUND": "Not found",
     "ACCOUNT_LIMIT_EXCEEDED": "You can create up to 20 accounts",
+    "ITEM_LIMIT_EXCEEDED": "You can create up to 100 items",
     "INTERNAL_ERROR": "Something went wrong. Please try again later"
   },
   "home": {
@@ -54,6 +55,38 @@
       "save": "Save",
       "delete": "Delete",
       "deleteConfirm": "Delete this account? Past records stay intact",
+      "cancel": "Cancel"
+    }
+  },
+  "items": {
+    "title": "Budget items",
+    "back": "Back",
+    "loading": "Loading",
+    "add": "Add item",
+    "emptyTitle": "No items yet",
+    "emptyBody": "Add the savings, investments and fixed costs that leave your salary",
+    "category": {
+      "SAVING": "Savings",
+      "INVESTMENT": "Investment",
+      "FIXED": "Fixed cost",
+      "INSURANCE": "Insurance",
+      "SUBSCRIPTION": "Subscription",
+      "EMERGENCY": "Emergency"
+    },
+    "form": {
+      "addTitle": "Add item",
+      "category": "Category",
+      "name": "Name",
+      "namePlaceholder": "e.g. ABC Bank savings",
+      "amount": "Monthly amount",
+      "amountPlaceholder": "e.g. 300,000",
+      "account": "Target account",
+      "accountPlaceholder": "Select an account",
+      "noAccounts": "Add an account first",
+      "startDate": "Start date",
+      "save": "Save",
+      "delete": "Delete",
+      "deleteConfirm": "Delete this item? Past records stay intact",
       "cancel": "Cancel"
     }
   }

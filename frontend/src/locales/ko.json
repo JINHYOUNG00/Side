@@ -27,6 +27,7 @@
     "OAUTH_EXCHANGE_FAILED": "로그인에 실패했어요. 다시 시도해 주세요",
     "NOT_FOUND": "찾을 수 없어요",
     "ACCOUNT_LIMIT_EXCEEDED": "통장은 최대 20개까지 만들 수 있어요",
+    "ITEM_LIMIT_EXCEEDED": "항목은 최대 100개까지 만들 수 있어요",
     "INTERNAL_ERROR": "잠시 후 다시 시도해 주세요"
   },
   "home": {
@@ -54,6 +55,38 @@
       "save": "저장",
       "delete": "삭제",
       "deleteConfirm": "이 통장을 삭제할까요? 과거 기록은 그대로 남아요",
+      "cancel": "취소"
+    }
+  },
+  "items": {
+    "title": "항목 관리",
+    "back": "뒤로",
+    "loading": "불러오는 중이에요",
+    "add": "항목 추가",
+    "emptyTitle": "아직 등록한 항목이 없어요",
+    "emptyBody": "월급에서 빠져나갈 저축·투자·고정지출을 추가해 보세요",
+    "category": {
+      "SAVING": "저축",
+      "INVESTMENT": "투자",
+      "FIXED": "고정지출",
+      "INSURANCE": "보험",
+      "SUBSCRIPTION": "구독",
+      "EMERGENCY": "비상금"
+    },
+    "form": {
+      "addTitle": "항목 추가",
+      "category": "분류",
+      "name": "이름",
+      "namePlaceholder": "예: OO은행 정기적금",
+      "amount": "월 금액",
+      "amountPlaceholder": "예: 300,000",
+      "account": "대상 통장",
+      "accountPlaceholder": "통장을 선택해 주세요",
+      "noAccounts": "먼저 통장을 추가해 주세요",
+      "startDate": "시작일",
+      "save": "저장",
+      "delete": "삭제",
+      "deleteConfirm": "이 항목을 삭제할까요? 과거 기록은 그대로 남아요",
       "cancel": "취소"
     }
   }
