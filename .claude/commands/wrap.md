@@ -12,3 +12,7 @@ allowed-tools: Bash, Read, Edit
 4. `git status`로 작업 트리가 깨끗한지 확인.
 5. `git push origin main`으로 원격에 푸시한다(force push 금지 — settings deny). 푸시
    결과(`origin/main`과 동기됐는지)까지 보고.
+6. 마지막 줄에 이번 세션 작업명을 반영한 추천 세션 제목을 다음 형식으로 출력한다
+   (rename은 직접 실행 불가 — 사용자가 복붙해 실행):
+   `/rename <요구사항ID>-<한단어요약>`   예) `/rename FLOW-04-비상금분배`
+   요구사항 ID가 여럿이면 대표 ID 하나, 없으면 작업 성격을 한국어 한두 단어로.
