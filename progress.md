@@ -13,6 +13,13 @@
 - 메모:       추가한 Flyway 버전, 새 상수, 결정사항, 주의점
 -->
 
+## 2026-06-14  —  [HARNESS-golden 수정] backend CI 빨간불 해소 — waterfall 골든 해시 LF 교정
+- 한 일: FLOW-03 푸시 후 GitHub Actions에서 **backend(verify)가 실패**해 원인 추적. 제 커밋이 아니라 **FLOW-01 골든 도입(7aa47e8) 이후 backend CI가 줄곧 빨간불**(이후 doc/frontend 커밋만 이어져 안 드러남)이었음. 원인: `golden.sha256`의 `waterfall-cases.json` 해시가 **CRLF 기준(0f7b…)**으로 잠겨 있었음 — owner가 CRLF 워킹트리에서 goldenLock한 탓. 커밋된 정본 fixture는 LF(f9a6…)이고 CI는 LF로 체크아웃 → GoldenFixtureIntegrityTest 해시 불일치로 실패(로컬 Windows는 CRLF 워킹트리라 통과해 안 보임). 조치: ① 워킹트리 fixture를 LF로 재정규화(`tr -d '\r'`, 인덱스가 이미 LF라 git diff 없음) ② manifest의 waterfall 해시 0f7b…→**f9a6…(정본 LF 해시)** 한 줄 교정(owner 승인 — fixture 숫자 불변, 줄바꿈 교정일 뿐).
+- 초록불: 로컬 `./gradlew clean verify` BUILD SUCCESSFUL + **GitHub Actions backend·frontend 둘 다 success**(커밋 33ef2f1) 확인. 골든 fixture 내용 무수정.
+- passes 전환: 없음(HARNESS-golden은 여전히 false — payday fixture는 미작성). 단 기존 waterfall 골든의 CI 무결성은 복구.
+- 다음: FLOW-03 항목 참조(아래). HARNESS-golden 본체(payday fixture)는 owner.
+- 메모: ① **재발 방지** — `.gitattributes`가 golden/**를 eol=lf로 이미 고정하므로, 워킹트리가 LF인 한 다음 goldenLock부터는 정상. 메모리 `golden-hash-crlf-breaks-linux-ci`에 진단·교정 절차 기록. ② **교훈** — 로컬 verify 초록불 ≠ CI 초록불(줄바꿈 의존 해시). 골든/바이트 검증 파일은 워킹트리 eol을 항상 LF로 유지. ③ 커밋 33ef2f1.
+
 ## 2026-06-14  —  [FLOW-03 완료] 사이클 스냅샷 plan_line 빌더 + 골든 LIVING 검증 (owner_only 페어)
 - 한 일: 직전까지 분배 *계산*(WaterfallSplit)은 끝났으나 스냅샷 미구축이라 false 유지였던 FLOW-03를, **순수 스냅샷 빌더**로 닫음(owner와 범위 결정 후 페어 구현). ① `cycle/domain/PlanLineType`(enum, ERD plan_lines.line_type 미러: ITEM/ENVELOPE/LIVING/EXTRA — FLOW-03은 ITEM·LIVING만 산출, ENVELOPE=Phase3·EXTRA=Phase6이 emit). ② `cycle/domain/PlanLineDraft`(record, plan_line 1건의 **계산 산출물** — lineType·budgetItemId·category·accountId·plannedAmount + 타입별 불변식. 이름/통장별칭 스냅샷·status는 영속화 시점 메타라 제외 = WaterfallQueryService 분담과 동형). ③ `cycle/domain/CycleSnapshotBuilder`(의존성 0 순수 — `build(income, lines, envelopeContribution, livingAccountId)`: ITEM 라인 입력순 펼침 + 구현규칙 3장 LIVING=split.living. 금액은 owner의 WaterfallCalculator/Split에 위임, 계산 0줄). ④ 단위 `CycleSnapshotBuilderTest` 13건. ⑤ 골든 `CycleSnapshotGoldenTest`(기존 waterfall-cases.json 소비 — **LIVING planned_amount=356,107 일치** = FLOW-03 verify 본체).
 - 초록불: `./gradlew verify` BUILD SUCCESSFUL — 신규 단위 13 + 골든(노션 실데이터 LIVING 356,107·ITEM 순서/EMERGENCY·Σ불변식) 통과, 기존 단위·골든·ArchUnit·통합 전부 유지. **기존 fixture 필드만 소비 → goldenLock 불필요**(GoldenFixtureIntegrityTest 통과로 확인, 메모리 `golden-fixture-needs-owner-lock` 규칙 준수). `npm run verify`는 무변경(세션 시작 시 green).
