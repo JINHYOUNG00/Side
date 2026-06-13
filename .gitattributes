@@ -1,0 +1,11 @@
+# 줄바꿈 정규화 — 저장소에는 LF로 보관, 체크아웃 시 OS 기본을 따른다.
+* text=auto
+
+# 골든 fixture는 바이트 단위 sha256으로 무결성을 검증한다(GoldenFixtureIntegrityTest).
+# autocrlf가 CRLF로 바꾸면 해시가 깨지므로 어떤 OS에서도 LF로 고정한다.
+backend/src/test/resources/golden/** text eol=lf
+backend/src/test/resources/golden.sha256 text eol=lf
+
+# Gradle wrapper 스크립트는 항상 LF(유닉스 셸).
+gradlew text eol=lf
+*.bat text eol=crlf
