@@ -13,6 +13,13 @@
 - 메모:       추가한 Flyway 버전, 새 상수, 결정사항, 주의점
 -->
 
+## 2026-06-13  —  [ENV-setup 대부분] Flyway V1 + 프론트 기반(i18n·토큰·컴포넌트·대시보드)
+- 한 일: ① 백엔드 `db/migration/V1__init.sql` — ERD v1.2의 11테이블(users/accounts/budget_items/envelopes/envelope_transactions/cycles/plan_lines/check_ins/suggestions/notification_logs/holidays). 금액 bigint, 날짜 date, 시각 timestamptz, enum류 varchar, jsonb(input_meta·payload). 순환 FK(users.living_account_id↔accounts)는 ALTER로 해소, 멱등 unique 제약 포함. ② 프론트: vue-i18n(legacy:false·globalInjection) + locales/ko·en.json, styles/tokens.css(화면설계.html 토큰 1:1·Pretendard), components/base 5종(Card·MoneyText·ProgressBar·BottomSheet·BottomNav), App 셸(모바일 퍼스트 430px)+빈 대시보드 HomeView, 라우터 정리, create-vue 스캐폴드 잔재 제거. base 컴포넌트 한정 multi-word 규칙 off. MoneyText 단위 테스트 3건.
+- 초록불: `./gradlew verify` BUILD SUCCESSFUL, `npm run verify` 통과(lint 0/0·type-check·vitest 3/3·build). 프론트 dev 서버 브라우저 기동 확인 — 빈 대시보드 렌더, 콘솔 에러 0, $t 템플릿 주입 정상.
+- passes 전환: 없음 — ENV-setup은 **대부분 완료**, flag는 false 유지. 미검증 1건: 백엔드가 PG에 Flyway V1을 실제 적용하며 뜨는지(`docker compose up -d && ./gradlew bootRun`). 이 환경엔 docker/psql이 없어 마이그레이션 런타임 적용을 못 돌림. CI(ci.yml)는 이미 양쪽 verify를 그대로 수행 — ENV-setup의 CI 조건 충족.
+- 다음: (소유자) docker 기동 후 bootRun으로 V1 적용 확인 → 문제없으면 ENV-setup passes:true. 그 후 AUTH-01(OAuth2+JWT) 또는 SET-04(accounts CRUD). HARNESS-golden 잔여(waterfall/payday fixture)도 여전히 소유자 단계.
+- 메모: ① V1은 docker 부재로 런타임 미적용 — 첫 bootRun이 실질 검증(ddl-auto=validate라 엔티티 없는 현재는 통과). SQL 오타 리스크 있으니 bootRun 로그 확인할 것. ② launch.json(.claude/) 추가 — preview용 frontend dev 서버(port 5173). ③ vue/multi-word-component-names가 flat/essential에 포함돼 'Card'가 걸림 → base 디렉터리 한정 off. ④ Pretendard는 tokens.css에서 CDN @import(추후 self-host 검토).
+
 ## 2026-06-13  —  [HARNESS-golden 부분] 만기 골든 테스트 + MaturityCalculator
 - 한 일: 잠긴 fixture(maturity-cases.json)를 실제로 강제하는 골든 테스트를 만들었다. ① `budgetitem/domain`에 순수 클래스 추가 — `MaturityCalculator`(단리: 이자=월납입×연이율×n(n+1)/2÷1200 → 원미만 HALF_UP, 세금=이자×세율 → 원미만 HALF_UP, 만기=원금+이자−세금), `MaturityInput`(record, 검증 포함), `MaturityResult`(원금·이자·세금·total 분해), `TaxType`(NORMAL_15_4=0.154, TAX_FREE). 전부 BigDecimal/long(double 금지). ② `golden/MaturityGoldenTest` — fixture를 @TestFactory로 읽어 두 실데이터 케이스(3,731,976 / 2,476,986)를 계산기가 재현하는지 검증. Jackson 의존이라 ..domain.. 밖 golden 패키지에 둠(ArchUnit이 테스트도 스캔). ③ `MaturityCalculatorTest` 단위 테스트 — 비과세·세금 HALF_UP(808.5→809)·입력 검증 경계.
 - 초록불: `./gradlew verify` BUILD SUCCESSFUL. MaturityGoldenTest 2/2(만기 케이스), MaturityCalculatorTest 3/3, RuleEnforcementTest 3/3, 골든 무결성 통과. `npm run verify`는 직전 세션과 동일(미변경).
