@@ -167,7 +167,7 @@
       "category": "frontend",
       "description": "전체 탭 골격(통장·항목 목록·설정 진입)",
       "verify": "npm run verify 통과 + 탭 네비게이션 E2E",
-      "passes": false
+      "passes": true
     },
     {
       "id": "VERIFY-notion-match",
