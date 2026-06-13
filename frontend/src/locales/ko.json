@@ -26,11 +26,35 @@
     "PROVIDER_NOT_SUPPORTED": "지원하지 않는 로그인 방식이에요",
     "OAUTH_EXCHANGE_FAILED": "로그인에 실패했어요. 다시 시도해 주세요",
     "NOT_FOUND": "찾을 수 없어요",
+    "ACCOUNT_LIMIT_EXCEEDED": "통장은 최대 20개까지 만들 수 있어요",
     "INTERNAL_ERROR": "잠시 후 다시 시도해 주세요"
   },
   "home": {
     "remaining": "남는 돈",
     "emptyTitle": "아직 배분 계획이 없어요",
     "emptyBody": "월급과 배분 항목을 설정하면 여기에 폭포가 그려져요"
+  },
+  "accounts": {
+    "title": "통장 관리",
+    "back": "뒤로",
+    "loading": "불러오는 중이에요",
+    "add": "통장 추가",
+    "emptyTitle": "아직 등록한 통장이 없어요",
+    "emptyBody": "월급을 나눠 담을 통장을 추가해 보세요",
+    "form": {
+      "addTitle": "통장 추가",
+      "editTitle": "통장 수정",
+      "name": "별칭",
+      "namePlaceholder": "예: 카카오페이",
+      "purpose": "용도",
+      "purposePlaceholder": "예: 생활비, 비상금",
+      "deepLink": "은행 앱 링크",
+      "deepLinkPlaceholder": "앱을 바로 여는 링크 (선택)",
+      "privacyNote": "계좌번호·비밀번호는 묻지도, 저장하지도 않아요",
+      "save": "저장",
+      "delete": "삭제",
+      "deleteConfirm": "이 통장을 삭제할까요? 과거 기록은 그대로 남아요",
+      "cancel": "취소"
+    }
   }
 }

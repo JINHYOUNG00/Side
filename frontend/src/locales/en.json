@@ -26,11 +26,35 @@
     "PROVIDER_NOT_SUPPORTED": "That sign-in method isn't supported",
     "OAUTH_EXCHANGE_FAILED": "Sign-in failed. Please try again",
     "NOT_FOUND": "Not found",
+    "ACCOUNT_LIMIT_EXCEEDED": "You can create up to 20 accounts",
     "INTERNAL_ERROR": "Something went wrong. Please try again later"
   },
   "home": {
     "remaining": "Remaining",
     "emptyTitle": "No allocation plan yet",
     "emptyBody": "Set your income and budget items to see the waterfall here"
+  },
+  "accounts": {
+    "title": "Accounts",
+    "back": "Back",
+    "loading": "Loading",
+    "add": "Add account",
+    "emptyTitle": "No accounts yet",
+    "emptyBody": "Add an account to split your salary into",
+    "form": {
+      "addTitle": "Add account",
+      "editTitle": "Edit account",
+      "name": "Nickname",
+      "namePlaceholder": "e.g. KakaoPay",
+      "purpose": "Purpose",
+      "purposePlaceholder": "e.g. Living, Emergency",
+      "deepLink": "Bank app link",
+      "deepLinkPlaceholder": "Link that opens the app (optional)",
+      "privacyNote": "We never ask for or store account numbers or passwords",
+      "save": "Save",
+      "delete": "Delete",
+      "deleteConfirm": "Delete this account? Past records stay intact",
+      "cancel": "Cancel"
+    }
   }
 }

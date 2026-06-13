@@ -24,6 +24,12 @@ const router = createRouter({
       component: () => import('@/views/AuthCallbackView.vue'),
       meta: { public: true, chrome: false },
     },
+    {
+      // MOD-03 통장 관리(목록 + 추가·수정·삭제 폼). SCR-07 전체 탭에서 진입.
+      path: '/accounts',
+      name: 'accounts',
+      component: () => import('@/views/AccountsView.vue'),
+    },
   ],
 })
 
