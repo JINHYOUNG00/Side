@@ -13,6 +13,13 @@
 - 메모:       추가한 Flyway 버전, 새 상수, 결정사항, 주의점
 -->
 
+## 2026-06-13  —  [AUTH-01 완료 + AUTH-03] 로그인 흐름 전체 + 스테이트리스 보안
+- 한 일: 기존 코어(어댑터 3종·JwtProvider) 위에 로그인 흐름을 끝까지 배선. ① `OAuthClient` 포트 + `RestClientOAuthClient`(code→토큰 교환→userinfo→어댑터 정규화, 실패 시 OAUTH_EXCHANGE_FAILED). ② `AuthService`: `(provider, provider_id)`로 upsert + JWT 발급, 신규는 isNewUser=true. ③ `AuthController` `POST /api/v1/auth/{provider}` → `{accessToken, isNewUser}`. ④ `User` 엔티티(**user.infra**)·`UserRepository`(findByProviderAndProviderId). ⑤ `SecurityConfig` 스테이트리스(세션 없음, /api/v1/auth/** 공개, 그 외 JWT 필수) + `JwtAuthenticationFilter`(principal=userId) + `JwtAuthenticationEntryPoint`(401 {code:UNAUTHORIZED}). ⑥ `common`: `ErrorCode`/`ApiException`/`ApiErrorResponse`/`GlobalExceptionHandler`({code,params}), `TimeConfig`(KST `Clock` 빈). ⑦ `AuthProperties`(app.jwt·app.oauth), application.yml에 dev 기본값(시크릿은 env 주입). ⑧ build.gradle: spring-security-test + Testcontainers(postgresql·junit-jupiter·spring-boot-testcontainers).
+- 초록불: `./gradlew verify` BUILD SUCCESSFUL — **AuthIntegrationTest 9건**(신규/재로그인 멱등/AUTH-03 공급자분리/닉네임 폴백/비활성 naver/미지원 provider/code 검증실패/보안 401·통과) + 기존 단위·골든·ArchUnit 전부. 통합 테스트가 Testcontainers PostgreSQL(postgres:16-alpine)을 띄워 **Flyway V1 + ddl-auto=validate까지 실검증**. `npm run verify` 통과(프론트 미변경).
+- passes 전환: **AUTH-01 → true, AUTH-03 → true**.
+- 다음: **SCR-01**(로그인 페이지 + JWT 저장·axios 인터셉터 + 가드 라우팅, 프론트) — 이번 백엔드와 짝. 또는 Phase 1 SET-04(accounts CRUD)/ITEM-01.
+- 메모: ① **신규 사용자 플레이스홀더 결정**: ERD users의 base_income/payday/payday_adjustment가 NOT NULL인데 OAuth 가입은 온보딩 전이라 값이 없다 → `0 / 1 / NONE`으로 행 생성하고 isNewUser=true로 온보딩 유도(온보딩에서 덮어씀). User.java에 상수로 명시. ② 닉네임 NOT NULL인데 동의 거부 시 null → 이메일 로컬파트 → `provider_id` 순 폴백(데이터 기본값, UI 문구 아님). ③ 통합 테스트는 Testcontainers 채택(CI ci.yml에 PG 서비스 없음 — ubuntu 러너 docker로 컨테이너 기동). ④ JWT dev 시크릿은 32바이트↑ placeholder를 yml에 둠(실값은 JWT_SECRET 등 env). ⑤ JAVA_HOME이 여전히 jdk-11(부재) 가리킴 → gradle 호출 시 `$env:JAVA_HOME='...jdk-22'` 임시 지정으로 우회(영구 수정 권장). ⑥ Flyway는 새 버전 추가 없음 — V1 그대로 사용.
+
 ## 2026-06-13  —  [ENV-setup 완료] Docker/WSL2 셋업 + Flyway V1 실검증
 - 한 일: 로컬에 Docker Desktop 설치(winget) + WSL2 설치(wsl --install) + 재부팅으로 엔진 기동. `docker compose up -d`로 PostgreSQL 16 컨테이너(salary-db) 기동, `./gradlew bootRun`으로 Flyway V1 실적용 검증.
 - 초록불: Flyway "Successfully validated 1 migration" → "Migrating schema public to version 1 - init" → "Successfully applied". DB에서 \dt로 ERD 11테이블 전부 확인(+flyway_schema_history), flyway_schema_history version 1 success=t. ENV-setup의 마지막 미검증 항목(백엔드 DB 기동) 해소.
