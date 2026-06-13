@@ -17,6 +17,12 @@ public interface BudgetItemRepository extends JpaRepository<BudgetItem, Long> {
     /** 소유권 + 상태 동시 검증 — 미소유·비활성·부재는 모두 empty(존재 여부를 노출하지 않음). */
     Optional<BudgetItem> findByIdAndUserIdAndStatus(Long id, Long userId, ItemStatus status);
 
+    /**
+     * 만기 보관 배치(ITEM-02) — 만기일이 있는 특정 상태(ACTIVE)의 항목을 전 사용자에 걸쳐 조회한다. 만기 경과
+     * 판정(KST 기준일 비교)은 도메인({@link BudgetItem#isMaturedAsOf})에서 수행하므로 DB는 거친 거름만 한다.
+     */
+    List<BudgetItem> findByStatusAndEndDateNotNull(ItemStatus status);
+
     /** 개수 상한(활성 항목 100, 구현규칙 6장) 판정용 활성 항목 수. */
     long countByUserIdAndStatus(Long userId, ItemStatus status);
 

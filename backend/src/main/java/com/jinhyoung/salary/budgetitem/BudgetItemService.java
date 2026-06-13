@@ -52,6 +52,7 @@ public class BudgetItemService {
             long amount,
             long accountId,
             LocalDate startDate,
+            LocalDate endDate,
             String memo) {
         requireOwnedActiveAccount(userId, accountId);
         if (budgetItemRepository.countByUserIdAndStatus(userId, ItemStatus.ACTIVE) >= MAX_ACTIVE_ITEMS) {
@@ -59,7 +60,7 @@ public class BudgetItemService {
         }
         int sortOrder = budgetItemRepository.maxSortOrder(userId) + 1;
         return budgetItemRepository.save(
-                BudgetItem.create(userId, accountId, category, name, amount, startDate, memo, sortOrder));
+                BudgetItem.create(userId, accountId, category, name, amount, startDate, endDate, memo, sortOrder));
     }
 
     /**

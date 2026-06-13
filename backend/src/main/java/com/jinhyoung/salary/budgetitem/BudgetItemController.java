@@ -3,6 +3,7 @@ package com.jinhyoung.salary.budgetitem;
 import com.jinhyoung.salary.budgetitem.domain.Category;
 import com.jinhyoung.salary.budgetitem.infra.BudgetItem;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -67,6 +68,7 @@ public class BudgetItemController {
                 request.amount(),
                 request.accountId(),
                 request.startDate(),
+                request.endDate(),
                 request.memo());
         return BudgetItemResponse.from(item);
     }
@@ -77,13 +79,22 @@ public class BudgetItemController {
         budgetItemService.delete(userId, id);
     }
 
+    /** 만기일(endDate)은 선택(기한 없는 항목은 null). 있으면 시작일보다 뒤여야 한다(구현규칙 5장). */
     public record CreateRequest(
             @NotNull Category category,
             @NotBlank @Size(max = NAME_MAX) String name,
             @Min(AMOUNT_MIN) @Max(AMOUNT_MAX) long amount,
             @NotNull Long accountId,
             @NotNull LocalDate startDate,
-            @Size(max = MEMO_MAX) String memo) {}
+            LocalDate endDate,
+            @Size(max = MEMO_MAX) String memo) {
+
+        /** end_date > start_date 교차 검증(ITEM-02). 위반 시 400 VALIDATION_FAILED(핸들러가 코드만 반환). */
+        @AssertTrue
+        public boolean isEndDateAfterStartDate() {
+            return endDate == null || startDate == null || endDate.isAfter(startDate);
+        }
+    }
 
     public record BudgetItemResponse(
             Long id,
@@ -92,6 +103,7 @@ public class BudgetItemController {
             long amount,
             Long accountId,
             LocalDate startDate,
+            LocalDate endDate,
             String memo,
             int sortOrder) {
         static BudgetItemResponse from(BudgetItem item) {
@@ -102,6 +114,7 @@ public class BudgetItemController {
                     item.getAmount(),
                     item.getAccountId(),
                     item.getStartDate(),
+                    item.getEndDate(),
                     item.getMemo(),
                     item.getSortOrder());
         }

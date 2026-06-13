@@ -95,6 +95,12 @@ class BudgetItemIntegrationTest {
                 + accountId + ",\"startDate\":\"2026-07-01\"}";
     }
 
+    private String createItemBodyWithEndDate(
+            String category, String name, long amount, long accountId, String endDate) {
+        return "{\"category\":\"" + category + "\",\"name\":\"" + name + "\",\"amount\":" + amount + ",\"accountId\":"
+                + accountId + ",\"startDate\":\"2026-07-01\",\"endDate\":\"" + endDate + "\"}";
+    }
+
     private long createItem(String token, String category, String name, long amount, long accountId) throws Exception {
         String response = mockMvc.perform(authed(post("/api/v1/budget-items"), token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -127,6 +133,42 @@ class BudgetItemIntegrationTest {
                 .andExpect(jsonPath("$[0].name").value("청년적금"))
                 .andExpect(jsonPath("$[1].name").value("월세"))
                 .andExpect(jsonPath("$[1].sortOrder").value(1));
+    }
+
+    @Test
+    void 만기일과_함께_생성하면_저장되고_응답에_포함된다() throws Exception {
+        String response = mockMvc.perform(authed(post("/api/v1/budget-items"), aliceToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createItemBodyWithEndDate("SAVING", "정기적금", 300000, aliceAccountId, "2027-07-01")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.endDate").value("2027-07-01"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        long id = objectMapper.readTree(response).get("id").asLong();
+        assertThat(budgetItemRepository.findById(id))
+                .isPresent()
+                .get()
+                .extracting(b -> b.getEndDate())
+                .isEqualTo(java.time.LocalDate.of(2027, 7, 1));
+    }
+
+    @Test
+    void 만기일이_시작일보다_뒤가_아니면_VALIDATION_FAILED() throws Exception {
+        // 시작일과 동일 — end_date > start_date 위반(구현규칙 5장).
+        mockMvc.perform(authed(post("/api/v1/budget-items"), aliceToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createItemBodyWithEndDate("SAVING", "당일만기", 300000, aliceAccountId, "2026-07-01")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
+        // 시작일보다 이전.
+        mockMvc.perform(authed(post("/api/v1/budget-items"), aliceToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createItemBodyWithEndDate("SAVING", "역전만기", 300000, aliceAccountId, "2026-06-01")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
     }
 
     @Test
