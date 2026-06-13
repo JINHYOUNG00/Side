@@ -1,0 +1,19 @@
+{
+  "app": {
+    "name": "월급폭포"
+  },
+  "nav": {
+    "home": "홈",
+    "checklist": "체크리스트",
+    "report": "리포트",
+    "all": "전체"
+  },
+  "common": {
+    "won": "원"
+  },
+  "home": {
+    "remaining": "남는 돈",
+    "emptyTitle": "아직 배분 계획이 없어요",
+    "emptyBody": "월급과 배분 항목을 설정하면 여기에 폭포가 그려져요"
+  }
+}

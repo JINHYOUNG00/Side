@@ -1,0 +1,19 @@
+{
+  "app": {
+    "name": "Salary Waterfall"
+  },
+  "nav": {
+    "home": "Home",
+    "checklist": "Checklist",
+    "report": "Report",
+    "all": "All"
+  },
+  "common": {
+    "won": "KRW"
+  },
+  "home": {
+    "remaining": "Remaining",
+    "emptyTitle": "No allocation plan yet",
+    "emptyBody": "Set your income and budget items to see the waterfall here"
+  }
+}

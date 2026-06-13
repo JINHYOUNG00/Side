@@ -25,5 +25,13 @@ export default defineConfigWithVueTs(
     files: ['src/**/__tests__/*'],
   },
 
+  {
+    // base 컴포넌트는 디자인 시스템 원자(Card, MoneyText…) — 정본 문서(아키텍처.md)가
+    // 단일어 이름을 쓰므로 multi-word 규칙을 이 디렉터리에 한해 끈다.
+    name: 'app/base-components',
+    files: ['src/components/base/**'],
+    rules: { 'vue/multi-word-component-names': 'off' },
+  },
+
   ...pluginOxlint.buildFromOxlintConfigFile('.oxlintrc.json'),
 )

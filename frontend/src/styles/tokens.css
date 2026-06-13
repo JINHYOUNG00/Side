@@ -1,0 +1,52 @@
+/* 디자인 토큰 — 시각 정본 docs/mockups/화면설계.html 과 1:1.
+   UI 라이브러리 없이 CSS 변수로만 관리(CLAUDE.md UI 규칙). 색: 파랑=배분/주요,
+   보라=봉투/제안, 초록=완료, 빨강=초과. */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
+
+:root {
+  --bg: #f2f4f6;
+  --surface: #ffffff;
+  --ink: #191f28;
+  --sub: #6b7684;
+  --hint: #8b95a1;
+  --line: #f2f4f6;
+  --line-2: #e5e8eb;
+  --blue: #3182f6;
+  --blue-soft: #e8f3ff;
+  --blue-deep: #1b64da;
+  --purple: #7048e8;
+  --purple-soft: #f1edfd;
+  --green: #1db47c;
+  --green-soft: #e6f6f0;
+  --red: #f04452;
+  --red-soft: #fdeff0;
+  --r: 14px;
+  --r-lg: 20px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  font-family: Pretendard, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: 0;
+  background: none;
+  color: inherit;
+}
