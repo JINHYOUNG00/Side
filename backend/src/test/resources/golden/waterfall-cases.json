@@ -1,0 +1,31 @@
+{
+  "_readme": ["폭포 골든 — 노션 검증 실데이터. 코드를 여기 맞춘다. 수정 후 ./gradlew goldenLock 필수."],
+  "cases": [
+    {
+      "name": "2026-06 노션 한 달치",
+      "input": {
+        "income": 2473110,
+        "envelopeContribution": 0,
+        "lines": [
+          { "budgetItemId": 1, "category": "SAVING",       "amount": 700000 },
+          { "budgetItemId": 2, "category": "INVESTMENT",   "amount": 800000 },
+          { "budgetItemId": 3, "category": "FIXED",        "amount": 310600 },
+          { "budgetItemId": 4, "category": "INSURANCE",    "amount": 95653  },
+          { "budgetItemId": 5, "category": "SUBSCRIPTION", "amount": 10750  },
+          { "budgetItemId": 6, "category": "EMERGENCY",    "amount": 200000 }
+        ]
+      },
+      "expected": {
+        "remaining": 556107,
+        "emergencyTotal": 200000,
+        "groups": [
+          { "category": "SAVING",       "subtotal": 700000 },
+          { "category": "INVESTMENT",   "subtotal": 800000 },
+          { "category": "FIXED",        "subtotal": 310600 },
+          { "category": "INSURANCE",    "subtotal": 95653  },
+          { "category": "SUBSCRIPTION", "subtotal": 10750  }
+        ]
+      }
+    }
+  ]
+}

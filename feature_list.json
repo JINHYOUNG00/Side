@@ -118,7 +118,7 @@
       "owner_only": true,
       "description": "WaterfallService: 카테고리 그룹·소계·잔액 캐스케이드 계산 + 단위 테스트. [소유자 직접 작성 — 에이전트는 설계 리뷰·테스트 케이스·순수 계산 클래스 골격만]",
       "verify": "골든 폭포 fixture 통과 + 단위 테스트(빈 항목/초과/카테고리 누락)",
-      "passes": false
+      "passes": true
     },
     {
       "id": "FLOW-03",
