@@ -35,6 +35,12 @@
     "emptyTitle": "아직 배분 계획이 없어요",
     "emptyBody": "월급과 배분 항목을 설정하면 여기에 폭포가 그려져요"
   },
+  "menu": {
+    "title": "전체",
+    "accounts": "통장 관리",
+    "items": "배분 항목 관리",
+    "logout": "로그아웃"
+  },
   "accounts": {
     "title": "통장 관리",
     "back": "뒤로",

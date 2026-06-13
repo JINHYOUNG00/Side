@@ -25,13 +25,19 @@ const router = createRouter({
       meta: { public: true, chrome: false },
     },
     {
-      // MOD-03 통장 관리(목록 + 추가·수정·삭제 폼). SCR-07 전체 탭에서 진입.
+      // SCR-07 전체 — 허브. 하단 탭 '전체'에서 진입, 통장·항목 관리로 분기.
+      path: '/menu',
+      name: 'menu',
+      component: () => import('@/views/MenuView.vue'),
+    },
+    {
+      // MOD-03 통장 관리(목록 + 추가·수정·삭제 폼). SCR-07 전체 허브에서 진입.
       path: '/accounts',
       name: 'accounts',
       component: () => import('@/views/AccountsView.vue'),
     },
     {
-      // MOD-01 항목 전체 목록(추가·삭제 폼). SCR-07 전체 탭에서 진입.
+      // MOD-01 항목 전체 목록(추가·삭제 폼). SCR-07 전체 허브에서 진입.
       path: '/items',
       name: 'items',
       component: () => import('@/views/ItemsView.vue'),

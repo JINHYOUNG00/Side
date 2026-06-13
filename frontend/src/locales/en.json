@@ -35,6 +35,12 @@
     "emptyTitle": "No allocation plan yet",
     "emptyBody": "Set your income and budget items to see the waterfall here"
   },
+  "menu": {
+    "title": "All",
+    "accounts": "Manage accounts",
+    "items": "Manage budget items",
+    "logout": "Sign out"
+  },
   "accounts": {
     "title": "Accounts",
     "back": "Back",
