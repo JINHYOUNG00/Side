@@ -13,6 +13,13 @@
 - 메모:       추가한 Flyway 버전, 새 상수, 결정사항, 주의점
 -->
 
+## 2026-06-13  —  [ENV-setup 완료] Docker/WSL2 셋업 + Flyway V1 실검증
+- 한 일: 로컬에 Docker Desktop 설치(winget) + WSL2 설치(wsl --install) + 재부팅으로 엔진 기동. `docker compose up -d`로 PostgreSQL 16 컨테이너(salary-db) 기동, `./gradlew bootRun`으로 Flyway V1 실적용 검증.
+- 초록불: Flyway "Successfully validated 1 migration" → "Migrating schema public to version 1 - init" → "Successfully applied". DB에서 \dt로 ERD 11테이블 전부 확인(+flyway_schema_history), flyway_schema_history version 1 success=t. ENV-setup의 마지막 미검증 항목(백엔드 DB 기동) 해소.
+- passes 전환: **ENV-setup → true**.
+- 다음: AUTH-01 백엔드 마무리 — User 엔티티·UserRepository, OAuth 코드 교환 클라이언트(공급자 secret), AuthService(upsert+JWT), POST /api/v1/auth/{provider}, SecurityConfig(스테이트리스+JWT 필터), 로그인 흐름 통합 테스트. AUTH-03(provider,provider_id 분리)도 함께. (코어 어댑터·JwtProvider는 이미 완료.)
+- 메모: ① bootRun이 "Port 8080 already in use"로 종료했으나 이는 마이그레이션 이후 웹서버 바인딩 단계 — V1 적용은 그 전에 성공. 8080 점유 프로세스 정리 필요(통합 테스트는 random port라 무관). ② docker는 PATH에 `C:\Program Files\Docker\Docker\resources\bin` 추가 또는 새 셸 필요. ③ Windows 11 Home은 Hyper-V 없어 Docker가 WSL2 필수였음. ④ salary-db 컨테이너는 띄워둔 상태 — AUTH-01 작업에 사용.
+
 ## 2026-06-13  —  [AUTH-01 코어] OAuth 정규화 어댑터 + JwtProvider (docker-free 부분)
 - 한 일: AUTH-01 중 DB 없이 완전 초록불 가능한 코어. `auth` 패키지: `OAuthProvider`(KAKAO/GOOGLE enabled, NAVER 비활성 + from() 파싱), `OAuthUserInfo`(정규화 record), `OAuthAttributesMapper` + 카카오/구글/네이버 어댑터 3종(공급자별 JSON Map → 정규화, 순수). `JwtProvider`(HS256, subject=userId, 발급·검증, **Clock 주입**으로 만료 결정론 — 규칙 3). build.gradle에 jjwt 0.12.6(api+impl+jackson) 추가. 단위 테스트: 어댑터 6건(중첩 구조·동의거부 null·필수 식별자 거부·provider 파싱·네이버 비활성), JwtProvider 3건(복원·만료 거부·위조 거부).
 - 초록불: `./gradlew verify` BUILD SUCCESSFUL. 신규 9건 포함 전체 통과. (프론트 미변경.)

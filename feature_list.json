@@ -45,7 +45,7 @@
       "category": "env",
       "description": "GitHub repo + docs 입주 + 브랜치 전략. Spring Boot 3(Java 21, web/security/jpa/validation/oauth2-client) + docker-compose(PostgreSQL 16) + Flyway V1__init.sql(ERD 11테이블) + Vue3/Vite/Pinia/router + vue-i18n(ko.json) + 디자인 토큰(CSS 변수, Pretendard) + 기본 컴포넌트(Card, MoneyText, BottomSheet, ProgressBar, BottomNav) + GitHub Actions(=로컬 verify)",
       "verify": "docker compose up 후 빈 대시보드까지 기동, CI가 로컬 verify와 동일 검사",
-      "passes": false
+      "passes": true
     },
     {
       "id": "AUTH-01",
