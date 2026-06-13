@@ -18,6 +18,8 @@
       "expected": {
         "remaining": 556107,
         "emergencyTotal": 200000,
+        "living": 356107,
+        "shortfall": false,
         "groups": [
           { "category": "SAVING",       "subtotal": 700000 },
           { "category": "INVESTMENT",   "subtotal": 800000 },

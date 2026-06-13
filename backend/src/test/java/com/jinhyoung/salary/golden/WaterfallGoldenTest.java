@@ -9,6 +9,7 @@ import com.jinhyoung.salary.cycle.domain.WaterfallCalculator;
 import com.jinhyoung.salary.cycle.domain.WaterfallGroup;
 import com.jinhyoung.salary.cycle.domain.WaterfallLine;
 import com.jinhyoung.salary.cycle.domain.WaterfallResult;
+import com.jinhyoung.salary.cycle.domain.WaterfallSplit;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -48,6 +49,8 @@ class WaterfallGoldenTest {
 
             long expectedRemaining = expected.get("remaining").asLong();
             long expectedEmergency = expected.get("emergencyTotal").asLong();
+            long expectedLiving = expected.get("living").asLong();
+            boolean expectedShortfall = expected.get("shortfall").asBoolean();
             JsonNode expectedGroups = expected.get("groups");
 
             tests.add(DynamicTest.dynamicTest(name, () -> {
@@ -59,6 +62,18 @@ class WaterfallGoldenTest {
                 assertThat(result.emergencyTotal())
                         .as("EMERGENCY 합계가 골든 기대값과 일치: %s", name)
                         .isEqualTo(expectedEmergency);
+
+                // FLOW-03 분배: 생활비·부족 플래그가 골든과 일치해야 한다.
+                WaterfallSplit split = WaterfallSplit.from(result);
+                assertThat(split.living())
+                        .as("생활비(LIVING)가 골든 기대값과 일치: %s", name)
+                        .isEqualTo(expectedLiving);
+                assertThat(split.shortfall())
+                        .as("과배분(shortfall) 플래그가 골든과 일치: %s", name)
+                        .isEqualTo(expectedShortfall);
+                assertThat(split.emergency() + split.living())
+                        .as("split 합 = remaining: %s", name)
+                        .isEqualTo(result.remaining());
 
                 // 그룹: 표시 순서·카테고리·소계가 모두 골든과 일치해야 한다.
                 assertThat(result.groups()).as("그룹 개수: %s", name).hasSize(expectedGroups.size());
