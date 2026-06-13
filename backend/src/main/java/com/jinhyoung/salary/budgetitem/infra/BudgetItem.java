@@ -131,4 +131,12 @@ public class BudgetItem {
     public ItemStatus getStatus() {
         return status;
     }
+
+    /**
+     * soft delete(ITEM-09) — 상태를 DELETED로 전환한다. 행은 잔존하며 물리 삭제는 회원 탈퇴 cascade뿐(규칙 5).
+     * 과거 사이클 스냅샷(plan_lines)은 값을 복사 보유하므로 이 전환에 영향받지 않는다(ERD, 규칙 4).
+     */
+    public void markDeleted() {
+        this.status = ItemStatus.DELETED;
+    }
 }

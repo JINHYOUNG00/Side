@@ -12,6 +12,7 @@ import java.time.LocalDate;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,8 +22,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 배분 항목 생성·조회(ITEM-01, API명세 4장). 인증 필수 — principal=userId(JwtAuthenticationFilter)로
- * 소유분만 다룬다. 수정·삭제(PATCH/DELETE)는 ITEM-07·ITEM-09에서 추가한다.
+ * 배분 항목 생성·조회·삭제(ITEM-01·ITEM-09, API명세 4장). 인증 필수 — principal=userId(JwtAuthenticationFilter)로
+ * 소유분만 다룬다. DELETE는 물리 삭제가 아닌 status=DELETED(soft delete, 규칙 5). 수정(PATCH)은 ITEM-07.
  */
 @RestController
 @RequestMapping("/api/v1/budget-items")
@@ -68,6 +69,12 @@ public class BudgetItemController {
                 request.startDate(),
                 request.memo());
         return BudgetItemResponse.from(item);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@AuthenticationPrincipal Long userId, @PathVariable long id) {
+        budgetItemService.delete(userId, id);
     }
 
     public record CreateRequest(

@@ -1,6 +1,7 @@
 package com.jinhyoung.salary.budgetitem;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -230,6 +231,85 @@ class BudgetItemIntegrationTest {
                         .content(createItemBody("FIXED", "백한번째", 1000, aliceAccountId)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("ITEM_LIMIT_EXCEEDED"));
+    }
+
+    @Test
+    void 항목을_삭제하면_204이고_목록과_단건_조회에서_제외된다_행은_잔존_status_DELETED() throws Exception {
+        long id = createItem(aliceToken, "SAVING", "지울적금", 100000, aliceAccountId);
+
+        mockMvc.perform(authed(delete("/api/v1/budget-items/{id}", id), aliceToken))
+                .andExpect(status().isNoContent());
+
+        // 목록·단건 조회에서 빠진다.
+        mockMvc.perform(authed(get("/api/v1/budget-items"), aliceToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+        mockMvc.perform(authed(get("/api/v1/budget-items/{id}", id), aliceToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+
+        // 물리 삭제가 아니라 행은 남고 status=DELETED (과거 스냅샷·리포트 참조 보존, 규칙 4·5).
+        assertThat(budgetItemRepository.findById(id))
+                .isPresent()
+                .get()
+                .extracting(b -> b.getStatus())
+                .isEqualTo(com.jinhyoung.salary.budgetitem.infra.ItemStatus.DELETED);
+    }
+
+    @Test
+    void 다른_사용자의_항목은_삭제할_수_없다_NOT_FOUND_원본_불변() throws Exception {
+        long bobAccount = newAccount(bobId, "밥통장");
+        long bobItem = createItem(jwtProvider.issue(bobId), "SAVING", "밥의적금", 100000, bobAccount);
+
+        mockMvc.perform(authed(delete("/api/v1/budget-items/{id}", bobItem), aliceToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+
+        // 밥의 항목은 여전히 활성.
+        assertThat(budgetItemRepository.findById(bobItem))
+                .isPresent()
+                .get()
+                .extracting(b -> b.getStatus())
+                .isEqualTo(com.jinhyoung.salary.budgetitem.infra.ItemStatus.ACTIVE);
+    }
+
+    @Test
+    void 이미_삭제된_항목을_다시_삭제하면_NOT_FOUND() throws Exception {
+        long id = createItem(aliceToken, "SAVING", "지울적금", 100000, aliceAccountId);
+        mockMvc.perform(authed(delete("/api/v1/budget-items/{id}", id), aliceToken))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(authed(delete("/api/v1/budget-items/{id}", id), aliceToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+    }
+
+    @Test
+    void 삭제하면_활성_상한_자리가_빈다() throws Exception {
+        for (int i = 0; i < 100; i++) {
+            createItem(aliceToken, "FIXED", "항목" + i, 1000, aliceAccountId);
+        }
+        long first = budgetItemRepository
+                .findByUserIdAndStatusOrderBySortOrderAsc(
+                        aliceId, com.jinhyoung.salary.budgetitem.infra.ItemStatus.ACTIVE)
+                .get(0)
+                .getId();
+
+        // 가득 찬 상태에서 하나 삭제하면 활성 카운트가 줄어 재생성이 가능하다(count는 DELETED 제외).
+        mockMvc.perform(authed(delete("/api/v1/budget-items/{id}", first), aliceToken))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(authed(post("/api/v1/budget-items"), aliceToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createItemBody("FIXED", "빈자리채움", 1000, aliceAccountId)))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void 토큰_없이_항목_삭제_접근은_401이다() throws Exception {
+        mockMvc.perform(delete("/api/v1/budget-items/{id}", 1))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
     }
 
     @Test

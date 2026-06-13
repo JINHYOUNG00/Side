@@ -62,6 +62,15 @@ public class BudgetItemService {
                 BudgetItem.create(userId, accountId, category, name, amount, startDate, memo, sortOrder));
     }
 
+    /**
+     * 항목 soft delete(ITEM-09) — 활성 항목을 DELETED로 전환한다. 행은 잔존하며 이후 조회(목록·단건)에서
+     * 제외된다. 이미 삭제·보관된 항목이나 타인·부재 항목은 NOT_FOUND(존재 비노출). 과거 스냅샷은 불변(규칙 4).
+     */
+    @Transactional
+    public void delete(long userId, long itemId) {
+        ownedActiveOrThrow(userId, itemId).markDeleted();
+    }
+
     /** 항목 소유권 + 활성 검증의 단일 관문 — 미소유·비활성·부재는 모두 NOT_FOUND. */
     private BudgetItem ownedActiveOrThrow(long userId, long itemId) {
         return budgetItemRepository

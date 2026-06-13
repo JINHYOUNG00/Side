@@ -93,7 +93,7 @@
       "category": "backend",
       "description": "soft delete(status=DELETED) + 조회 필터. 과거 스냅샷·리포트 불변",
       "verify": "./gradlew verify 통과 + 삭제 후 과거 기록 보존 테스트",
-      "passes": false
+      "passes": true
     },
     {
       "id": "ITEM-02",
