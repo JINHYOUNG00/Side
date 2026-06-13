@@ -72,6 +72,14 @@
       "passes": true
     },
     {
+      "id": "SET-01",
+      "phase": 1,
+      "category": "backend",
+      "description": "기본 정보 등록(users PATCH /me): 실수령액·월급일(1~31)·지급일 조정 규칙(전/후 영업일/없음) + 생활비 통장 지정. GET /me 프로필+설정 조회",
+      "verify": "./gradlew verify 통과 + 기본 정보 등록·생활비 통장 소유권 검증 통합 테스트",
+      "passes": true
+    },
+    {
       "id": "SET-04",
       "phase": 1,
       "category": "backend",
