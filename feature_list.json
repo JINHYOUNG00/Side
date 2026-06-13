@@ -135,7 +135,7 @@
       "category": "backend",
       "description": "overAllocated 판정 + 응답 포함, 유연성 순 조정 후보. GET /me/waterfall 응답 조립(API명세 3장)",
       "verify": "./gradlew verify 통과 + 초과 케이스 응답 테스트",
-      "passes": false
+      "passes": true
     },
     {
       "id": "SCR-02",

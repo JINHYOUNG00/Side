@@ -46,7 +46,9 @@ res: {
 }
 ```
 정의: `remaining = income − Σ(groups.subtotal) − envelopeContribution`. 봉투 적립을 차감한 후의 값이 "남는 돈"이며, split의 합은 항상 remaining과 같다. EMERGENCY 카테고리 항목은 groups에서 제외하고 split.emergency로 집계한다(나머지의 분배로 표현). 단 체크리스트 이체 라인은 EMERGENCY 항목에 대해서도 정상 생성된다.
-remaining < 0이면 `overAllocated: true` + 프론트가 조정 후보 정렬(FLOW-02, 유연성: LIVING·EMERGENCY > INVESTMENT > SAVING·FIXED).
+`overAllocated`는 **`split.living < 0`일 때 true**다(FLOW-02 구현 확정). 요구사항 "배분 합계가 수입 초과"는 비상금(EMERGENCY)까지 포함한 배분이 income을 넘는 상황이고, 그게 곧 생활비(living) 음수다 — 따라서 remaining이 양수여도 비상금이 그보다 크면 과배분이다(remaining<0은 그 부분집합). 차단하지 않고 경고만 하며(living은 음수 그대로, clamp 금지), 조정 후보의 유연성 순 정렬(LIVING·EMERGENCY > INVESTMENT > SAVING·FIXED)은 프론트(SCR-03)가 수행한다.
+
+> **FLOW-02 구현 범위 메모(구현 후 정정).** `GET /me/waterfall`는 사이클 스냅샷이 아니라 현재 base_income·활성 항목 기준 라이브 폭포다. 현재 응답에서 `envelopeContribution`은 봉투(Phase 3) 미구현이라 항상 0, `items[].expectedMaturityAmount`는 만기 예상금액(ITEM-05, Phase 5) 미구현이라 항상 null이다. **`savingsRate`는 아직 응답에 포함하지 않는다** — 투자 포함 토글 적용(저축률 산정 방식)은 SET-02(Phase 5)가 "폭포 표시에 공통 적용"으로 소유하므로 그 Phase에서 추가한다.
 
 ## 4. 통장 / 항목 / 봉투 (CRUD)
 
