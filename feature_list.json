@@ -37,7 +37,7 @@
       "category": "harness",
       "description": ".claude/ 설정 적용: settings.json 권한(gradlew/npm/docker compose 허용, force push·flyway clean 차단), PostToolUse 포맷 훅, PreToolUse 마이그레이션·골든 보호 훅, /task 커맨드. CLAUDE.md 실행 명령 사전을 실제 명령으로 채움",
       "verify": "훅이 실제로 발동(기존 V*.sql 편집 차단 등), /task 동작",
-      "passes": false
+      "passes": true
     },
     {
       "id": "ENV-setup",
