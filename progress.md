@@ -13,6 +13,13 @@
 - 메모:       추가한 Flyway 버전, 새 상수, 결정사항, 주의점
 -->
 
+## 2026-06-13  —  [HARNESS-golden 부분] 만기 골든 테스트 + MaturityCalculator
+- 한 일: 잠긴 fixture(maturity-cases.json)를 실제로 강제하는 골든 테스트를 만들었다. ① `budgetitem/domain`에 순수 클래스 추가 — `MaturityCalculator`(단리: 이자=월납입×연이율×n(n+1)/2÷1200 → 원미만 HALF_UP, 세금=이자×세율 → 원미만 HALF_UP, 만기=원금+이자−세금), `MaturityInput`(record, 검증 포함), `MaturityResult`(원금·이자·세금·total 분해), `TaxType`(NORMAL_15_4=0.154, TAX_FREE). 전부 BigDecimal/long(double 금지). ② `golden/MaturityGoldenTest` — fixture를 @TestFactory로 읽어 두 실데이터 케이스(3,731,976 / 2,476,986)를 계산기가 재현하는지 검증. Jackson 의존이라 ..domain.. 밖 golden 패키지에 둠(ArchUnit이 테스트도 스캔). ③ `MaturityCalculatorTest` 단위 테스트 — 비과세·세금 HALF_UP(808.5→809)·입력 검증 경계.
+- 초록불: `./gradlew verify` BUILD SUCCESSFUL. MaturityGoldenTest 2/2(만기 케이스), MaturityCalculatorTest 3/3, RuleEnforcementTest 3/3, 골든 무결성 통과. `npm run verify`는 직전 세션과 동일(미변경).
+- passes 전환: 없음 — HARNESS-golden은 **부분 완료**. 만기 골든은 됐으나 waterfall-cases.json·payday-cases.json·시드 스크립트가 남음. 그 부분은 owner_only(WaterfallCalculator·PaydayResolver는 소유자 작성) + 기대값이 owner 실데이터 + 새 fixture는 goldenLock(소유자 전용) + 시드는 스키마(ENV-setup의 Flyway V1) 필요 → 협의·소유자 단계.
+- 다음: HARNESS-golden 잔여(소유자와): waterfall/payday fixture 작성 → goldenLock. 또는 ENV-setup(Flyway V1__init.sql 11테이블)을 먼저 해 시드·스키마 기반 마련. (트래커 순서상 HARNESS-claude도 남음.)
+- 메모: ① 만기 공식은 fixture로 교차검증 — 두 케이스 정확 일치. ② Jackson 쓰는 골든/통합 테스트는 ..domain..에 두면 domainIsFrameworkFree에 걸린다 → golden 등 별도 패키지. ③ 새 골든 fixture를 추가하면 GoldenFixtureIntegrityTest가 goldenLock 전까지 빨간불 — 그래서 이번엔 새 fixture 없이 기존 fixture만 소비. ④ MaturityResult 분해값은 ITEM-05 표시용 선반영.
+
 ## 2026-06-13  —  [HARNESS-archunit] 규칙 음성 테스트 + 윈도우 golden 무결성 복구
 - 한 일: ① main에서 `./gradlew verify`가 빨간불이었음 — GoldenFixtureIntegrityTest가 sha256 불일치. 원인은 `core.autocrlf=true`+`.gitattributes` 부재로 golden fixture가 CRLF로 체크아웃돼 바이트 해시가 깨진 것(내용은 정당). repo 루트에 `.gitattributes` 추가(golden 경로 `eol=lf` 고정)하고 작업 트리 재정규화로 복구 — fixture 수정·재lock 없이. ② HARNESS-archunit 마무리: 기존 ArchitectureTest(규칙2 double/float·규칙9 domain 순수)와 checkstyle(규칙3 now() 금지)은 있었으나 "위반 시 실패" 증명이 없었음. `RuleEnforcementTest` 추가 — com.ngsoft.salary 밖 `archfixtures` 위반 픽스처(double 필드 / domain 패키지의 스프링 의존)를 명시 임포트해 두 ArchRule이 실제로 AssertionError를 던지는지, checkstyle 정규식을 config에서 읽어 인자 없는 now()는 잡고 now(clock)는 통과하는지 검증.
 - 초록불: `./gradlew verify` BUILD SUCCESSFUL (RuleEnforcementTest 3/3, 골든 무결성 통과). `npm run verify` 통과(npm install 후). JAVA_HOME이 삭제된 jdk-11을 가리켜 JDK 22로 우회 실행.
