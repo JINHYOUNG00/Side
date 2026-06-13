@@ -13,6 +13,13 @@
 - 메모:       추가한 Flyway 버전, 새 상수, 결정사항, 주의점
 -->
 
+## 2026-06-13  —  [AUTH-01 코어] OAuth 정규화 어댑터 + JwtProvider (docker-free 부분)
+- 한 일: AUTH-01 중 DB 없이 완전 초록불 가능한 코어. `auth` 패키지: `OAuthProvider`(KAKAO/GOOGLE enabled, NAVER 비활성 + from() 파싱), `OAuthUserInfo`(정규화 record), `OAuthAttributesMapper` + 카카오/구글/네이버 어댑터 3종(공급자별 JSON Map → 정규화, 순수). `JwtProvider`(HS256, subject=userId, 발급·검증, **Clock 주입**으로 만료 결정론 — 규칙 3). build.gradle에 jjwt 0.12.6(api+impl+jackson) 추가. 단위 테스트: 어댑터 6건(중첩 구조·동의거부 null·필수 식별자 거부·provider 파싱·네이버 비활성), JwtProvider 3건(복원·만료 거부·위조 거부).
+- 초록불: `./gradlew verify` BUILD SUCCESSFUL. 신규 9건 포함 전체 통과. (프론트 미변경.)
+- passes 전환: 없음 — AUTH-01은 **코어만**. 남은 부분: 코드 교환 OAuth 클라이언트(공급자 secret 필요), 로그인 성공 → users upsert(User 엔티티·repo·DB), `POST /api/v1/auth/{provider}` 컨트롤러, Security 스테이트리스+JWT 필터, **로그인 흐름 통합 테스트(DB 필요 → docker)**. AUTH-03(unique(provider,provider_id) 분리)은 upsert 단계에서 함께.
+- 다음: (docker 확보 후) ENV-setup V1 bootRun 검증 → AUTH-01 나머지(엔티티·upsert·컨트롤러·security·통합테스트). 통합 테스트 도입 시 V1 마이그레이션도 함께 실검증됨.
+- 메모: ① auth 코어는 com.ngsoft.salary.auth(=..domain.. 아님)라 jjwt 의존 무방. 순수 변환이라 단위 테스트만으로 충분. ② JWT는 java.util.Date를 쓰지만 Clock.instant()로만 생성 — now() 직접 호출 없음(checkstyle 통과). ③ HS256 키 32바이트↑ 필요 — 테스트 시크릿도 그 길이. ④ API 형태: POST /api/v1/auth/{provider} {code} → {accessToken, isNewUser} (API명세 2장).
+
 ## 2026-06-13  —  [ENV-setup 대부분] Flyway V1 + 프론트 기반(i18n·토큰·컴포넌트·대시보드)
 - 한 일: ① 백엔드 `db/migration/V1__init.sql` — ERD v1.2의 11테이블(users/accounts/budget_items/envelopes/envelope_transactions/cycles/plan_lines/check_ins/suggestions/notification_logs/holidays). 금액 bigint, 날짜 date, 시각 timestamptz, enum류 varchar, jsonb(input_meta·payload). 순환 FK(users.living_account_id↔accounts)는 ALTER로 해소, 멱등 unique 제약 포함. ② 프론트: vue-i18n(legacy:false·globalInjection) + locales/ko·en.json, styles/tokens.css(화면설계.html 토큰 1:1·Pretendard), components/base 5종(Card·MoneyText·ProgressBar·BottomSheet·BottomNav), App 셸(모바일 퍼스트 430px)+빈 대시보드 HomeView, 라우터 정리, create-vue 스캐폴드 잔재 제거. base 컴포넌트 한정 multi-word 규칙 off. MoneyText 단위 테스트 3건.
 - 초록불: `./gradlew verify` BUILD SUCCESSFUL, `npm run verify` 통과(lint 0/0·type-check·vitest 3/3·build). 프론트 dev 서버 브라우저 기동 확인 — 빈 대시보드 렌더, 콘솔 에러 0, $t 템플릿 주입 정상.
