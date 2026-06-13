@@ -101,7 +101,7 @@
       "category": "backend",
       "description": "end_date 보유 항목 ARCHIVED 전환 배치(@Scheduled, KST, 멱등)",
       "verify": "./gradlew verify 통과 + 배치 재실행 멱등 테스트(Clock 주입)",
-      "passes": false
+      "passes": true
     },
     {
       "id": "FLOW-01",
