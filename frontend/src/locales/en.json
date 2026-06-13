@@ -11,6 +11,23 @@
   "common": {
     "won": "KRW"
   },
+  "login": {
+    "tagline": "Payday, as planned.\nA salary allocation system to replace Notion",
+    "continue": {
+      "kakao": "Continue with Kakao",
+      "google": "Continue with Google"
+    },
+    "privacyNote": "We never ask for or store account numbers or passwords",
+    "signingIn": "Signing in"
+  },
+  "errors": {
+    "UNAUTHORIZED": "Please sign in and try again",
+    "VALIDATION_FAILED": "Please check your input",
+    "PROVIDER_NOT_SUPPORTED": "That sign-in method isn't supported",
+    "OAUTH_EXCHANGE_FAILED": "Sign-in failed. Please try again",
+    "NOT_FOUND": "Not found",
+    "INTERNAL_ERROR": "Something went wrong. Please try again later"
+  },
   "home": {
     "remaining": "Remaining",
     "emptyTitle": "No allocation plan yet",

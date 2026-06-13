@@ -69,7 +69,7 @@
       "category": "frontend",
       "description": "로그인 페이지 + JWT 저장·인터셉터 + 가드 라우팅",
       "verify": "npm run verify 통과 + 로그인→대시보드 라우팅 E2E",
-      "passes": false
+      "passes": true
     },
     {
       "id": "SET-04",

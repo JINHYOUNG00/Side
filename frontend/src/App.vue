@@ -7,6 +7,8 @@ const route = useRoute()
 const router = useRouter()
 
 const current = computed(() => (route.name as string | undefined) ?? 'home')
+// 로그인·콜백 등 chrome:false 라우트는 하단 네비를 숨긴다.
+const showChrome = computed(() => route.meta.chrome !== false)
 
 function onSelect(key: string) {
   if (key === 'home') {
@@ -21,7 +23,7 @@ function onSelect(key: string) {
     <main class="app-body">
       <RouterView />
     </main>
-    <BottomNav :current="current" @select="onSelect" />
+    <BottomNav v-if="showChrome" :current="current" @select="onSelect" />
   </div>
 </template>
 
