@@ -159,7 +159,7 @@
       "category": "frontend",
       "description": "통장 폼",
       "verify": "npm run verify 통과 + 통장 생성→목록 E2E",
-      "passes": false
+      "passes": true
     },
     {
       "id": "SCR-07",
