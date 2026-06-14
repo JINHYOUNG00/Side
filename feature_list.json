@@ -232,7 +232,7 @@
       "category": "backend",
       "description": "통장별 체크리스트: 사이클 plan_lines를 대상 통장별로 합산한 이체 체크리스트 조회 + 라인 상태 전이(대기/완료/건너뜀). API명세 체크리스트 응답 조립",
       "verify": "./gradlew verify 통과 + 통장별 합산·상태 전이(대기→완료/건너뜀)·소유권 검증 통합 테스트",
-      "passes": false
+      "passes": true
     },
     {
       "id": "NOTI-01",
