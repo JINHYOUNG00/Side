@@ -49,6 +49,19 @@
     "emptyTitle": "No allocation plan yet",
     "emptyBody": "Set your income and budget items to see the waterfall here"
   },
+  "checklist": {
+    "eyebrow": "Payday · {date}",
+    "income": "Take-home pay",
+    "edit": "Edit",
+    "progress": "{done}/{total} transfers done",
+    "skip": "Skip",
+    "revert": "Undo",
+    "markDone": "Mark transfer done",
+    "markPending": "Move back to pending",
+    "hint": "Check off each transfer once done, or skip the ones you'll pass on this month",
+    "editTitle": "Edit take-home pay",
+    "save": "Save"
+  },
   "onboarding": {
     "loading": "Loading",
     "adjustment": {

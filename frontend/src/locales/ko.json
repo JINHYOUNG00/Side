@@ -49,6 +49,19 @@
     "emptyTitle": "아직 배분 계획이 없어요",
     "emptyBody": "월급과 배분 항목을 설정하면 여기에 폭포가 그려져요"
   },
+  "checklist": {
+    "eyebrow": "월급날 · {date}",
+    "income": "실수령액",
+    "edit": "수정",
+    "progress": "{done}/{total} 이체 완료",
+    "skip": "건너뛰기",
+    "revert": "되돌리기",
+    "markDone": "이체 완료로 표시",
+    "markPending": "대기로 되돌리기",
+    "hint": "이체를 마치면 체크하고, 이번 달 건너뛸 항목은 건너뛰기를 눌러요",
+    "editTitle": "실수령액 수정",
+    "save": "저장"
+  },
   "onboarding": {
     "loading": "불러오는 중이에요",
     "adjustment": {

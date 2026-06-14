@@ -2,14 +2,15 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import Card from '@/components/base/Card.vue'
 import MoneyText from '@/components/base/MoneyText.vue'
+import ChecklistCard from '@/components/ChecklistCard.vue'
 import { ApiError } from '@/api/client'
 import { getWaterfall, type Waterfall } from '@/api/waterfall'
 import type { Category } from '@/api/budgetItems'
 
 // SCR-03 홈 — 남는 돈 헤더 + 폭포 리스트 + 카운트업. 데이터원은 GET /me/waterfall(FLOW-02).
 // overAllocated면 경고 배너 + 유연성 순 조정 후보(정렬은 프론트가 수행 — API명세 3장).
-// 사이클 라벨·날짜, 월급날 체크리스트(SCR-03b·CYCLE-04/06), 항목 편집(ITEM-07)은 소스/백엔드
-// 미구현이라 v1 제외.
+// 지급일~D+3에는 ChecklistCard(SCR-03b·CYCLE-04/06)가 최상단에 자체 판정으로 등장한다(폭포와 독립).
+// 항목 편집(ITEM-07)은 백엔드 미구현이라 v1 제외.
 
 const data = ref<Waterfall | null>(null)
 const loading = ref(true)
@@ -136,6 +137,9 @@ onUnmounted(() => {
 
 <template>
   <section class="home">
+    <!-- 지급일~D+3 월급날 체크리스트(SCR-03b). 구간 밖·스냅샷 미생성이면 스스로 미노출. -->
+    <ChecklistCard />
+
     <p v-if="loading" class="state">{{ $t('home.loading') }}</p>
     <p v-else-if="errorCode" class="state error" role="alert">{{ $t(`errors.${errorCode}`) }}</p>
 
