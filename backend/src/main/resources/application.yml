@@ -33,3 +33,7 @@ app:
       client-id: ${GOOGLE_CLIENT_ID:}
       client-secret: ${GOOGLE_CLIENT_SECRET:}
       redirect-uri: ${GOOGLE_REDIRECT_URI:}
+  # 공휴일 특일 API(CYCLE-01). 서비스 키는 운영 환경변수로만 주입 — 미주입 시 수집 실패→주말 회피 폴백.
+  holiday:
+    base-uri: ${HOLIDAY_API_URI:https://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getRestDeInfo}
+    service-key: ${HOLIDAY_API_KEY:}

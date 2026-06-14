@@ -199,7 +199,7 @@
       "category": "backend",
       "description": "지급일 산출 적용: 순수 PaydayResolver(완료)를 application에서 호출 + 공휴일을 공공데이터포털 특일 API 연 1회 캐싱(holidays 테이블)하여 Set<LocalDate>로 주입. 차년도 미제공·API 장애 시 빈 Set(주말 회피만)로 폴백. [PaydayResolver 코어는 owner 완료 — 잔여 HolidayProvider/캐싱 infra는 위임 가능]",
       "verify": "./gradlew verify 통과 + 공휴일 주입 시 실지급일 골든(payday-cases) 재현 / API 장애 폴백(빈 Set=주말 회피) 통합 테스트",
-      "passes": false
+      "passes": true
     },
     {
       "id": "CYCLE-02",
