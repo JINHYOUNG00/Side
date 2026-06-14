@@ -240,7 +240,7 @@
       "category": "backend",
       "description": "지급일 알림: 실제 지급일(조정 반영)에 체크리스트 알림 발송. 고정 일자 크론이 아닌 일일 판정 방식(@Scheduled KST 일일 실행 → 오늘이 각 사용자 실지급일인지 PaydayResolver로 판정)",
       "verify": "./gradlew verify 통과 + 일일 판정으로 실지급일 사용자만 대상(Clock 주입)·비지급일 미발송 통합 테스트",
-      "passes": false
+      "passes": true
     },
     {
       "id": "NOTI-04",
