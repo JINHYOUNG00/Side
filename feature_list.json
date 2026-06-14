@@ -265,6 +265,70 @@
       "description": "홈 체크리스트 카드: 지급일~D+3에 홈(SCR-03) 최상단에 체크리스트 카드 등장 — 실수령액 확인(CYCLE-04) → 통장별 이체 체크/건너뛰기(CYCLE-06). 비지급일 구간엔 미노출",
       "verify": "npm run verify 통과 + 지급일 구간 카드 노출·실수령액 확인→통장별 체크/건너뛰기 동선 E2E(서버 응답 기준)",
       "passes": true
+    },
+    {
+      "id": "ENV-01",
+      "phase": 3,
+      "category": "backend",
+      "description": "봉투 등록 CRUD(생성·조회·수정·soft delete): 이름·목표 금액·다음 지출일·반복 주기(cycle_months, NULL=일회성)·적립 통장. 소유권 검증 + 활성 봉투 개수 상한 50(구현규칙 5장). envelopes 테이블은 V1 기존",
+      "verify": "./gradlew verify 통과 + 생성·조회·소유권 위반 차단·개수 상한·soft delete 후 조회 필터 통합 테스트",
+      "passes": true
+    },
+    {
+      "id": "ENV-02",
+      "phase": 3,
+      "category": "backend",
+      "description": "월할 적립 계산(순수 클래스): 월 적립액 = ceil((target_amount − saved_amount) ÷ 남은 사이클 수), 최소 1개월. 남은 사이클 수 = 현재 사이클부터 next_due_date가 속한 사이클까지(이번 포함). 컬럼 비저장(계산값). [분배 계산 — owner 리뷰 권장]",
+      "verify": "./gradlew verify 통과 + 월할 올림·남은 사이클 수·잔여 1개월(전액)·이미 충족 케이스 단위 테스트",
+      "passes": false
+    },
+    {
+      "id": "ENV-03",
+      "phase": 3,
+      "category": "backend",
+      "description": "봉투 진행률·D-day: 봉투별 적립 진행률(saved/target)과 next_due_date까지 D-day를 조회 응답에 포함. KST 기준 일수 계산",
+      "verify": "./gradlew verify 통과 + 진행률·D-day 계산(KST Clock 주입) 응답 통합 테스트",
+      "passes": false
+    },
+    {
+      "id": "ENV-04",
+      "phase": 3,
+      "category": "backend",
+      "description": "봉투 지출 처리: 지출 시 실제 금액 입력 → envelope_transactions SPEND 기록. 부족분은 충당 출처(LIVING/EMERGENCY) 기록, 잉여분은 이월(carry_over) 또는 회수 선택. saved_amount 갱신",
+      "verify": "./gradlew verify 통과 + 정상 지출·부족 충당·잉여 이월/회수·소유권 검증 통합 테스트",
+      "passes": false
+    },
+    {
+      "id": "ENV-05",
+      "phase": 3,
+      "category": "backend",
+      "description": "봉투 주기 갱신: 반복형 봉투는 지출 후 next_due_date를 cycle_months만큼 이동하고 적립 재시작(saved_amount 초기화). 일회성(cycle_months NULL)은 status=CLOSED 종료 처리",
+      "verify": "./gradlew verify 통과 + 반복형 next_due 이동·적립 재시작 / 일회성 종료 통합 테스트",
+      "passes": false
+    },
+    {
+      "id": "CYCLE-07",
+      "phase": 3,
+      "category": "backend",
+      "description": "건너뛰기 처리: 봉투 ENVELOPE 라인 DONE 시 DEPOSIT 기록+saved_amount 증가, DONE→PENDING/SKIPPED 시 해당 사이클 DEPOSIT 삭제+saved_amount 감소(구현규칙 2장). 이후 SPEND 존재 시 DONE 해제 불가(409 LINE_LOCKED_BY_SPEND). 건너뜀 적립은 봉투 미반영, 월할 적립액 자동 재계산(ENV-02 구조)",
+      "verify": "./gradlew verify 통과 + DONE→DEPOSIT 생성·해제→삭제·SPEND 잠금 409·건너뜀 미반영 후 재계산 통합 테스트",
+      "passes": false
+    },
+    {
+      "id": "NOTI-02",
+      "phase": 3,
+      "category": "backend",
+      "description": "봉투 지출 시기 알림: 봉투 next_due_date 전 준비 금액과 함께 알림 발송. NOTI-01 일일 판정·NOTI-04 멱등 게이트·NOTI-05 채널 어댑터 재사용. 문구는 메시지 번들(규칙 7)",
+      "verify": "./gradlew verify 통과 + 지출일 전 대상 봉투만 알림(Clock 주입)·멱등 중복 방지 통합 테스트",
+      "passes": false
+    },
+    {
+      "id": "ENV-06-front",
+      "phase": 3,
+      "category": "frontend",
+      "description": "봉투 화면: 봉투 목록(진행률·D-day)·등록/수정 폼·지출 처리 시트. 화면흐름도·화면설계.html 토큰(보라=봉투/제안) 준수. ENV-01~05 API 배선",
+      "verify": "npm run verify 통과 + 봉투 등록→목록 반영·지출 처리 동선 E2E(서버 응답 기준)",
+      "passes": false
     }
   ]
 }
