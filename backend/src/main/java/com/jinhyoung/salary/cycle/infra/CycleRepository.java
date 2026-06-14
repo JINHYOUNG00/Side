@@ -16,4 +16,11 @@ public interface CycleRepository extends JpaRepository<Cycle, Long> {
 
     /** 소유권 게이트(CYCLE-04) — 미소유·부재는 모두 빈 Optional로 다뤄 존재 여부를 노출하지 않는다(AccountService 패턴). */
     Optional<Cycle> findByIdAndUserId(Long id, Long userId);
+
+    /**
+     * 오늘이 속한 사이클(CYCLE-06) — {@code cycle_start ≤ today ≤ cycle_end}. 사이클은 맞닿게 연속이라
+     * 한 날짜에 최대 1건이다. 없으면(미생성) 빈 Optional → 호출자가 NOT_FOUND로 다뤄 스냅샷 생성 동선으로 보낸다.
+     */
+    Optional<Cycle> findByUserIdAndCycleStartLessThanEqualAndCycleEndGreaterThanEqual(
+            Long userId, LocalDate startBound, LocalDate endBound);
 }

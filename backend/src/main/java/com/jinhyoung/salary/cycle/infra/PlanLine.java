@@ -9,6 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.Instant;
 
 /**
  * 사이클 배분 라인 — 월 계획 스냅샷의 한 줄(ERD plan_lines, CYCLE-03). 엔티티는 infra에 둔다(아키텍처 v1.1).
@@ -73,6 +74,10 @@ public class PlanLine {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private PlanLineStatus status;
+
+    /** 상태를 처리(DONE/SKIPPED)한 시각. PENDING이면 null(CYCLE-06). 시각은 주입된 KST Clock으로만 채운다(규칙 3). */
+    @Column(name = "checked_at")
+    private Instant checkedAt;
 
     protected PlanLine() {
         // JPA
@@ -147,6 +152,17 @@ public class PlanLine {
         this.plannedAmount = plannedAmount;
     }
 
+    /**
+     * 체크리스트 상태 전이(CYCLE-06) — PENDING ↔ DONE/SKIPPED. 처리(DONE/SKIPPED) 시 처리 시각을 기록하고,
+     * PENDING으로 되돌리면 시각을 비운다. 과거 사이클 불변 검사(구현규칙 2장)는 호출자(서비스)가 가른다.
+     *
+     * @param now 주입된 KST {@code Clock}의 현재 시각(규칙 3 — {@code Instant.now()} 직접 호출 금지)
+     */
+    public void changeStatus(PlanLineStatus status, Instant now) {
+        this.status = status;
+        this.checkedAt = status == PlanLineStatus.PENDING ? null : now;
+    }
+
     public Long getId() {
         return id;
     }
@@ -189,5 +205,9 @@ public class PlanLine {
 
     public PlanLineStatus getStatus() {
         return status;
+    }
+
+    public Instant getCheckedAt() {
+        return checkedAt;
     }
 }
