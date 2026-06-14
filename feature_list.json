@@ -320,7 +320,7 @@
       "category": "backend",
       "description": "봉투 지출 시기 알림: 봉투 next_due_date 전 준비 금액과 함께 알림 발송. NOTI-01 일일 판정·NOTI-04 멱등 게이트·NOTI-05 채널 어댑터 재사용. 문구는 메시지 번들(규칙 7)",
       "verify": "./gradlew verify 통과 + 지출일 전 대상 봉투만 알림(Clock 주입)·멱등 중복 방지 통합 테스트",
-      "passes": false
+      "passes": true
     },
     {
       "id": "ENV-06-front",
