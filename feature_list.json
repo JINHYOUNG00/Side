@@ -280,7 +280,7 @@
       "category": "backend",
       "description": "월할 적립 계산(순수 클래스): 월 적립액 = ceil((target_amount − saved_amount) ÷ 남은 사이클 수), 최소 1개월. 남은 사이클 수 = 현재 사이클부터 next_due_date가 속한 사이클까지(이번 포함). 컬럼 비저장(계산값). [분배 계산 — owner 리뷰 권장]",
       "verify": "./gradlew verify 통과 + 월할 올림·남은 사이클 수·잔여 1개월(전액)·이미 충족 케이스 단위 테스트",
-      "passes": false
+      "passes": true
     },
     {
       "id": "ENV-03",
