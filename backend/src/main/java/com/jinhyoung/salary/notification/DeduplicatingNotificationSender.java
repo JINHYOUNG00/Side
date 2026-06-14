@@ -22,17 +22,21 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>{@link Primary}라 {@code NotificationSender}를 주입받는 곳(예: {@link PaydayNotificationService})은 자동으로
  * 이 게이트를 거친다 — NOTI-01은 변경 없이 중복 방지가 적용된다. 발송 일시는 주입된 KST {@code Clock}으로 산출한다(규칙 3).
+ *
+ * <p>감쌀 실제 채널은 {@link RealChannel} 한정자로 주입받는다(NOTI-05) — {@code app.notification.channel}이 고른
+ * 단일 채널 빈(기본 {@link LoggingNotificationSender}, {@code email}이면 {@link EmailNotificationSender}). 이 게이트가
+ * {@code @Primary}라 타입만으로는 자기 자신이 잡히므로 한정자로 채널을 명시한다.
  */
 @Component
 @Primary
 public class DeduplicatingNotificationSender implements NotificationSender {
 
-    private final LoggingNotificationSender channel;
+    private final NotificationSender channel;
     private final NotificationLogRepository logRepository;
     private final Clock clock;
 
     public DeduplicatingNotificationSender(
-            LoggingNotificationSender channel, NotificationLogRepository logRepository, Clock clock) {
+            @RealChannel NotificationSender channel, NotificationLogRepository logRepository, Clock clock) {
         this.channel = channel;
         this.logRepository = logRepository;
         this.clock = clock;

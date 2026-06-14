@@ -37,3 +37,7 @@ app:
   holiday:
     base-uri: ${HOLIDAY_API_URI:https://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getRestDeInfo}
     service-key: ${HOLIDAY_API_KEY:}
+  # 알림 발송 채널(NOTI-05). log=로그만(기본·SMTP 불요), email=이메일 발송(EmailNotificationSender).
+  # email로 켜려면 MailClient(JavaMailSender) 어댑터와 SMTP 설정이 함께 필요하다.
+  notification:
+    channel: ${NOTIFICATION_CHANNEL:log}
