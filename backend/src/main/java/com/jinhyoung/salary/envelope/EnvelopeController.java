@@ -64,21 +64,20 @@ public class EnvelopeController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public EnvelopeResponse create(@AuthenticationPrincipal Long userId, @Valid @RequestBody EnvelopeRequest request) {
-        Envelope envelope = envelopeService.create(
+        return EnvelopeResponse.from(envelopeService.create(
                 userId,
                 request.accountId(),
                 request.name(),
                 request.targetAmount(),
                 request.nextDueDate(),
                 request.cycleMonthsAsShort(),
-                request.memo());
-        return EnvelopeResponse.from(envelope);
+                request.memo()));
     }
 
     @PatchMapping("/{id}")
     public EnvelopeResponse update(
             @AuthenticationPrincipal Long userId, @PathVariable long id, @Valid @RequestBody EnvelopeRequest request) {
-        Envelope envelope = envelopeService.update(
+        return EnvelopeResponse.from(envelopeService.update(
                 userId,
                 id,
                 request.accountId(),
@@ -86,8 +85,7 @@ public class EnvelopeController {
                 request.targetAmount(),
                 request.nextDueDate(),
                 request.cycleMonthsAsShort(),
-                request.memo());
-        return EnvelopeResponse.from(envelope);
+                request.memo()));
     }
 
     @DeleteMapping("/{id}")
@@ -115,6 +113,11 @@ public class EnvelopeController {
         }
     }
 
+    /**
+     * 봉투 조회 응답. CRUD 필드(ENV-01)에 더해 조회 시점 파생값(ENV-03)을 싣는다: {@code progressPercent}(적립
+     * 진행률 %, 내림), {@code dDay}(다음 지출일까지 일수, 음수=경과), {@code monthlyAmount}(이번 사이클 월 적립액).
+     * 파생값은 컬럼이 아니라 계산값이라 서비스가 {@link EnvelopeService.EnvelopeView}로 조립해 넘긴다.
+     */
     public record EnvelopeResponse(
             Long id,
             Long accountId,
@@ -123,8 +126,12 @@ public class EnvelopeController {
             long savedAmount,
             LocalDate nextDueDate,
             Integer cycleMonths,
-            String memo) {
-        static EnvelopeResponse from(Envelope envelope) {
+            String memo,
+            int progressPercent,
+            long dDay,
+            long monthlyAmount) {
+        static EnvelopeResponse from(EnvelopeService.EnvelopeView view) {
+            Envelope envelope = view.envelope();
             Short cycleMonths = envelope.getCycleMonths();
             return new EnvelopeResponse(
                     envelope.getId(),
@@ -134,7 +141,10 @@ public class EnvelopeController {
                     envelope.getSavedAmount(),
                     envelope.getNextDueDate(),
                     cycleMonths == null ? null : cycleMonths.intValue(),
-                    envelope.getMemo());
+                    envelope.getMemo(),
+                    view.progressPercent(),
+                    view.dDay(),
+                    view.monthlyAmount());
         }
     }
 }

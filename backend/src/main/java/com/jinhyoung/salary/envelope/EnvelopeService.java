@@ -3,13 +3,21 @@ package com.jinhyoung.salary.envelope;
 import com.jinhyoung.salary.account.infra.AccountRepository;
 import com.jinhyoung.salary.common.ApiException;
 import com.jinhyoung.salary.common.ErrorCode;
+import com.jinhyoung.salary.cycle.HolidayCalendar;
+import com.jinhyoung.salary.envelope.domain.EnvelopeAccrual;
+import com.jinhyoung.salary.envelope.domain.EnvelopeProgress;
 import com.jinhyoung.salary.envelope.infra.Envelope;
 import com.jinhyoung.salary.envelope.infra.EnvelopeRepository;
 import com.jinhyoung.salary.envelope.infra.EnvelopeStatus;
+import com.jinhyoung.salary.user.infra.User;
+import com.jinhyoung.salary.user.infra.UserRepository;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,26 +37,43 @@ public class EnvelopeService {
 
     private final EnvelopeRepository envelopeRepository;
     private final AccountRepository accountRepository;
+    private final UserRepository userRepository;
+    private final HolidayCalendar holidayCalendar;
     private final Clock clock;
 
-    public EnvelopeService(EnvelopeRepository envelopeRepository, AccountRepository accountRepository, Clock clock) {
+    public EnvelopeService(
+            EnvelopeRepository envelopeRepository,
+            AccountRepository accountRepository,
+            UserRepository userRepository,
+            HolidayCalendar holidayCalendar,
+            Clock clock) {
         this.envelopeRepository = envelopeRepository;
         this.accountRepository = accountRepository;
+        this.userRepository = userRepository;
+        this.holidayCalendar = holidayCalendar;
         this.clock = clock;
     }
 
     @Transactional(readOnly = true)
-    public List<Envelope> list(long userId) {
-        return envelopeRepository.findByUserIdAndStatusOrderByIdAsc(userId, EnvelopeStatus.ACTIVE);
+    public List<EnvelopeView> list(long userId) {
+        User user = ownerOrThrow(userId);
+        LocalDate today = LocalDate.now(clock);
+        Set<LocalDate> holidaysAroundToday = holidayCalendar.holidaysAround(YearMonth.from(today));
+        return envelopeRepository.findByUserIdAndStatusOrderByIdAsc(userId, EnvelopeStatus.ACTIVE).stream()
+                .map(envelope -> toView(envelope, user, today, holidaysAroundToday))
+                .toList();
     }
 
     @Transactional(readOnly = true)
-    public Envelope get(long userId, long envelopeId) {
-        return ownedActiveOrThrow(userId, envelopeId);
+    public EnvelopeView get(long userId, long envelopeId) {
+        User user = ownerOrThrow(userId);
+        Envelope envelope = ownedActiveOrThrow(userId, envelopeId);
+        LocalDate today = LocalDate.now(clock);
+        return toView(envelope, user, today, holidayCalendar.holidaysAround(YearMonth.from(today)));
     }
 
     @Transactional
-    public Envelope create(
+    public EnvelopeView create(
             long userId,
             long accountId,
             String name,
@@ -56,13 +81,16 @@ public class EnvelopeService {
             LocalDate nextDueDate,
             Short cycleMonths,
             String memo) {
+        User user = ownerOrThrow(userId);
         requireOwnedActiveAccount(userId, accountId);
         requireNextDueNotPast(nextDueDate);
         if (envelopeRepository.countByUserIdAndStatus(userId, EnvelopeStatus.ACTIVE) >= MAX_ACTIVE_ENVELOPES) {
             throw new ApiException(ErrorCode.ENVELOPE_LIMIT_EXCEEDED, Map.of("limit", MAX_ACTIVE_ENVELOPES));
         }
-        return envelopeRepository.save(
+        Envelope envelope = envelopeRepository.save(
                 Envelope.create(userId, accountId, name, targetAmount, nextDueDate, cycleMonths, memo));
+        LocalDate today = LocalDate.now(clock);
+        return toView(envelope, user, today, holidayCalendar.holidaysAround(YearMonth.from(today)));
     }
 
     /**
@@ -70,7 +98,7 @@ public class EnvelopeService {
      * 존재 비노출). 개수는 변하지 않으므로 상한 검사는 없다. saved_amount·status는 갱신하지 않는다.
      */
     @Transactional
-    public Envelope update(
+    public EnvelopeView update(
             long userId,
             long envelopeId,
             long accountId,
@@ -79,11 +107,13 @@ public class EnvelopeService {
             LocalDate nextDueDate,
             Short cycleMonths,
             String memo) {
+        User user = ownerOrThrow(userId);
         Envelope envelope = ownedActiveOrThrow(userId, envelopeId);
         requireOwnedActiveAccount(userId, accountId);
         requireNextDueNotPast(nextDueDate);
         envelope.update(accountId, name, targetAmount, nextDueDate, cycleMonths, memo);
-        return envelope;
+        LocalDate today = LocalDate.now(clock);
+        return toView(envelope, user, today, holidayCalendar.holidaysAround(YearMonth.from(today)));
     }
 
     /**
@@ -93,6 +123,39 @@ public class EnvelopeService {
     @Transactional
     public void delete(long userId, long envelopeId) {
         ownedActiveOrThrow(userId, envelopeId).markDeleted();
+    }
+
+    /**
+     * 봉투 한 건의 조회 표시값을 조립한다(ENV-03) — 진행률(saved/target)·D-day(next_due−오늘)·월 적립액. 진행률·D-day는
+     * 순수 {@link EnvelopeProgress}, 월 적립액은 순수 {@link EnvelopeAccrual}(ENV-02)에 위임한다(계산 0줄). 오늘은
+     * 주입 {@code Clock}으로 산출한다(규칙 3).
+     */
+    private EnvelopeView toView(Envelope envelope, User user, LocalDate today, Set<LocalDate> holidaysAroundToday) {
+        int progressPercent = EnvelopeProgress.progressPercent(envelope.getSavedAmount(), envelope.getTargetAmount());
+        long dDay = EnvelopeProgress.dDay(today, envelope.getNextDueDate());
+        long monthlyAmount = monthlyAmount(envelope, user, today, holidaysAroundToday);
+        return new EnvelopeView(envelope, progressPercent, dDay, monthlyAmount);
+    }
+
+    /**
+     * 이번 사이클의 월 적립액 = {@code ceil((target − saved) ÷ 남은 사이클 수)}(ENV-02, 구현규칙 1장). 남은 사이클 수는
+     * owner의 {@link EnvelopeAccrual}이 사용자 월급일·조정 규칙과 공휴일로 계산한다 — 오늘이 속한 사이클과 지출일이
+     * 속한 사이클만 풀면 되므로(그 사이 모든 경계가 아니라), 두 시점 주변({@link HolidayCalendar#holidaysAround})의
+     * 공휴일 합집합만 주입한다.
+     */
+    private long monthlyAmount(Envelope envelope, User user, LocalDate today, Set<LocalDate> holidaysAroundToday) {
+        Set<LocalDate> holidays = new HashSet<>(holidaysAroundToday);
+        holidays.addAll(holidayCalendar.holidaysAround(YearMonth.from(envelope.getNextDueDate())));
+        int remainingCycles = EnvelopeAccrual.remainingCycles(
+                today, envelope.getNextDueDate(), user.getPayday(), user.getPaydayAdjustment(), holidays);
+        return EnvelopeAccrual.monthlyAmount(envelope.getTargetAmount(), envelope.getSavedAmount(), remainingCycles);
+    }
+
+    /** 호출 사용자(월급일·조정 규칙 출처) 조회. 정상 인증 경로에선 항상 존재하지만 방어적으로 NOT_FOUND. */
+    private User ownerOrThrow(long userId) {
+        return userRepository
+                .findById(userId)
+                .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, Map.of("resource", "user", "id", userId)));
     }
 
     /** 봉투 소유권 + 활성 검증의 단일 관문 — 미소유·비활성·부재는 모두 NOT_FOUND. */
@@ -117,4 +180,10 @@ public class EnvelopeService {
             throw new ApiException(ErrorCode.VALIDATION_FAILED, Map.of("field", "nextDueDate"));
         }
     }
+
+    /**
+     * 봉투 + 조회 표시값(ENV-03) 묶음. 엔티티의 영속 상태는 그대로 두고, 진행률·D-day·월 적립액은 조회 시점에
+     * 계산한 파생값이라 컬럼으로 저장하지 않는다(구현규칙 1장). 컨트롤러가 응답 DTO로 매핑한다.
+     */
+    public record EnvelopeView(Envelope envelope, int progressPercent, long dDay, long monthlyAmount) {}
 }

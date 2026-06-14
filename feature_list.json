@@ -288,7 +288,7 @@
       "category": "backend",
       "description": "봉투 진행률·D-day: 봉투별 적립 진행률(saved/target)과 next_due_date까지 D-day를 조회 응답에 포함. KST 기준 일수 계산",
       "verify": "./gradlew verify 통과 + 진행률·D-day 계산(KST Clock 주입) 응답 통합 테스트",
-      "passes": false
+      "passes": true
     },
     {
       "id": "ENV-04",
