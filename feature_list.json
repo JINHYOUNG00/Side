@@ -207,7 +207,7 @@
       "category": "backend",
       "description": "사이클 정의: cycles 엔티티 — 실제 지급일부터 다음 지급일 전날까지를 한 사이클로 산출하고 시작 월 기준으로 라벨링(cycle_start). PaydayResolver(완료)로 경계 날짜 도출",
       "verify": "./gradlew verify 통과 + 연속 두 사이클 경계(이번 지급일~다음 지급일−1)·시작월 라벨·월말/연휴 경계 단위·통합 테스트",
-      "passes": false
+      "passes": true
     },
     {
       "id": "CYCLE-03",
