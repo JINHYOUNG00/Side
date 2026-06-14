@@ -1,0 +1,89 @@
+{
+  "_readme": [
+    "실제 지급일 골든 — PaydayResolver(CYCLE-01) 검증. 코드를 여기 맞춘다(깨지면 코드가 틀린 것).",
+    "수정 후 소유자가 ./gradlew goldenLock 으로 승인. 날짜 요일은 2026년 실제 달력 기준으로 검증됨.",
+    "holidays는 주입 집합(빈 집합 = 차년도 미제공/장애 폴백 → 주말 회피만). adjustment: NONE/PREV_BUSINESS_DAY/NEXT_BUSINESS_DAY."
+  ],
+  "cases": [
+    {
+      "name": "말일 clamp — 4월엔 31일이 없어 30일(목, 영업일)로",
+      "input": { "month": "2026-04", "payday": 31, "adjustment": "NONE", "holidays": [] },
+      "expected": "2026-04-30"
+    },
+    {
+      "name": "말일 clamp — 31일이 실재하는 8월은 그대로 31일(월)",
+      "input": { "month": "2026-08", "payday": 31, "adjustment": "NONE", "holidays": [] },
+      "expected": "2026-08-31"
+    },
+    {
+      "name": "말일 clamp 후 토요일(2/28) — NONE은 조정 없이 그대로",
+      "input": { "month": "2026-02", "payday": 31, "adjustment": "NONE", "holidays": [] },
+      "expected": "2026-02-28"
+    },
+    {
+      "name": "말일 clamp 후 토요일(2/28) — NEXT는 다음 월요일(3/2, 월 경계 넘음)",
+      "input": { "month": "2026-02", "payday": 31, "adjustment": "NEXT_BUSINESS_DAY", "holidays": [] },
+      "expected": "2026-03-02"
+    },
+    {
+      "name": "말일 clamp 후 토요일(2/28) — PREV는 직전 금요일(2/27)",
+      "input": { "month": "2026-02", "payday": 31, "adjustment": "PREV_BUSINESS_DAY", "holidays": [] },
+      "expected": "2026-02-27"
+    },
+    {
+      "name": "토요일 지급일(5/23) — NONE은 그대로",
+      "input": { "month": "2026-05", "payday": 23, "adjustment": "NONE", "holidays": [] },
+      "expected": "2026-05-23"
+    },
+    {
+      "name": "토요일 지급일(5/23) — PREV는 직전 금요일(5/22)",
+      "input": { "month": "2026-05", "payday": 23, "adjustment": "PREV_BUSINESS_DAY", "holidays": [] },
+      "expected": "2026-05-22"
+    },
+    {
+      "name": "토요일 지급일(5/23) — NEXT는 일요일 건너뛴 월요일(5/25)",
+      "input": { "month": "2026-05", "payday": 23, "adjustment": "NEXT_BUSINESS_DAY", "holidays": [] },
+      "expected": "2026-05-25"
+    },
+    {
+      "name": "일요일 지급일(5/24) — PREV는 토요일 건너뛴 금요일(5/22)",
+      "input": { "month": "2026-05", "payday": 24, "adjustment": "PREV_BUSINESS_DAY", "holidays": [] },
+      "expected": "2026-05-22"
+    },
+    {
+      "name": "평일 지급일(5/25 월)은 조정 규칙과 무관하게 그대로",
+      "input": { "month": "2026-05", "payday": 25, "adjustment": "NEXT_BUSINESS_DAY", "holidays": [] },
+      "expected": "2026-05-25"
+    },
+    {
+      "name": "금요일 공휴일(7/24) — PREV는 직전 목요일(7/23)",
+      "input": { "month": "2026-07", "payday": 24, "adjustment": "PREV_BUSINESS_DAY", "holidays": ["2026-07-24"] },
+      "expected": "2026-07-23"
+    },
+    {
+      "name": "금요일 공휴일(7/24)+주말 — NEXT는 다음 월요일(7/27)",
+      "input": { "month": "2026-07", "payday": 24, "adjustment": "NEXT_BUSINESS_DAY", "holidays": ["2026-07-24"] },
+      "expected": "2026-07-27"
+    },
+    {
+      "name": "연휴(금공휴 9/25 + 주말 + 월공휴 9/28) — NEXT는 화요일(9/29)",
+      "input": { "month": "2026-09", "payday": 25, "adjustment": "NEXT_BUSINESS_DAY", "holidays": ["2026-09-25", "2026-09-28"] },
+      "expected": "2026-09-29"
+    },
+    {
+      "name": "연휴(월공휴 9/28 + 주말 + 금공휴 9/25) — PREV는 목요일(9/24)",
+      "input": { "month": "2026-09", "payday": 28, "adjustment": "PREV_BUSINESS_DAY", "holidays": ["2026-09-25", "2026-09-28"] },
+      "expected": "2026-09-24"
+    },
+    {
+      "name": "차년도 공휴일 미제공(빈 집합) — 평일 공휴일이어도 주말만 회피해 1/1(목) 그대로",
+      "input": { "month": "2026-01", "payday": 1, "adjustment": "NEXT_BUSINESS_DAY", "holidays": [] },
+      "expected": "2026-01-01"
+    },
+    {
+      "name": "대조 — 같은 1/1에 공휴일 주입 시 NEXT는 다음 영업일(1/2 금)",
+      "input": { "month": "2026-01", "payday": 1, "adjustment": "NEXT_BUSINESS_DAY", "holidays": ["2026-01-01"] },
+      "expected": "2026-01-02"
+    }
+  ]
+}

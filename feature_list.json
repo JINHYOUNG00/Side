@@ -29,7 +29,7 @@
       "category": "harness",
       "description": "골든 fixture 작성: 노션 실데이터 → 폭포 기대값 JSON, 적금 만기(3,731,976 / 2,476,986), PaydayResolver 공휴일·말일 케이스. 시드 스크립트로 docker compose up 후 즉시 동작 확인 가능",
       "verify": "골든 테스트가 존재하고 통과(이후 절대 수정 금지)",
-      "passes": false
+      "passes": true
     },
     {
       "id": "HARNESS-claude",
