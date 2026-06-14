@@ -116,10 +116,25 @@ public class Envelope {
     /**
      * 지출 처리 후 적립액 캐시 갱신(ENV-04). 지출 산술은 순수
      * {@link com.jinhyoung.salary.envelope.domain.EnvelopeSpend}가 계산하고 여기선 그 결과만 반영한다.
-     * saved_amount만 바뀐다 — 다음 지출일 이동·적립 재시작·일회성 종료는 ENV-05 소관이라 건드리지 않는다.
+     * saved_amount만 바뀐다 — 다음 지출일 이동·일회성 종료는 ENV-05의 {@link #renew}·{@link #close}가 수행한다.
      */
     public void applySpend(long savedAmount) {
         this.savedAmount = savedAmount;
+    }
+
+    /**
+     * 반복형 봉투의 주기 갱신(ENV-05) — 다음 지출일을 다음 주기로 이동한다. 봉투는 ACTIVE로 남고 적립액은
+     * 그대로 둔다(잉여 이월분 보존, owner 결정). 적립 재시작은 월 적립액이 이동한 다음 지출일을 기준으로
+     * 자동 재계산되는 것으로 성립한다 — 이동할 날짜는 순수
+     * {@link com.jinhyoung.salary.envelope.domain.EnvelopeRenewal}가 계산한다.
+     */
+    public void renew(LocalDate nextDueDate) {
+        this.nextDueDate = nextDueDate;
+    }
+
+    /** 일회성 봉투의 종료(ENV-05) — 지출 후 다음 주기가 없으므로 status를 CLOSED로 전환한다. 행은 잔존(참조용). */
+    public void close() {
+        this.status = EnvelopeStatus.CLOSED;
     }
 
     public Long getId() {

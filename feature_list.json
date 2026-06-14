@@ -304,7 +304,7 @@
       "category": "backend",
       "description": "봉투 주기 갱신: 반복형 봉투는 지출 후 next_due_date를 cycle_months만큼 이동하고 적립 재시작(saved_amount 초기화). 일회성(cycle_months NULL)은 status=CLOSED 종료 처리",
       "verify": "./gradlew verify 통과 + 반복형 next_due 이동·적립 재시작 / 일회성 종료 통합 테스트",
-      "passes": false
+      "passes": true
     },
     {
       "id": "CYCLE-07",

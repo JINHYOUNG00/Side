@@ -38,8 +38,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * 봉투 지출 처리 통합 테스트(ENV-04). 실 PostgreSQL(Testcontainers)·실 JWT·고정 KST Clock으로 검증한다.
  *
  * <p>적립액(saved_amount)은 API로 못 바꾸는 트랜잭션 캐시값이라 {@code jdbcTemplate}로 직접 세팅한 뒤 지출
- * 동선을 태운다. 지출 후 saved_amount 갱신과 SPEND 트랜잭션 기록을 확인하고, 다음 지출일·상태가 불변임도
- * 가드한다(주기 갱신·종료는 ENV-05 소관).
+ * 동선을 태운다. 지출 후 saved_amount 갱신과 SPEND 트랜잭션 기록을 확인하고, 주기 갱신(ENV-05)도 함께 검증한다:
+ * 반복형은 다음 지출일이 주기만큼 이동하며 ACTIVE로 남고(이월 적립액 보존), 일회성은 CLOSED로 종료된다.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -121,6 +121,26 @@ class EnvelopeSpendIntegrationTest {
         long id = objectMapper.readTree(response).get("id").asLong();
         jdbcTemplate.update("update envelopes set saved_amount = ? where id = ?", saved, id);
         return id;
+    }
+
+    /** 적립액 saved를 가진 활성 일회성 봉투를 만든다(next_due 미래, cycleMonths 없음). */
+    private long oneTimeEnvelopeWithSaved(long target, long saved) throws Exception {
+        String body = "{\"accountId\":" + aliceAccountId + ",\"name\":\"결혼축의금\",\"targetAmount\":" + target
+                + ",\"nextDueDate\":\"2027-01-10\"}";
+        String response = mockMvc.perform(authed(post("/api/v1/envelopes"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        long id = objectMapper.readTree(response).get("id").asLong();
+        jdbcTemplate.update("update envelopes set saved_amount = ? where id = ?", saved, id);
+        return id;
+    }
+
+    private String envelopeStatus(long envelopeId) {
+        return jdbcTemplate.queryForObject("select status from envelopes where id = ?", String.class, envelopeId);
     }
 
     private MockHttpServletRequestBuilder spend(long id, String jsonBody) {
@@ -251,16 +271,42 @@ class EnvelopeSpendIntegrationTest {
     }
 
     @Test
-    void 지출은_다음_지출일과_상태를_바꾸지_않는다() throws Exception {
-        long id = envelopeWithSaved(700_000, 500_000);
+    void 반복형은_지출후_다음_지출일이_주기만큼_이동하고_ACTIVE로_남으며_이월분을_보존한다() throws Exception {
+        long id = envelopeWithSaved(700_000, 500_000); // cycleMonths 12, next_due 2027-01-10
 
         mockMvc.perform(spend(id, "{\"actualAmount\":300000,\"carryOver\":true}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.nextDueDate").value("2027-01-10")); // 주기 갱신은 ENV-05
+                .andExpect(jsonPath("$.nextDueDate").value("2028-01-10")) // 2027-01-10 + 12개월
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.savedAmount").value(200_000)); // 이월분 보존(0으로 리셋하지 않음)
 
-        org.assertj.core.api.Assertions.assertThat(
-                        jdbcTemplate.queryForObject("select status from envelopes where id = ?", String.class, id))
-                .isEqualTo("ACTIVE");
+        org.assertj.core.api.Assertions.assertThat(envelopeStatus(id)).isEqualTo("ACTIVE");
+    }
+
+    @Test
+    void 일회성은_지출후_CLOSED로_종료되고_다음_지출일은_그대로다() throws Exception {
+        long id = oneTimeEnvelopeWithSaved(700_000, 700_000); // cycleMonths 없음
+
+        mockMvc.perform(spend(id, "{\"actualAmount\":700000}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CLOSED"))
+                .andExpect(jsonPath("$.nextDueDate").value("2027-01-10")); // 일회성은 이동 없음
+
+        org.assertj.core.api.Assertions.assertThat(envelopeStatus(id)).isEqualTo("CLOSED");
+        // SPEND는 기록되고 봉투는 소진(정확 지출).
+        org.assertj.core.api.Assertions.assertThat(txCount(id)).isEqualTo(1);
+        org.assertj.core.api.Assertions.assertThat(savedAmount(id)).isZero();
+    }
+
+    @Test
+    void 종료된_일회성_봉투는_다시_지출할_수_없다() throws Exception {
+        long id = oneTimeEnvelopeWithSaved(700_000, 700_000);
+        mockMvc.perform(spend(id, "{\"actualAmount\":700000}")).andExpect(status().isOk());
+
+        // CLOSED는 활성 작업 대상이 아니다 — 두 번째 지출은 NOT_FOUND(존재 비노출, 기존 게이트 일관).
+        mockMvc.perform(spend(id, "{\"actualAmount\":100000,\"shortfallSource\":\"LIVING\"}"))
+                .andExpect(status().isNotFound());
+        org.assertj.core.api.Assertions.assertThat(txCount(id)).isEqualTo(1);
     }
 
     @Test

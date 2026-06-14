@@ -8,6 +8,7 @@ import com.jinhyoung.salary.cycle.infra.Cycle;
 import com.jinhyoung.salary.cycle.infra.CycleRepository;
 import com.jinhyoung.salary.envelope.domain.EnvelopeAccrual;
 import com.jinhyoung.salary.envelope.domain.EnvelopeProgress;
+import com.jinhyoung.salary.envelope.domain.EnvelopeRenewal;
 import com.jinhyoung.salary.envelope.domain.EnvelopeSpend;
 import com.jinhyoung.salary.envelope.infra.Envelope;
 import com.jinhyoung.salary.envelope.infra.EnvelopeRepository;
@@ -142,9 +143,11 @@ public class EnvelopeService {
      * 부족(actual &gt; saved)이면 충당 출처(LIVING/EMERGENCY)를, 잉여(actual &lt; saved)면 이월/회수(carryOver)를
      * 함께 기록한다 — 필요한 필드가 없거나 불필요한 필드가 들어오면 VALIDATION_FAILED로 막는다(UI 동선과 1:1).
      *
-     * <p>지출 산술(부족·잉여·지출 후 적립액)은 순수 {@link EnvelopeSpend}에 위임한다. 다음 지출일 이동·적립
-     * 재시작(반복형)·종료(일회성)는 ENV-05 소관이라 여기선 next_due_date·status를 건드리지 않는다 — 이 호출은
-     * saved_amount만 바꾼다. 기록 일자·현재 사이클은 주입 {@code Clock}으로 판정한다(규칙 3).
+     * <p>지출 산술(부족·잉여·지출 후 적립액)은 순수 {@link EnvelopeSpend}에 위임한다. SPEND 기록·적립액 갱신
+     * 후에는 주기 갱신(ENV-05)을 이어 수행한다: 반복형(cycleMonths 있음)은 다음 지출일을 주기만큼 이동해 적립을
+     * 재시작하고, 일회성(cycleMonths NULL)은 종료(CLOSED)한다 — 갱신 규칙은 순수 {@link EnvelopeRenewal}에
+     * 위임한다. 적립액은 ENV-04가 정한 값을 보존한다(잉여 이월분 유지, owner 결정). 기록 일자·현재 사이클은
+     * 주입 {@code Clock}으로 판정한다(규칙 3).
      */
     @Transactional
     public EnvelopeView spend(
@@ -163,7 +166,21 @@ public class EnvelopeService {
                 EnvelopeTransaction.spend(envelopeId, saved, actualAmount, shortfallSource, carryOver, cycleId, today));
 
         envelope.applySpend(EnvelopeSpend.savedAfterSpend(saved, actualAmount, Boolean.TRUE.equals(carryOver)));
+        renewAfterSpend(envelope);
         return toView(envelope, user, today, holidayCalendar.holidaysAround(YearMonth.from(today)));
+    }
+
+    /**
+     * 지출 후 주기 갱신(ENV-05). 반복형이면 다음 지출일을 주기만큼 이동(적립 재시작), 일회성이면 종료한다.
+     * 적립액은 손대지 않는다 — 이월된 잔여가 다음 주기 시작 적립으로 보존된다(owner 결정).
+     */
+    private void renewAfterSpend(Envelope envelope) {
+        Short cycleMonths = envelope.getCycleMonths();
+        if (EnvelopeRenewal.isRecurring(cycleMonths)) {
+            envelope.renew(EnvelopeRenewal.nextDueAfterRenewal(envelope.getNextDueDate(), cycleMonths));
+        } else {
+            envelope.close();
+        }
     }
 
     /**

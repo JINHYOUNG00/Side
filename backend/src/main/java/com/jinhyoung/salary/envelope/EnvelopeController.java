@@ -132,6 +132,7 @@ public class EnvelopeController {
     /**
      * 봉투 조회 응답. CRUD 필드(ENV-01)에 더해 조회 시점 파생값(ENV-03)을 싣는다: {@code progressPercent}(적립
      * 진행률 %, 내림), {@code dDay}(다음 지출일까지 일수, 음수=경과), {@code monthlyAmount}(이번 사이클 월 적립액).
+     * {@code status}(ACTIVE/CLOSED)는 지출 후 일회성 봉투 종료(ENV-05)를 클라이언트가 알 수 있게 싣는다.
      * 파생값은 컬럼이 아니라 계산값이라 서비스가 {@link EnvelopeService.EnvelopeView}로 조립해 넘긴다.
      */
     public record EnvelopeResponse(
@@ -143,6 +144,7 @@ public class EnvelopeController {
             LocalDate nextDueDate,
             Integer cycleMonths,
             String memo,
+            String status,
             int progressPercent,
             long dDay,
             long monthlyAmount) {
@@ -158,6 +160,7 @@ public class EnvelopeController {
                     envelope.getNextDueDate(),
                     cycleMonths == null ? null : cycleMonths.intValue(),
                     envelope.getMemo(),
+                    envelope.getStatus().name(),
                     view.progressPercent(),
                     view.dDay(),
                     view.monthlyAmount());
