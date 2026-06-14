@@ -312,7 +312,7 @@
       "category": "backend",
       "description": "건너뛰기 처리: 봉투 ENVELOPE 라인 DONE 시 DEPOSIT 기록+saved_amount 증가, DONE→PENDING/SKIPPED 시 해당 사이클 DEPOSIT 삭제+saved_amount 감소(구현규칙 2장). 이후 SPEND 존재 시 DONE 해제 불가(409 LINE_LOCKED_BY_SPEND). 건너뜀 적립은 봉투 미반영, 월할 적립액 자동 재계산(ENV-02 구조)",
       "verify": "./gradlew verify 통과 + DONE→DEPOSIT 생성·해제→삭제·SPEND 잠금 409·건너뜀 미반영 후 재계산 통합 테스트",
-      "passes": false
+      "passes": true
     },
     {
       "id": "NOTI-02",

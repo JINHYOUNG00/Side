@@ -16,6 +16,7 @@ public enum ErrorCode {
     ITEM_LIMIT_EXCEEDED(HttpStatus.CONFLICT),
     ENVELOPE_LIMIT_EXCEEDED(HttpStatus.CONFLICT),
     CYCLE_LOCKED(HttpStatus.CONFLICT),
+    LINE_LOCKED_BY_SPEND(HttpStatus.CONFLICT),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR);
 
     private final HttpStatus status;

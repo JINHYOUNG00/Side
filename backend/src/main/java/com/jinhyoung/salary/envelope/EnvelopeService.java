@@ -16,6 +16,7 @@ import com.jinhyoung.salary.envelope.infra.EnvelopeStatus;
 import com.jinhyoung.salary.envelope.infra.EnvelopeTransaction;
 import com.jinhyoung.salary.envelope.infra.EnvelopeTransactionRepository;
 import com.jinhyoung.salary.envelope.infra.ShortfallSource;
+import com.jinhyoung.salary.envelope.infra.TransactionType;
 import com.jinhyoung.salary.user.infra.User;
 import com.jinhyoung.salary.user.infra.UserRepository;
 import java.time.Clock;
@@ -181,6 +182,34 @@ public class EnvelopeService {
         } else {
             envelope.close();
         }
+    }
+
+    /**
+     * 체크리스트 ENVELOPE 라인이 DONE으로 전이될 때의 적립(CYCLE-07, 구현규칙 2장). DEPOSIT 트랜잭션을 남기고
+     * saved_amount를 늘린다 — 한 트랜잭션. 호출자({@code CycleChecklistService})가 라인의 사이클 소유권·과거
+     * 사이클 잠금을 이미 검증하므로 여기선 봉투 소유권만 방어적으로 재확인한다(미소유·비활성·부재는 NOT_FOUND).
+     * 기록 일자(occurredOn)는 호출자가 주입 {@code Clock}으로 산출해 넘긴다(규칙 3).
+     */
+    @Transactional
+    public void recordChecklistDeposit(long userId, long envelopeId, long amount, Long cycleId, LocalDate occurredOn) {
+        Envelope envelope = ownedActiveOrThrow(userId, envelopeId);
+        transactionRepository.save(EnvelopeTransaction.deposit(envelopeId, amount, cycleId, occurredOn));
+        envelope.deposit(amount);
+    }
+
+    /**
+     * 체크리스트 ENVELOPE 라인이 DONE에서 해제(PENDING/SKIPPED)될 때의 적립 회수(CYCLE-07, 구현규칙 2장). 해당
+     * 사이클의 DEPOSIT을 삭제하고 saved_amount를 줄인다. 단 그 봉투에 이미 SPEND가 있으면 적립이 소비된 뒤이므로
+     * 회수할 수 없다 — 409 {@code LINE_LOCKED_BY_SPEND}(잠금은 봉투 적재 전에 판정해 종료된 봉투도 동일하게 막는다).
+     */
+    @Transactional
+    public void revertChecklistDeposit(long userId, long envelopeId, long amount, Long cycleId) {
+        if (transactionRepository.existsByEnvelopeIdAndType(envelopeId, TransactionType.SPEND)) {
+            throw new ApiException(ErrorCode.LINE_LOCKED_BY_SPEND, Map.of("envelopeId", envelopeId));
+        }
+        Envelope envelope = ownedActiveOrThrow(userId, envelopeId);
+        transactionRepository.deleteByEnvelopeIdAndCycleIdAndType(envelopeId, cycleId, TransactionType.DEPOSIT);
+        envelope.revertDeposit(amount);
     }
 
     /**

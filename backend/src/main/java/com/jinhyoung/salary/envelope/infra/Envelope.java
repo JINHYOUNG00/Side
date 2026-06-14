@@ -123,6 +123,23 @@ public class Envelope {
     }
 
     /**
+     * 체크리스트 적립(CYCLE-07) — ENVELOPE 라인 DONE 시 적립 금액만큼 saved_amount를 늘린다. DEPOSIT
+     * 트랜잭션 기록과 한 트랜잭션으로 묶인다(구현규칙 2장). saved_amount는 트랜잭션 합계의 캐시다.
+     */
+    public void deposit(long amount) {
+        this.savedAmount += amount;
+    }
+
+    /**
+     * 체크리스트 적립 회수(CYCLE-07) — DONE 라인을 PENDING/SKIPPED로 되돌릴 때 적립분만큼 saved_amount를
+     * 줄인다(해당 사이클 DEPOSIT 삭제와 한 트랜잭션, 구현규칙 2장). 그 봉투에 이미 SPEND가 있으면 호출되지
+     * 않는다(호출 서비스가 LINE_LOCKED_BY_SPEND로 막는다).
+     */
+    public void revertDeposit(long amount) {
+        this.savedAmount -= amount;
+    }
+
+    /**
      * 반복형 봉투의 주기 갱신(ENV-05) — 다음 지출일을 다음 주기로 이동한다. 봉투는 ACTIVE로 남고 적립액은
      * 그대로 둔다(잉여 이월분 보존, owner 결정). 적립 재시작은 월 적립액이 이동한 다음 지출일을 기준으로
      * 자동 재계산되는 것으로 성립한다 — 이동할 날짜는 순수

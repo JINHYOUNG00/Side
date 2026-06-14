@@ -108,6 +108,16 @@ public class EnvelopeTransaction {
                 occurredOn);
     }
 
+    /**
+     * 적립 기록 생성(CYCLE-07) — 체크리스트 ENVELOPE 라인이 DONE으로 전이될 때의 적립. {@code amount}는 계획
+     * 적립 금액(라인의 planned_amount)이고, 어느 사이클의 적립인지 {@code cycleId}로 남긴다(구현규칙 2장).
+     * SPEND 전용 필드(actualAmount·shortfallSource·carryOver)는 모두 null이다.
+     */
+    public static EnvelopeTransaction deposit(Long envelopeId, long amount, Long cycleId, LocalDate occurredOn) {
+        return new EnvelopeTransaction(
+                envelopeId, TransactionType.DEPOSIT, amount, null, null, null, cycleId, occurredOn);
+    }
+
     public Long getId() {
         return id;
     }
