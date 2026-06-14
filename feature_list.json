@@ -191,7 +191,7 @@
       "category": "backend",
       "description": "항목 수정 적용 시점(budget_items PATCH): 수정은 다음 사이클부터 적용. '이번 달 반영' 명시 선택 시에만 현재 사이클의 미완료 plan_line을 재계산하며, 완료된 이체 라인은 보존(스냅샷 불변 — 구현규칙 4장 재생성 절차)",
       "verify": "./gradlew verify 통과 + 다음 사이클 적용 기본 / 이번 달 반영 시 미완료 라인만 재계산·완료 라인 보존 통합 테스트",
-      "passes": false
+      "passes": true
     },
     {
       "id": "CYCLE-01",
