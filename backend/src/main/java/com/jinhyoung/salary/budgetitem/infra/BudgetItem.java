@@ -148,6 +148,30 @@ public class BudgetItem {
     }
 
     /**
+     * 항목 수정(ITEM-07) — 카테고리·이름·금액·대상 통장·시작일·만기일·메모를 갱신한다. user_id·sort_order·status는
+     * 불변이다. 이 수정은 <b>budget_items 원본만</b> 바꾼다 — 과거·현재 사이클의 plan_lines는 값을 복사 보유한
+     * 불변 스냅샷이라(규칙 4) 영향받지 않으며, 수정값은 다음 사이클 스냅샷 생성 시 반영된다. 현재 사이클에 즉시
+     * 반영하는 "이번 달 반영"은 {@link com.jinhyoung.salary.cycle.CycleSnapshotService#regenerateCurrentCycle}이
+     * 별도로 수행한다(구현규칙 4장 재생성 절차).
+     */
+    public void update(
+            Category category,
+            String name,
+            long amount,
+            Long accountId,
+            LocalDate startDate,
+            LocalDate endDate,
+            String memo) {
+        this.category = category;
+        this.name = name;
+        this.amount = amount;
+        this.accountId = accountId;
+        this.startDate = startDate;
+        this.endDate = endDate;
+        this.memo = memo;
+    }
+
+    /**
      * 만기 도래(경과) 여부 판정(ITEM-02) — 만기일이 있고 그 날짜가 기준일보다 과거이면 보관 대상이다. 기준일
      * (today)은 호출 측이 주입된 KST {@code Clock}으로 산출해 넘긴다(규칙 3). 아키텍처 4장의 "end_date 경과
      * 항목"을 따라 만기일 당일은 아직 보관하지 않고(부등호 strict), 다음 날부터 대상이 된다.

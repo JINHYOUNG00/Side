@@ -64,6 +64,29 @@ public class BudgetItemService {
     }
 
     /**
+     * 항목 수정(ITEM-07). 호출 사용자의 활성 항목과 활성 대상 통장만 다룬다(미소유·비활성·부재는 NOT_FOUND로
+     * 존재 비노출). 개수는 변하지 않으므로 상한 검사는 없다. 이 메서드는 budget_items 원본만 갱신한다 — 현재
+     * 사이클 plan_lines에 즉시 반영하는 "이번 달 반영"은 컨트롤러가 {@code applyToCurrentCycle} 시 사이클 측
+     * 재생성을 추가 호출한다(스냅샷 불변·재생성 절차는 구현규칙 4장).
+     */
+    @Transactional
+    public BudgetItem update(
+            long userId,
+            long itemId,
+            Category category,
+            String name,
+            long amount,
+            long accountId,
+            LocalDate startDate,
+            LocalDate endDate,
+            String memo) {
+        BudgetItem item = ownedActiveOrThrow(userId, itemId);
+        requireOwnedActiveAccount(userId, accountId);
+        item.update(category, name, amount, accountId, startDate, endDate, memo);
+        return item;
+    }
+
+    /**
      * 항목 soft delete(ITEM-09) — 활성 항목을 DELETED로 전환한다. 행은 잔존하며 이후 조회(목록·단건)에서
      * 제외된다. 이미 삭제·보관된 항목이나 타인·부재 항목은 NOT_FOUND(존재 비노출). 과거 스냅샷은 불변(규칙 4).
      */
