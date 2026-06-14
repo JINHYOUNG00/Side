@@ -44,12 +44,12 @@ public class DeduplicatingNotificationSender implements NotificationSender {
 
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void send(NotificationType type, long userId, LocalDate targetDate) {
+    public void send(NotificationType type, long userId, LocalDate targetDate, Object... messageArgs) {
         if (logRepository.existsByUserIdAndTypeAndTargetDate(userId, type, targetDate)) {
-            return; // 이미 발송됨 — 재발송 스킵(멱등)
+            return; // 이미 발송됨 — 재발송 스킵(멱등). 키는 (user, type, target_date)뿐 — messageArgs는 무관.
         }
         logRepository.save(NotificationLog.of(userId, type, targetDate, channel.channel(), clock.instant()));
-        channel.send(type, userId, targetDate);
+        channel.send(type, userId, targetDate, messageArgs);
     }
 
     @Override

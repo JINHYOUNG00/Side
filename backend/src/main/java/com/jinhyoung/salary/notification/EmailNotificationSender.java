@@ -33,7 +33,7 @@ public class EmailNotificationSender implements NotificationSender {
     }
 
     @Override
-    public void send(NotificationType type, long userId, LocalDate targetDate) {
+    public void send(NotificationType type, long userId, LocalDate targetDate, Object... messageArgs) {
         User user = userRepository
                 .findById(userId)
                 .orElseThrow(() -> new IllegalStateException("알림 대상 사용자가 없다: " + userId));
@@ -41,7 +41,7 @@ public class EmailNotificationSender implements NotificationSender {
         if (email == null || email.isBlank()) {
             return; // 이메일 미수집(동의 거부) — 발송 대상 아님
         }
-        mailClient.send(email, user.getLocale(), type, targetDate);
+        mailClient.send(email, user.getLocale(), type, targetDate, messageArgs);
     }
 
     @Override

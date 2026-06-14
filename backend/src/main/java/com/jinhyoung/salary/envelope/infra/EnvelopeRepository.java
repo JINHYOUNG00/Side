@@ -1,5 +1,6 @@
 package com.jinhyoung.salary.envelope.infra;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -18,4 +19,10 @@ public interface EnvelopeRepository extends JpaRepository<Envelope, Long> {
 
     /** 개수 상한(활성 봉투 50, 구현규칙 5장) 판정용 활성 봉투 수. */
     long countByUserIdAndStatus(Long userId, EnvelopeStatus status);
+
+    /**
+     * 다음 지출일이 [from, to] 구간(양끝 포함)에 드는 특정 상태 봉투 — 지출 시기 알림 대상 조회(NOTI-02).
+     * 전 사용자 횡단 조회(배치)라 user_id를 걸지 않는다(소유권 검증 불요 — 알림은 봉투 소유자 본인에게만 발송).
+     */
+    List<Envelope> findByStatusAndNextDueDateBetween(EnvelopeStatus status, LocalDate from, LocalDate to);
 }

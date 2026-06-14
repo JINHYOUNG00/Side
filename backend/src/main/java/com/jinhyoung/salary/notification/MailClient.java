@@ -23,6 +23,8 @@ public interface MailClient {
      * @param locale 수신자 언어(ko/en) — 어댑터가 내용 렌더링에 사용
      * @param type 알림 종류
      * @param targetDate 알림 대상일
+     * @param messageArgs 본문 렌더용 구조화 데이터(예: 봉투명·준비 금액). 어댑터가 대상일에 이어 메시지 번들 인자로
+     *     넘긴다 — 문장은 만들지 않는다(규칙 7). 부가 데이터가 없으면 비운다.
      */
-    void send(String toEmail, String locale, NotificationType type, LocalDate targetDate);
+    void send(String toEmail, String locale, NotificationType type, LocalDate targetDate, Object... messageArgs);
 }

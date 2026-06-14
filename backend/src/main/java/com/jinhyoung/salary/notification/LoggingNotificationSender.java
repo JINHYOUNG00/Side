@@ -20,7 +20,7 @@ public class LoggingNotificationSender implements NotificationSender {
     private static final Logger log = LoggerFactory.getLogger(LoggingNotificationSender.class);
 
     @Override
-    public void send(NotificationType type, long userId, LocalDate targetDate) {
+    public void send(NotificationType type, long userId, LocalDate targetDate, Object... messageArgs) {
         log.info("Notification dispatched: type={} userId={} targetDate={}", type, userId, targetDate);
     }
 

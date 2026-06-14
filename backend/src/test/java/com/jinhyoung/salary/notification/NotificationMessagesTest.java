@@ -53,4 +53,25 @@ class NotificationMessagesTest {
 
         assertThat(ko).isNotEqualTo(en);
     }
+
+    @Test
+    void 한국어_ENVELOPE_DUE는_봉투명과_천단위_준비_금액을_렌더한다() {
+        // {0}=지출일, {1}=봉투명, {2}=준비 금액(목표액) — {2,number}로 locale 천단위 구분 적용.
+        Object[] args = {"2027년 1월 10일", "자동차세", 1_200_000L};
+
+        String subject = messages.getMessage("notification.envelope_due.subject", args, Locale.KOREAN);
+        String body = messages.getMessage("notification.envelope_due.body", args, Locale.KOREAN);
+
+        assertThat(subject).contains("자동차세").contains("2027년 1월 10일");
+        assertThat(body).contains("자동차세").contains("2027년 1월 10일").contains("1,200,000");
+    }
+
+    @Test
+    void 영어_ENVELOPE_DUE도_봉투명과_준비_금액을_렌더한다() {
+        Object[] args = {"January 10, 2027", "Car tax", 1_200_000L};
+
+        String body = messages.getMessage("notification.envelope_due.body", args, Locale.ENGLISH);
+
+        assertThat(body).contains("Car tax").contains("January 10, 2027").contains("1,200,000");
+    }
 }

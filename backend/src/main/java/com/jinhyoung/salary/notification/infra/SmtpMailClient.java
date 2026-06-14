@@ -44,12 +44,16 @@ public class SmtpMailClient implements MailClient {
     }
 
     @Override
-    public void send(String toEmail, String locale, NotificationType type, LocalDate targetDate) {
+    public void send(
+            String toEmail, String locale, NotificationType type, LocalDate targetDate, Object... messageArgs) {
         Locale loc = resolveLocale(locale);
         String date = DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG)
                 .withLocale(loc)
                 .format(targetDate);
-        Object[] args = {date};
+        // {0}=대상일(locale 포맷), {1..}=호출자가 넘긴 부가 데이터(봉투명·준비 금액 등). 문장은 번들이 조립(규칙 7).
+        Object[] args = new Object[messageArgs.length + 1];
+        args[0] = date;
+        System.arraycopy(messageArgs, 0, args, 1, messageArgs.length);
         String key = "notification." + type.name().toLowerCase(Locale.ROOT);
 
         SimpleMailMessage message = new SimpleMailMessage();
