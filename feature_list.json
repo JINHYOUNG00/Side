@@ -183,7 +183,7 @@
       "category": "verification",
       "description": "본인 노션 데이터 전체 입력 → 모든 폭포 단계 잔액이 노션과 일치",
       "verify": "수동: 브라우저에서 전 단계 잔액이 노션 숫자와 동일함을 확인(폭포 단위 테스트 별도 통과)",
-      "passes": false
+      "passes": true
     },
     {
       "id": "ITEM-07",

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { login as loginApi, type LoginResponse } from '@/api/auth'
+import { login as loginApi, devLogin as devLoginApi, type LoginResponse } from '@/api/auth'
 
 const TOKEN_KEY = 'salary.accessToken'
 
@@ -51,5 +51,12 @@ export const useAuthStore = defineStore('auth', () => {
     return session
   }
 
-  return { token, isNewUser, isAuthenticated, setSession, logout, loginWithCode }
+  // 로컬 전용 dev 로그인 — 노션 시드 사용자로 세션을 세운다(VERIFY-notion-match).
+  async function loginAsDev(): Promise<LoginResponse> {
+    const session = await devLoginApi()
+    setSession(session)
+    return session
+  }
+
+  return { token, isNewUser, isAuthenticated, setSession, logout, loginWithCode, loginAsDev }
 })

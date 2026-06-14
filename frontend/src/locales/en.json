@@ -18,7 +18,8 @@
       "google": "Continue with Google"
     },
     "privacyNote": "We never ask for or store account numbers or passwords",
-    "signingIn": "Signing in"
+    "signingIn": "Signing in",
+    "devLogin": "Dev login (Notion seed)"
   },
   "errors": {
     "UNAUTHORIZED": "Please sign in and try again",
