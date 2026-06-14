@@ -12,6 +12,20 @@ spring:
       ddl-auto: validate # 스키마는 Flyway만 만진다
     open-in-view: false
 
+  # 알림 메일 SMTP(NOTI-05). 자격증명은 운영 환경변수로만 주입 — host 미설정 시 JavaMailSender 빈이
+  # 만들어지지 않으므로 기본(log) 채널은 무손상. email 채널을 켤 때만 host/계정을 주입한다.
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
   flyway:
     validate-on-migrate: true # 적용된 마이그레이션 변경 시 기동 거부 (마이그레이션 불변의 본 방어선)
 
@@ -37,7 +51,9 @@ app:
   holiday:
     base-uri: ${HOLIDAY_API_URI:https://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getRestDeInfo}
     service-key: ${HOLIDAY_API_KEY:}
-  # 알림 발송 채널(NOTI-05). log=로그만(기본·SMTP 불요), email=이메일 발송(EmailNotificationSender).
-  # email로 켜려면 MailClient(JavaMailSender) 어댑터와 SMTP 설정이 함께 필요하다.
+  # 알림 발송 채널(NOTI-05). log=로그만(기본·SMTP 불요), email=이메일 발송(EmailNotificationSender→SmtpMailClient).
+  # email로 켜려면 위 spring.mail.host 등 SMTP 설정을 함께 주입한다(미주입 시 부팅 실패=설정 누락 신호).
   notification:
     channel: ${NOTIFICATION_CHANNEL:log}
+    email:
+      from: ${MAIL_FROM:no-reply@salary.local} # 발신 주소(운영 주입)
