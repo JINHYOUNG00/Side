@@ -224,7 +224,7 @@
       "category": "backend",
       "description": "실수령액 확인: 체크리스트 첫 단계에서 이번 사이클 실수령액을 확인·수정(cycles.income_confirmed). 기본값은 평소 실수령액(users.base_income)",
       "verify": "./gradlew verify 통과 + 기본값=평소 금액 / 수정 반영 / 수정 후 폭포·plan_lines 재계산 통합 테스트",
-      "passes": false
+      "passes": true
     },
     {
       "id": "CYCLE-06",
