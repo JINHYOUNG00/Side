@@ -1,20 +1,21 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import BottomSheet from '@/components/base/BottomSheet.vue'
-import MoneyText from '@/components/base/MoneyText.vue'
 import { ApiError } from '@/api/client'
 import {
   createBudgetItem,
+  updateBudgetItem,
   deleteBudgetItem,
   CATEGORIES,
   type BudgetItem,
   type BudgetItemInput,
+  type BudgetItemUpdateInput,
   type Category,
 } from '@/api/budgetItems'
 import type { Account } from '@/api/accounts'
 
-// MOD-01 항목 폼 v1. item=null이면 추가(공통 필드 입력→생성), 있으면 관리(요약 + soft delete).
-// 수정(ITEM-07/PATCH)은 백엔드 미구현이라 v1에서 제외 — 기존 항목은 보기·삭제만 한다.
+// MOD-01 항목 폼 v1. item=null이면 추가(공통 필드 입력→생성), 있으면 수정(같은 필드 편집→PATCH) + soft delete.
+// 수정 기본은 다음 사이클부터 적용 — '이번 달 반영' 토글을 켜야 현재 사이클 미완료 라인 재계산(ITEM-07, 구현규칙 4장).
 const props = defineProps<{ open: boolean; item: BudgetItem | null; accounts: Account[] }>()
 const emit = defineEmits<{ close: []; saved: [] }>()
 
@@ -28,6 +29,7 @@ const name = ref('')
 const amount = ref('') // 숫자 문자열(천 단위 구분 표시), 제출 시 정수로 파싱
 const accountId = ref<number | null>(null)
 const startDate = ref('')
+const applyToCurrentCycle = ref(false)
 const errorCode = ref<string | null>(null)
 const submitting = ref(false)
 const confirmingDelete = ref(false)
@@ -44,20 +46,18 @@ const amountDisplay = computed({
   },
 })
 
-function accountName(id: number): string {
-  return props.accounts.find((a) => a.id === id)?.name ?? '—'
-}
-
-// 시트가 열릴 때마다 폼을 초기화. 추가 모드는 빈 값 + 시작일 오늘 기본.
+// 시트가 열릴 때마다 폼을 초기화. 추가 모드는 빈 값 + 시작일 오늘 기본,
+// 수정 모드는 기존 항목 값으로 프리필(endDate/memo는 v1 입력란이 없어 제출 시 원본을 그대로 보존).
 watch(
   () => [props.open, props.item] as const,
-  ([open]) => {
+  ([open, item]) => {
     if (!open) return
-    category.value = 'SAVING'
-    name.value = ''
-    amount.value = ''
-    accountId.value = null
-    startDate.value = today()
+    category.value = item ? item.category : 'SAVING'
+    name.value = item ? item.name : ''
+    amount.value = item ? item.amount.toLocaleString('ko-KR') : ''
+    accountId.value = item ? item.accountId : null
+    startDate.value = item ? item.startDate : today()
+    applyToCurrentCycle.value = false
     errorCode.value = null
     confirmingDelete.value = false
   },
@@ -108,7 +108,17 @@ async function submit() {
     startDate: startDate.value,
   }
   try {
-    await createBudgetItem(payload)
+    if (props.item) {
+      // 전체 교체 — v1 미입력 필드(endDate/memo)는 원본을 그대로 실어 보존한다.
+      const update: BudgetItemUpdateInput = {
+        ...payload,
+        endDate: props.item.endDate,
+        memo: props.item.memo,
+      }
+      await updateBudgetItem(props.item.id, update, applyToCurrentCycle.value)
+    } else {
+      await createBudgetItem(payload)
+    }
     emit('saved')
   } catch (e) {
     errorCode.value = e instanceof ApiError ? e.code : 'INTERNAL_ERROR'
@@ -134,30 +144,82 @@ async function remove() {
 
 <template>
   <BottomSheet :open="open" @close="close">
-    <!-- 관리 모드: 기존 항목 요약 + 삭제(수정은 ITEM-07, v1 미지원) -->
-    <template v-if="isManage && item">
-      <h3 class="title">{{ item.name }}</h3>
-      <dl class="summary">
-        <div class="srow">
-          <dt>{{ $t('items.form.category') }}</dt>
-          <dd>{{ $t(`items.category.${item.category}`) }}</dd>
-        </div>
-        <div class="srow">
-          <dt>{{ $t('items.form.amount') }}</dt>
-          <dd><MoneyText :amount="item.amount" :unit="$t('common.won')" /></dd>
-        </div>
-        <div class="srow">
-          <dt>{{ $t('items.form.account') }}</dt>
-          <dd>{{ accountName(item.accountId) }}</dd>
-        </div>
-        <div class="srow">
-          <dt>{{ $t('items.form.startDate') }}</dt>
-          <dd>{{ item.startDate }}</dd>
-        </div>
-      </dl>
+    <!-- 추가/수정 공통 폼. 수정 모드는 기존 값 프리필 + 적용 시점 토글 + soft delete가 더해진다. -->
+    <h3 class="title">{{ isManage ? $t('items.form.editTitle') : $t('items.form.addTitle') }}</h3>
 
-      <p v-if="errorCode" class="error" role="alert">{{ $t(`errors.${errorCode}`) }}</p>
+    <span class="flabel">{{ $t('items.form.category') }}</span>
+    <div class="chips" role="radiogroup">
+      <button
+        v-for="c in CATEGORIES"
+        :key="c"
+        type="button"
+        class="chip"
+        :class="{ on: category === c }"
+        :aria-pressed="category === c"
+        @click="category = c"
+      >
+        {{ $t(`items.category.${c}`) }}
+      </button>
+    </div>
 
+    <label class="flabel" for="item-name">{{ $t('items.form.name') }}</label>
+    <input
+      id="item-name"
+      v-model="name"
+      class="input"
+      type="text"
+      :maxlength="NAME_MAX"
+      :placeholder="$t('items.form.namePlaceholder')"
+      autocomplete="off"
+    />
+
+    <label class="flabel" for="item-amount">{{ $t('items.form.amount') }}</label>
+    <div class="amount-wrap">
+      <input
+        id="item-amount"
+        v-model="amountDisplay"
+        class="input"
+        type="text"
+        inputmode="numeric"
+        :placeholder="$t('items.form.amountPlaceholder')"
+        autocomplete="off"
+      />
+      <span class="unit">{{ $t('common.won') }}</span>
+    </div>
+
+    <label class="flabel" for="item-account">{{ $t('items.form.account') }}</label>
+    <select id="item-account" v-model="accountId" class="input" :disabled="!hasAccounts">
+      <option :value="null" disabled>{{ $t('items.form.accountPlaceholder') }}</option>
+      <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option>
+    </select>
+    <p v-if="!hasAccounts" class="hint">{{ $t('items.form.noAccounts') }}</p>
+
+    <label class="flabel" for="item-start">{{ $t('items.form.startDate') }}</label>
+    <input id="item-start" v-model="startDate" class="input" type="date" />
+
+    <!-- 수정 모드: 적용 시점 토글. 기본 꺼짐=다음 사이클부터, 켜면 이번 달 미완료 라인 재계산(ITEM-07) -->
+    <label v-if="isManage" class="toggle" for="item-apply">
+      <span class="toggle-text">
+        <span class="toggle-title">{{ $t('items.form.applyCurrentCycle') }}</span>
+        <span class="toggle-hint">{{ $t('items.form.applyCurrentCycleHint') }}</span>
+      </span>
+      <input
+        id="item-apply"
+        v-model="applyToCurrentCycle"
+        class="switch"
+        type="checkbox"
+        role="switch"
+      />
+    </label>
+
+    <p v-if="errorCode" class="error" role="alert">{{ $t(`errors.${errorCode}`) }}</p>
+
+    <button class="btn" type="button" :disabled="submitting || !hasAccounts" @click="submit">
+      {{ $t('items.form.save') }}
+    </button>
+
+    <!-- 수정 모드: soft delete 2단 확인(규칙 5, ITEM-09) -->
+    <template v-if="isManage">
       <button
         v-if="!confirmingDelete"
         class="btn ghost danger"
@@ -178,67 +240,6 @@ async function remove() {
           </button>
         </div>
       </div>
-    </template>
-
-    <!-- 추가 모드: 공통 필드 입력 → 생성 -->
-    <template v-else>
-      <h3 class="title">{{ $t('items.form.addTitle') }}</h3>
-
-      <span class="flabel">{{ $t('items.form.category') }}</span>
-      <div class="chips" role="radiogroup">
-        <button
-          v-for="c in CATEGORIES"
-          :key="c"
-          type="button"
-          class="chip"
-          :class="{ on: category === c }"
-          :aria-pressed="category === c"
-          @click="category = c"
-        >
-          {{ $t(`items.category.${c}`) }}
-        </button>
-      </div>
-
-      <label class="flabel" for="item-name">{{ $t('items.form.name') }}</label>
-      <input
-        id="item-name"
-        v-model="name"
-        class="input"
-        type="text"
-        :maxlength="NAME_MAX"
-        :placeholder="$t('items.form.namePlaceholder')"
-        autocomplete="off"
-      />
-
-      <label class="flabel" for="item-amount">{{ $t('items.form.amount') }}</label>
-      <div class="amount-wrap">
-        <input
-          id="item-amount"
-          v-model="amountDisplay"
-          class="input"
-          type="text"
-          inputmode="numeric"
-          :placeholder="$t('items.form.amountPlaceholder')"
-          autocomplete="off"
-        />
-        <span class="unit">{{ $t('common.won') }}</span>
-      </div>
-
-      <label class="flabel" for="item-account">{{ $t('items.form.account') }}</label>
-      <select id="item-account" v-model="accountId" class="input" :disabled="!hasAccounts">
-        <option :value="null" disabled>{{ $t('items.form.accountPlaceholder') }}</option>
-        <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option>
-      </select>
-      <p v-if="!hasAccounts" class="hint">{{ $t('items.form.noAccounts') }}</p>
-
-      <label class="flabel" for="item-start">{{ $t('items.form.startDate') }}</label>
-      <input id="item-start" v-model="startDate" class="input" type="date" />
-
-      <p v-if="errorCode" class="error" role="alert">{{ $t(`errors.${errorCode}`) }}</p>
-
-      <button class="btn" type="button" :disabled="submitting || !hasAccounts" @click="submit">
-        {{ $t('items.form.save') }}
-      </button>
     </template>
   </BottomSheet>
 </template>
@@ -305,25 +306,57 @@ async function remove() {
   margin-top: 8px;
   line-height: 1.5;
 }
-.summary {
-  margin-top: 14px;
-}
-.srow {
+.toggle {
   display: flex;
-  justify-content: space-between;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--line-2);
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+  cursor: pointer;
+}
+.toggle-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.toggle-title {
   font-size: 14px;
-}
-.srow:last-child {
-  border-bottom: 0;
-}
-.srow dt {
-  color: var(--sub);
-}
-.srow dd {
-  color: var(--ink);
   font-weight: 600;
+  color: var(--ink);
+}
+.toggle-hint {
+  font-size: 12px;
+  color: var(--hint);
+  line-height: 1.5;
+}
+/* 토스류 토글 스위치 — 체크박스를 직접 스타일링(UI 라이브러리 금지). 켜짐=파랑(주요 동작 색). */
+.switch {
+  appearance: none;
+  flex: none;
+  width: 44px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--line-2);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.15s ease;
+}
+.switch:checked {
+  background: var(--blue);
+}
+.switch:checked::after {
+  transform: translateX(18px);
 }
 .error {
   font-size: 13px;

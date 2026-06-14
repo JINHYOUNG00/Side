@@ -17,6 +17,7 @@ vi.mock('@/api/budgetItems', async (importOriginal) => {
     ...actual,
     listBudgetItems: vi.fn<typeof actual.listBudgetItems>(),
     createBudgetItem: vi.fn<typeof actual.createBudgetItem>(),
+    updateBudgetItem: vi.fn<typeof actual.updateBudgetItem>(),
     deleteBudgetItem: vi.fn<typeof actual.deleteBudgetItem>(),
   }
 })
@@ -54,6 +55,7 @@ describe('ItemsView (MOD-01 항목 관리)', () => {
     setActivePinia(createPinia())
     vi.mocked(itemsApi.listBudgetItems).mockReset()
     vi.mocked(itemsApi.createBudgetItem).mockReset()
+    vi.mocked(itemsApi.updateBudgetItem).mockReset()
     vi.mocked(itemsApi.deleteBudgetItem).mockReset()
     vi.mocked(accountsApi.listAccounts).mockReset()
   })
@@ -177,7 +179,67 @@ describe('ItemsView (MOD-01 항목 관리)', () => {
     expect((save.element as HTMLButtonElement).disabled).toBe(true)
   })
 
-  it('행을 누르면 관리 모드로 열려 삭제 2단 확인 후 deleteBudgetItem을 호출한다', async () => {
+  it('행을 누르면 수정 모드로 열려 기존 값을 프리필한다', async () => {
+    vi.mocked(itemsApi.listBudgetItems).mockResolvedValue([SAVINGS])
+    vi.mocked(accountsApi.listAccounts).mockResolvedValue([KAKAO])
+    const wrapper = mountView()
+    await flushPromises()
+
+    await wrapper.find('button.row').trigger('click')
+    await wrapper.vm.$nextTick()
+    // ITEM-07: 수정 모드는 기존 항목 값으로 프리필된 편집 입력란을 보여준다.
+    expect((wrapper.find('#item-name').element as HTMLInputElement).value).toBe('OO은행 정기적금')
+    expect((wrapper.find('#item-amount').element as HTMLInputElement).value).toBe('300,000')
+    expect((wrapper.find('#item-start').element as HTMLInputElement).value).toBe('2026-07-01')
+  })
+
+  it('수정 모드에서 값을 바꿔 저장하면 기본은 다음 사이클 적용(applyToCurrentCycle=false)으로 PATCH한다', async () => {
+    vi.mocked(itemsApi.listBudgetItems).mockResolvedValue([SAVINGS])
+    vi.mocked(accountsApi.listAccounts).mockResolvedValue([KAKAO])
+    vi.mocked(itemsApi.updateBudgetItem).mockResolvedValue(SAVINGS)
+    const wrapper = mountView()
+    await flushPromises()
+
+    await wrapper.find('button.row').trigger('click')
+    await wrapper.vm.$nextTick()
+    await wrapper.find('#item-amount').setValue('350000')
+    await buttonByText(wrapper, i18n.global.t('items.form.save'))!.trigger('click')
+    await flushPromises()
+
+    // endDate/memo는 v1 입력란이 없어 원본 값(null)을 그대로 실어 전체 교체한다.
+    expect(itemsApi.updateBudgetItem).toHaveBeenCalledWith(
+      10,
+      {
+        category: 'SAVING',
+        name: 'OO은행 정기적금',
+        amount: 350000,
+        accountId: 1,
+        startDate: '2026-07-01',
+        endDate: null,
+        memo: null,
+      },
+      false,
+    )
+    expect(itemsApi.listBudgetItems).toHaveBeenCalledTimes(2)
+  })
+
+  it("'이번 달에 바로 반영' 토글을 켜면 applyToCurrentCycle=true로 PATCH한다", async () => {
+    vi.mocked(itemsApi.listBudgetItems).mockResolvedValue([SAVINGS])
+    vi.mocked(accountsApi.listAccounts).mockResolvedValue([KAKAO])
+    vi.mocked(itemsApi.updateBudgetItem).mockResolvedValue(SAVINGS)
+    const wrapper = mountView()
+    await flushPromises()
+
+    await wrapper.find('button.row').trigger('click')
+    await wrapper.vm.$nextTick()
+    await wrapper.find('#item-apply').setValue(true)
+    await buttonByText(wrapper, i18n.global.t('items.form.save'))!.trigger('click')
+    await flushPromises()
+
+    expect(itemsApi.updateBudgetItem).toHaveBeenCalledWith(10, expect.any(Object), true)
+  })
+
+  it('수정 모드에서 삭제 2단 확인 후 deleteBudgetItem을 호출한다', async () => {
     vi.mocked(itemsApi.listBudgetItems).mockResolvedValue([SAVINGS])
     vi.mocked(accountsApi.listAccounts).mockResolvedValue([KAKAO])
     vi.mocked(itemsApi.deleteBudgetItem).mockResolvedValue()
@@ -186,8 +248,6 @@ describe('ItemsView (MOD-01 항목 관리)', () => {
 
     await wrapper.find('button.row').trigger('click')
     await wrapper.vm.$nextTick()
-    // 관리 모드는 항목 요약을 보여준다(수정 입력란 없음 — ITEM-07 미구현).
-    expect(wrapper.find('#item-name').exists()).toBe(false)
 
     // 첫 삭제 클릭은 확인 단계로 전환만 한다(즉시 삭제 안 함).
     await buttonByText(wrapper, i18n.global.t('items.form.delete'))!.trigger('click')
