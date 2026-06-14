@@ -5,8 +5,6 @@ import com.jinhyoung.salary.user.infra.User;
 import com.jinhyoung.salary.user.infra.UserRepository;
 import java.time.Clock;
 import java.time.LocalDate;
-import java.time.YearMonth;
-import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,20 +54,12 @@ public class PaydayNotificationService {
     }
 
     /**
-     * 오늘이 이 사용자의 실제 지급일인지 판정한다. 영업일 조정(PREV/NEXT)이 월 경계를 넘으면 명목 월급일이 속한 달과
-     * 오늘이 속한 달이 어긋날 수 있으므로(예: 말일+NEXT가 다음 달 초로, 1일+PREV가 전월 말로 이동), 오늘 기준 전월·당월·
-     * 익월 세 후보 명목 월의 실지급일을 보고 하나라도 오늘과 같으면 지급일로 본다. 지급일은 약 한 달 간격이라 둘 이상이
-     * 동시에 오늘과 같을 수 없다.
+     * 오늘이 이 사용자의 실제 지급일인지 판정한다. 명목 월 어긋남(영업일 조정이 월 경계를 넘는 경우)을 포함한 판정은
+     * {@link PaydayService#resolvePaydayMonth}가 가지며(지급일 스냅샷 트리거와 공유), 여기서는 발송 여부만 본다.
      */
     private boolean isPaydayToday(User user, LocalDate today) {
-        YearMonth thisMonth = YearMonth.from(today);
-        for (YearMonth nominalMonth : List.of(thisMonth.minusMonths(1), thisMonth, thisMonth.plusMonths(1))) {
-            LocalDate actualPayday =
-                    paydayService.resolveActualPayday(nominalMonth, user.getPayday(), user.getPaydayAdjustment());
-            if (actualPayday.equals(today)) {
-                return true;
-            }
-        }
-        return false;
+        return paydayService
+                .resolvePaydayMonth(today, user.getPayday(), user.getPaydayAdjustment())
+                .isPresent();
     }
 }
