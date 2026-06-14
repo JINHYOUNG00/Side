@@ -1,9 +1,12 @@
 package com.jinhyoung.salary.notification;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import com.jinhyoung.salary.cycle.infra.Holiday;
 import com.jinhyoung.salary.cycle.infra.HolidayRepository;
+import com.jinhyoung.salary.notification.infra.NotificationLog;
+import com.jinhyoung.salary.notification.infra.NotificationLogRepository;
 import com.jinhyoung.salary.user.domain.PaydayAdjustment;
 import com.jinhyoung.salary.user.infra.User;
 import com.jinhyoung.salary.user.infra.UserRepository;
@@ -11,8 +14,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,16 +29,16 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * 지급일 알림 판정·발송(NOTI-01) 통합 테스트. 실 PostgreSQL(Testcontainers) + 날짜를 바꿔 끼울 수 있는 KST
- * Clock(규칙 3 주입) + 발송을 기록하는 {@link NotificationSender} 스텁으로, 오늘이 실제 지급일인 사용자만 알림 대상이
- * 되는지(공휴일·주말·월 경계 조정 반영), 비지급일엔 아무도 발송되지 않는지, 온보딩 전 사용자는 제외되는지를 결정론적으로
- * 검증한다. 실지급일 산출 자체는 PaydayResolver 단위·골든·PaydayService 통합 테스트가 별도로 덮는다.
+ * Clock(규칙 3 주입)으로, 오늘이 실제 지급일인 사용자만 알림 대상이 되는지(공휴일·주말·월 경계 조정 반영), 비지급일엔
+ * 아무도 발송되지 않는지, 온보딩 전 사용자는 제외되는지를 결정론적으로 검증한다.
+ *
+ * <p>"누가 알림을 받았는가"는 발송 기록(notification_logs)으로 확인한다 — NOTI-04 중복 방지 게이트({@link
+ * DeduplicatingNotificationSender})가 발송 시 행을 적재하므로, 이 기록이 곧 디스패치 대상의 충실한 증거다. 실지급일
+ * 산출 자체는 PaydayResolver 단위·골든·PaydayService 통합 테스트가 별도로 덮는다.
  */
 @SpringBootTest
 @Testcontainers
-@Import({
-    PaydayNotificationServiceIntegrationTest.MutableClockConfig.class,
-    PaydayNotificationServiceIntegrationTest.RecordingSenderConfig.class
-})
+@Import(PaydayNotificationServiceIntegrationTest.MutableClockConfig.class)
 class PaydayNotificationServiceIntegrationTest {
 
     /** 테스트마다 기준일을 바꿔 끼우기 위한 가변 KST Clock(now() 직접 호출 대신 주입 — 규칙 3). */
@@ -75,27 +76,6 @@ class PaydayNotificationServiceIntegrationTest {
         }
     }
 
-    /** 발송 채널 대신 호출을 기록 — "누구에게 어떤 알림이 갔는가"만 검증한다. */
-    static final class RecordingNotificationSender implements NotificationSender {
-        record Dispatch(NotificationType type, long userId, LocalDate targetDate) {}
-
-        final List<Dispatch> sent = new ArrayList<>();
-
-        @Override
-        public void send(NotificationType type, long userId, LocalDate targetDate) {
-            sent.add(new Dispatch(type, userId, targetDate));
-        }
-    }
-
-    @TestConfiguration
-    static class RecordingSenderConfig {
-        @Bean
-        @Primary
-        RecordingNotificationSender recordingNotificationSender() {
-            return new RecordingNotificationSender();
-        }
-    }
-
     @Container
     @ServiceConnection
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
@@ -110,14 +90,14 @@ class PaydayNotificationServiceIntegrationTest {
     HolidayRepository holidayRepository;
 
     @Autowired
-    MutableClock clock;
+    NotificationLogRepository notificationLogRepository;
 
     @Autowired
-    RecordingNotificationSender sender;
+    MutableClock clock;
 
     @BeforeEach
     void setUp() {
-        sender.sent.clear();
+        notificationLogRepository.deleteAll();
         userRepository.deleteAll();
         holidayRepository.deleteAll();
     }
@@ -138,9 +118,9 @@ class PaydayNotificationServiceIntegrationTest {
         int notified = paydayNotificationService.notifyPaydays();
 
         assertThat(notified).isEqualTo(1);
-        assertThat(sender.sent)
-                .containsExactly(new RecordingNotificationSender.Dispatch(
-                        NotificationType.PAYDAY, alice, LocalDate.of(2026, 1, 26)));
+        assertThat(notificationLogRepository.findAll())
+                .extracting(NotificationLog::getUserId, NotificationLog::getType, NotificationLog::getTargetDate)
+                .containsExactly(tuple(alice, NotificationType.PAYDAY, LocalDate.of(2026, 1, 26)));
     }
 
     @Test
@@ -152,7 +132,7 @@ class PaydayNotificationServiceIntegrationTest {
         int notified = paydayNotificationService.notifyPaydays();
 
         assertThat(notified).isZero();
-        assertThat(sender.sent).isEmpty();
+        assertThat(notificationLogRepository.findAll()).isEmpty();
     }
 
     @Test
@@ -162,9 +142,9 @@ class PaydayNotificationServiceIntegrationTest {
 
         clock.setToday(LocalDate.of(2026, 2, 2));
         assertThat(paydayNotificationService.notifyPaydays()).isEqualTo(1);
-        assertThat(sender.sent)
-                .containsExactly(new RecordingNotificationSender.Dispatch(
-                        NotificationType.PAYDAY, carol, LocalDate.of(2026, 2, 2)));
+        assertThat(notificationLogRepository.findAll())
+                .extracting(NotificationLog::getUserId, NotificationLog::getType, NotificationLog::getTargetDate)
+                .containsExactly(tuple(carol, NotificationType.PAYDAY, LocalDate.of(2026, 2, 2)));
     }
 
     @Test
@@ -174,7 +154,7 @@ class PaydayNotificationServiceIntegrationTest {
         clock.setToday(LocalDate.of(2026, 1, 31));
 
         assertThat(paydayNotificationService.notifyPaydays()).isZero();
-        assertThat(sender.sent).isEmpty();
+        assertThat(notificationLogRepository.findAll()).isEmpty();
     }
 
     @Test
@@ -185,13 +165,13 @@ class PaydayNotificationServiceIntegrationTest {
 
         clock.setToday(LocalDate.of(2026, 1, 1));
         assertThat(paydayNotificationService.notifyPaydays()).isZero();
+        assertThat(notificationLogRepository.findAll()).isEmpty();
 
-        sender.sent.clear();
         clock.setToday(LocalDate.of(2026, 1, 2));
         assertThat(paydayNotificationService.notifyPaydays()).isEqualTo(1);
-        assertThat(sender.sent)
-                .containsExactly(new RecordingNotificationSender.Dispatch(
-                        NotificationType.PAYDAY, dave, LocalDate.of(2026, 1, 2)));
+        assertThat(notificationLogRepository.findAll())
+                .extracting(NotificationLog::getUserId, NotificationLog::getType, NotificationLog::getTargetDate)
+                .containsExactly(tuple(dave, NotificationType.PAYDAY, LocalDate.of(2026, 1, 2)));
     }
 
     @Test
@@ -201,6 +181,6 @@ class PaydayNotificationServiceIntegrationTest {
         clock.setToday(LocalDate.of(2026, 1, 1));
 
         assertThat(paydayNotificationService.notifyPaydays()).isZero();
-        assertThat(sender.sent).isEmpty();
+        assertThat(notificationLogRepository.findAll()).isEmpty();
     }
 }

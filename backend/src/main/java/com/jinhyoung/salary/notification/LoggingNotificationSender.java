@@ -19,4 +19,9 @@ public class LoggingNotificationSender implements NotificationSender {
     public void send(NotificationType type, long userId, LocalDate targetDate) {
         log.info("Notification dispatched: type={} userId={} targetDate={}", type, userId, targetDate);
     }
+
+    @Override
+    public NotificationChannel channel() {
+        return NotificationChannel.LOG;
+    }
 }
