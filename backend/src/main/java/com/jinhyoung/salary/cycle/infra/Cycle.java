@@ -68,6 +68,16 @@ public class Cycle {
         return new Cycle(userId, definition.cycleStart(), definition.cycleEnd(), definition.label(), income);
     }
 
+    /**
+     * 체크리스트 1단계에서 이번 사이클 실수령액을 확인·수정한다(CYCLE-04). 경계(cycle_start/end·label)는 여전히
+     * 불변이며, 여기서 바뀌는 건 확인된 실수령액과 확인 플래그뿐이다 — 이 값에 맞춘 plan_lines(LIVING) 재계산은
+     * {@link com.jinhyoung.salary.cycle.CycleIncomeService}가 구현규칙 3장 규칙으로 수행한다.
+     */
+    public void confirmIncome(long income) {
+        this.income = income;
+        this.incomeConfirmed = true;
+    }
+
     public Long getId() {
         return id;
     }

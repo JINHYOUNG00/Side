@@ -139,6 +139,14 @@ public class PlanLine {
                 plannedAmount);
     }
 
+    /**
+     * 계획 금액 갱신 — 실수령액 확인(CYCLE-04)·"이번 달 반영" 재생성(ITEM-07) 시 LIVING 라인이 PENDING일 때만
+     * 호출한다(구현규칙 3장). DONE 라인은 이미 이체된 사실이라 갱신하지 않는다(호출자가 상태를 가른다).
+     */
+    public void updatePlannedAmount(long plannedAmount) {
+        this.plannedAmount = plannedAmount;
+    }
+
     public Long getId() {
         return id;
     }

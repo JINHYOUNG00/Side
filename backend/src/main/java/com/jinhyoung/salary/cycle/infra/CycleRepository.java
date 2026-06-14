@@ -13,4 +13,7 @@ public interface CycleRepository extends JpaRepository<Cycle, Long> {
     boolean existsByUserIdAndCycleStart(Long userId, LocalDate cycleStart);
 
     Optional<Cycle> findByUserIdAndCycleStart(Long userId, LocalDate cycleStart);
+
+    /** 소유권 게이트(CYCLE-04) — 미소유·부재는 모두 빈 Optional로 다뤄 존재 여부를 노출하지 않는다(AccountService 패턴). */
+    Optional<Cycle> findByIdAndUserId(Long id, Long userId);
 }
