@@ -216,7 +216,7 @@
       "owner_only": true,
       "description": "스냅샷 생성: 지급일에 활성 항목·봉투 적립액으로 cycles·plan_lines 계획 스냅샷을 영속화. CycleSnapshotBuilder(완료)가 산출한 PlanLineDraft를 항목·통장으로 해석해 name/account_name 스냅샷까지 채움. unique(user_id, cycle_start)로 동일 사이클 중복 생성 차단(멱등). [사이클 스냅샷 생성 = 소유자 직접/페어]",
       "verify": "골든 fixture에서 plan_lines planned_amount 일치(LIVING 356,107 등) + 동일 사이클 재생성 시 멱등(건수·값 불변) 통합 테스트",
-      "passes": false
+      "passes": true
     },
     {
       "id": "CYCLE-04",
