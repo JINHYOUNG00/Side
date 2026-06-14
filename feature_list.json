@@ -256,7 +256,7 @@
       "category": "backend",
       "description": "알림 채널: 1차 채널 이메일(또는 웹푸시) 발송 어댑터. FCM 푸시 승격은 Phase 8(앱 출시 시)",
       "verify": "./gradlew verify 통과 + 이메일 발송 어댑터 호출·실패 처리 테스트(발송 인터페이스 모킹)",
-      "passes": false
+      "passes": true
     },
     {
       "id": "SCR-03b",
