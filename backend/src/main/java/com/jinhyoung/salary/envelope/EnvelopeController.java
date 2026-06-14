@@ -1,6 +1,7 @@
 package com.jinhyoung.salary.envelope;
 
 import com.jinhyoung.salary.envelope.infra.Envelope;
+import com.jinhyoung.salary.envelope.infra.ShortfallSource;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -22,9 +23,9 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 봉투 생성·조회·수정·삭제(ENV-01, API명세 4장). 인증 필수 — principal=userId(JwtAuthenticationFilter)로
- * 소유분만 다룬다. DELETE는 물리 삭제가 아닌 status=DELETED(soft delete, 규칙 5). 월 적립액 계산(ENV-02)·
- * 진행률/D-day(ENV-03)·지출 처리(ENV-04~05)는 별도 요구사항이라 이 컨트롤러 범위 밖이다.
+ * 봉투 생성·조회·수정·삭제(ENV-01, API명세 4장) + 지출 처리(ENV-04). 인증 필수 — principal=userId
+ * (JwtAuthenticationFilter)로 소유분만 다룬다. DELETE는 물리 삭제가 아닌 status=DELETED(soft delete, 규칙 5).
+ * 응답엔 월 적립액(ENV-02)·진행률·D-day(ENV-03) 파생값을 함께 싣는다. 지출 후 주기 갱신·종료는 ENV-05 소관.
  */
 @RestController
 @RequestMapping("/api/v1/envelopes")
@@ -94,6 +95,13 @@ public class EnvelopeController {
         envelopeService.delete(userId, id);
     }
 
+    @PostMapping("/{id}/spend")
+    public EnvelopeResponse spend(
+            @AuthenticationPrincipal Long userId, @PathVariable long id, @Valid @RequestBody SpendRequest request) {
+        return EnvelopeResponse.from(envelopeService.spend(
+                userId, id, request.actualAmount(), request.shortfallSource(), request.carryOver()));
+    }
+
     /**
      * 봉투 생성·수정 요청(ENV-01). 생성과 수정이 동일한 편집 필드·검증을 쓴다(부분 갱신이 아닌 전체 교체 —
      * 봉투 폼이 전 필드를 다시 제출). {@code cycleMonths}는 선택(null=일회성), 있으면 1 이상이어야 한다.
@@ -112,6 +120,14 @@ public class EnvelopeController {
             return cycleMonths == null ? null : cycleMonths.shortValue();
         }
     }
+
+    /**
+     * 봉투 지출 처리 요청(ENV-04). {@code actualAmount}는 실제 지출액(1~10억). 차액에 따라 둘 중 하나만 채운다:
+     * 부족(actual &gt; 적립액)이면 {@code shortfallSource}(생활비/비상금), 잉여(actual &lt; 적립액)면
+     * {@code carryOver}(이월 true/회수 false). 일관성(필수·금지)은 적립액을 아는 서비스에서 검증한다.
+     */
+    public record SpendRequest(
+            @Min(AMOUNT_MIN) @Max(AMOUNT_MAX) long actualAmount, ShortfallSource shortfallSource, Boolean carryOver) {}
 
     /**
      * 봉투 조회 응답. CRUD 필드(ENV-01)에 더해 조회 시점 파생값(ENV-03)을 싣는다: {@code progressPercent}(적립

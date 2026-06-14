@@ -4,11 +4,17 @@ import com.jinhyoung.salary.account.infra.AccountRepository;
 import com.jinhyoung.salary.common.ApiException;
 import com.jinhyoung.salary.common.ErrorCode;
 import com.jinhyoung.salary.cycle.HolidayCalendar;
+import com.jinhyoung.salary.cycle.infra.Cycle;
+import com.jinhyoung.salary.cycle.infra.CycleRepository;
 import com.jinhyoung.salary.envelope.domain.EnvelopeAccrual;
 import com.jinhyoung.salary.envelope.domain.EnvelopeProgress;
+import com.jinhyoung.salary.envelope.domain.EnvelopeSpend;
 import com.jinhyoung.salary.envelope.infra.Envelope;
 import com.jinhyoung.salary.envelope.infra.EnvelopeRepository;
 import com.jinhyoung.salary.envelope.infra.EnvelopeStatus;
+import com.jinhyoung.salary.envelope.infra.EnvelopeTransaction;
+import com.jinhyoung.salary.envelope.infra.EnvelopeTransactionRepository;
+import com.jinhyoung.salary.envelope.infra.ShortfallSource;
 import com.jinhyoung.salary.user.infra.User;
 import com.jinhyoung.salary.user.infra.UserRepository;
 import java.time.Clock;
@@ -36,20 +42,26 @@ public class EnvelopeService {
     static final long MAX_ACTIVE_ENVELOPES = 50;
 
     private final EnvelopeRepository envelopeRepository;
+    private final EnvelopeTransactionRepository transactionRepository;
     private final AccountRepository accountRepository;
     private final UserRepository userRepository;
+    private final CycleRepository cycleRepository;
     private final HolidayCalendar holidayCalendar;
     private final Clock clock;
 
     public EnvelopeService(
             EnvelopeRepository envelopeRepository,
+            EnvelopeTransactionRepository transactionRepository,
             AccountRepository accountRepository,
             UserRepository userRepository,
+            CycleRepository cycleRepository,
             HolidayCalendar holidayCalendar,
             Clock clock) {
         this.envelopeRepository = envelopeRepository;
+        this.transactionRepository = transactionRepository;
         this.accountRepository = accountRepository;
         this.userRepository = userRepository;
+        this.cycleRepository = cycleRepository;
         this.holidayCalendar = holidayCalendar;
         this.clock = clock;
     }
@@ -123,6 +135,62 @@ public class EnvelopeService {
     @Transactional
     public void delete(long userId, long envelopeId) {
         ownedActiveOrThrow(userId, envelopeId).markDeleted();
+    }
+
+    /**
+     * 봉투 지출 처리(ENV-04). 실제 지출액을 받아 SPEND 트랜잭션을 남기고 적립액 캐시를 갱신한다. 차액에 따라:
+     * 부족(actual &gt; saved)이면 충당 출처(LIVING/EMERGENCY)를, 잉여(actual &lt; saved)면 이월/회수(carryOver)를
+     * 함께 기록한다 — 필요한 필드가 없거나 불필요한 필드가 들어오면 VALIDATION_FAILED로 막는다(UI 동선과 1:1).
+     *
+     * <p>지출 산술(부족·잉여·지출 후 적립액)은 순수 {@link EnvelopeSpend}에 위임한다. 다음 지출일 이동·적립
+     * 재시작(반복형)·종료(일회성)는 ENV-05 소관이라 여기선 next_due_date·status를 건드리지 않는다 — 이 호출은
+     * saved_amount만 바꾼다. 기록 일자·현재 사이클은 주입 {@code Clock}으로 판정한다(규칙 3).
+     */
+    @Transactional
+    public EnvelopeView spend(
+            long userId, long envelopeId, long actualAmount, ShortfallSource shortfallSource, Boolean carryOver) {
+        User user = ownerOrThrow(userId);
+        Envelope envelope = ownedActiveOrThrow(userId, envelopeId);
+        long saved = envelope.getSavedAmount();
+        requireConsistentSpendFields(saved, actualAmount, shortfallSource, carryOver);
+
+        LocalDate today = LocalDate.now(clock);
+        Long cycleId = cycleRepository
+                .findByUserIdAndCycleStartLessThanEqualAndCycleEndGreaterThanEqual(userId, today, today)
+                .map(Cycle::getId)
+                .orElse(null);
+        transactionRepository.save(
+                EnvelopeTransaction.spend(envelopeId, saved, actualAmount, shortfallSource, carryOver, cycleId, today));
+
+        envelope.applySpend(EnvelopeSpend.savedAfterSpend(saved, actualAmount, Boolean.TRUE.equals(carryOver)));
+        return toView(envelope, user, today, holidayCalendar.holidaysAround(YearMonth.from(today)));
+    }
+
+    /**
+     * 지출 입력 필드 일관성 검증(ENV-04) — 차액 종류에 맞는 필드만 받는다. 부족이면 {@code shortfallSource} 필수·
+     * {@code carryOver} 금지, 잉여면 {@code carryOver} 필수·{@code shortfallSource} 금지, 정확이면 둘 다 금지.
+     * 어긋나면 어느 필드가 문제인지 담아 VALIDATION_FAILED(400).
+     */
+    private void requireConsistentSpendFields(
+            long saved, long actualAmount, ShortfallSource shortfallSource, Boolean carryOver) {
+        boolean shortfall = EnvelopeSpend.shortfall(saved, actualAmount) > 0;
+        boolean surplus = EnvelopeSpend.surplus(saved, actualAmount) > 0;
+        if (shortfall) {
+            require(shortfallSource != null, "shortfallSource");
+            require(carryOver == null, "carryOver");
+        } else if (surplus) {
+            require(carryOver != null, "carryOver");
+            require(shortfallSource == null, "shortfallSource");
+        } else { // 정확히 일치 — 충당도 이월도 없다
+            require(shortfallSource == null, "shortfallSource");
+            require(carryOver == null, "carryOver");
+        }
+    }
+
+    private void require(boolean condition, String field) {
+        if (!condition) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, Map.of("field", field));
+        }
     }
 
     /**

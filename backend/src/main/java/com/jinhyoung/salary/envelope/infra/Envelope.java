@@ -113,6 +113,15 @@ public class Envelope {
         this.status = EnvelopeStatus.DELETED;
     }
 
+    /**
+     * 지출 처리 후 적립액 캐시 갱신(ENV-04). 지출 산술은 순수
+     * {@link com.jinhyoung.salary.envelope.domain.EnvelopeSpend}가 계산하고 여기선 그 결과만 반영한다.
+     * saved_amount만 바뀐다 — 다음 지출일 이동·적립 재시작·일회성 종료는 ENV-05 소관이라 건드리지 않는다.
+     */
+    public void applySpend(long savedAmount) {
+        this.savedAmount = savedAmount;
+    }
+
     public Long getId() {
         return id;
     }

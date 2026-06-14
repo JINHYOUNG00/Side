@@ -296,7 +296,7 @@
       "category": "backend",
       "description": "봉투 지출 처리: 지출 시 실제 금액 입력 → envelope_transactions SPEND 기록. 부족분은 충당 출처(LIVING/EMERGENCY) 기록, 잉여분은 이월(carry_over) 또는 회수 선택. saved_amount 갱신",
       "verify": "./gradlew verify 통과 + 정상 지출·부족 충당·잉여 이월/회수·소유권 검증 통합 테스트",
-      "passes": false
+      "passes": true
     },
     {
       "id": "ENV-05",
