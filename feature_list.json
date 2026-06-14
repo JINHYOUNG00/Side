@@ -264,7 +264,7 @@
       "category": "frontend",
       "description": "홈 체크리스트 카드: 지급일~D+3에 홈(SCR-03) 최상단에 체크리스트 카드 등장 — 실수령액 확인(CYCLE-04) → 통장별 이체 체크/건너뛰기(CYCLE-06). 비지급일 구간엔 미노출",
       "verify": "npm run verify 통과 + 지급일 구간 카드 노출·실수령액 확인→통장별 체크/건너뛰기 동선 E2E(서버 응답 기준)",
-      "passes": false
+      "passes": true
     }
   ]
 }
