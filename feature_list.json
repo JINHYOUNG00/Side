@@ -184,6 +184,87 @@
       "description": "본인 노션 데이터 전체 입력 → 모든 폭포 단계 잔액이 노션과 일치",
       "verify": "수동: 브라우저에서 전 단계 잔액이 노션 숫자와 동일함을 확인(폭포 단위 테스트 별도 통과)",
       "passes": false
+    },
+    {
+      "id": "ITEM-07",
+      "phase": 2,
+      "category": "backend",
+      "description": "항목 수정 적용 시점(budget_items PATCH): 수정은 다음 사이클부터 적용. '이번 달 반영' 명시 선택 시에만 현재 사이클의 미완료 plan_line을 재계산하며, 완료된 이체 라인은 보존(스냅샷 불변 — 구현규칙 4장 재생성 절차)",
+      "verify": "./gradlew verify 통과 + 다음 사이클 적용 기본 / 이번 달 반영 시 미완료 라인만 재계산·완료 라인 보존 통합 테스트",
+      "passes": false
+    },
+    {
+      "id": "CYCLE-01",
+      "phase": 2,
+      "category": "backend",
+      "description": "지급일 산출 적용: 순수 PaydayResolver(완료)를 application에서 호출 + 공휴일을 공공데이터포털 특일 API 연 1회 캐싱(holidays 테이블)하여 Set<LocalDate>로 주입. 차년도 미제공·API 장애 시 빈 Set(주말 회피만)로 폴백. [PaydayResolver 코어는 owner 완료 — 잔여 HolidayProvider/캐싱 infra는 위임 가능]",
+      "verify": "./gradlew verify 통과 + 공휴일 주입 시 실지급일 골든(payday-cases) 재현 / API 장애 폴백(빈 Set=주말 회피) 통합 테스트",
+      "passes": false
+    },
+    {
+      "id": "CYCLE-02",
+      "phase": 2,
+      "category": "backend",
+      "description": "사이클 정의: cycles 엔티티 — 실제 지급일부터 다음 지급일 전날까지를 한 사이클로 산출하고 시작 월 기준으로 라벨링(cycle_start). PaydayResolver(완료)로 경계 날짜 도출",
+      "verify": "./gradlew verify 통과 + 연속 두 사이클 경계(이번 지급일~다음 지급일−1)·시작월 라벨·월말/연휴 경계 단위·통합 테스트",
+      "passes": false
+    },
+    {
+      "id": "CYCLE-03",
+      "phase": 2,
+      "category": "backend",
+      "owner_only": true,
+      "description": "스냅샷 생성: 지급일에 활성 항목·봉투 적립액으로 cycles·plan_lines 계획 스냅샷을 영속화. CycleSnapshotBuilder(완료)가 산출한 PlanLineDraft를 항목·통장으로 해석해 name/account_name 스냅샷까지 채움. unique(user_id, cycle_start)로 동일 사이클 중복 생성 차단(멱등). [사이클 스냅샷 생성 = 소유자 직접/페어]",
+      "verify": "골든 fixture에서 plan_lines planned_amount 일치(LIVING 356,107 등) + 동일 사이클 재생성 시 멱등(건수·값 불변) 통합 테스트",
+      "passes": false
+    },
+    {
+      "id": "CYCLE-04",
+      "phase": 2,
+      "category": "backend",
+      "description": "실수령액 확인: 체크리스트 첫 단계에서 이번 사이클 실수령액을 확인·수정(cycles.income_confirmed). 기본값은 평소 실수령액(users.base_income)",
+      "verify": "./gradlew verify 통과 + 기본값=평소 금액 / 수정 반영 / 수정 후 폭포·plan_lines 재계산 통합 테스트",
+      "passes": false
+    },
+    {
+      "id": "CYCLE-06",
+      "phase": 2,
+      "category": "backend",
+      "description": "통장별 체크리스트: 사이클 plan_lines를 대상 통장별로 합산한 이체 체크리스트 조회 + 라인 상태 전이(대기/완료/건너뜀). API명세 체크리스트 응답 조립",
+      "verify": "./gradlew verify 통과 + 통장별 합산·상태 전이(대기→완료/건너뜀)·소유권 검증 통합 테스트",
+      "passes": false
+    },
+    {
+      "id": "NOTI-01",
+      "phase": 2,
+      "category": "backend",
+      "description": "지급일 알림: 실제 지급일(조정 반영)에 체크리스트 알림 발송. 고정 일자 크론이 아닌 일일 판정 방식(@Scheduled KST 일일 실행 → 오늘이 각 사용자 실지급일인지 PaydayResolver로 판정)",
+      "verify": "./gradlew verify 통과 + 일일 판정으로 실지급일 사용자만 대상(Clock 주입)·비지급일 미발송 통합 테스트",
+      "passes": false
+    },
+    {
+      "id": "NOTI-04",
+      "phase": 2,
+      "category": "backend",
+      "description": "알림 중복 방지: notification_logs unique(user_id, type, target_date) 발송 기록으로 동일 알림 중복 발송 차단(멱등 — 규칙 8)",
+      "verify": "./gradlew verify 통과 + 동일 (user,type,target_date) 재실행 시 1회만 발송·재발송 스킵 통합 테스트",
+      "passes": false
+    },
+    {
+      "id": "NOTI-05",
+      "phase": 2,
+      "category": "backend",
+      "description": "알림 채널: 1차 채널 이메일(또는 웹푸시) 발송 어댑터. FCM 푸시 승격은 Phase 8(앱 출시 시)",
+      "verify": "./gradlew verify 통과 + 이메일 발송 어댑터 호출·실패 처리 테스트(발송 인터페이스 모킹)",
+      "passes": false
+    },
+    {
+      "id": "SCR-03b",
+      "phase": 2,
+      "category": "frontend",
+      "description": "홈 체크리스트 카드: 지급일~D+3에 홈(SCR-03) 최상단에 체크리스트 카드 등장 — 실수령액 확인(CYCLE-04) → 통장별 이체 체크/건너뛰기(CYCLE-06). 비지급일 구간엔 미노출",
+      "verify": "npm run verify 통과 + 지급일 구간 카드 노출·실수령액 확인→통장별 체크/건너뛰기 동선 E2E(서버 응답 기준)",
+      "passes": false
     }
   ]
 }
