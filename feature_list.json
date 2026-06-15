@@ -328,7 +328,7 @@
       "category": "frontend",
       "description": "봉투 화면: 봉투 목록(진행률·D-day)·등록/수정 폼·지출 처리 시트. 화면흐름도·화면설계.html 토큰(보라=봉투/제안) 준수. ENV-01~05 API 배선",
       "verify": "npm run verify 통과 + 봉투 등록→목록 반영·지출 처리 동선 E2E(서버 응답 기준)",
-      "passes": false
+      "passes": true
     }
   ]
 }
