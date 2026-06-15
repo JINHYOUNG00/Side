@@ -49,6 +49,12 @@ const router = createRouter({
       name: 'items',
       component: () => import('@/views/ItemsView.vue'),
     },
+    {
+      // SCR-04 봉투 목록(진행률·D-day + MOD-02 폼·MOD-04 지출 처리). ENV-01~05. 전체 허브에서 진입.
+      path: '/envelopes',
+      name: 'envelopes',
+      component: () => import('@/views/EnvelopesView.vue'),
+    },
   ],
 })
 

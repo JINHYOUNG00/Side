@@ -13,6 +13,7 @@ const auth = useAuthStore()
 const links = [
   { key: 'accounts', to: '/accounts' },
   { key: 'items', to: '/items' },
+  { key: 'envelopes', to: '/envelopes' },
 ] as const
 
 function go(to: string) {

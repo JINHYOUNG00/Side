@@ -29,6 +29,7 @@
     "NOT_FOUND": "Not found",
     "ACCOUNT_LIMIT_EXCEEDED": "You can create up to 20 accounts",
     "ITEM_LIMIT_EXCEEDED": "You can create up to 100 items",
+    "ENVELOPE_LIMIT_EXCEEDED": "You can create up to 50 envelopes",
     "INTERNAL_ERROR": "Something went wrong. Please try again later"
   },
   "home": {
@@ -86,6 +87,7 @@
     "title": "All",
     "accounts": "Manage accounts",
     "items": "Manage budget items",
+    "envelopes": "Manage envelopes",
     "logout": "Sign out"
   },
   "accounts": {
@@ -144,6 +146,68 @@
       "delete": "Delete",
       "deleteConfirm": "Delete this item? Past records stay intact",
       "cancel": "Cancel"
+    }
+  },
+  "envelopes": {
+    "title": "Envelopes",
+    "back": "Back",
+    "loading": "Loading",
+    "add": "Add envelope",
+    "emptyTitle": "No envelopes yet",
+    "emptyBody": "Set aside money ahead of time for occasional big costs like car tax or holidays",
+    "monthlyTotal": "This month's envelope savings",
+    "monthlyLabel": "This month",
+    "count": "{n} envelopes",
+    "oneTime": "One-time",
+    "everyMonths": "Every {n} months",
+    "dday": "D-{n}",
+    "dueToday": "D-DAY",
+    "dueAgo": "{n}d ago",
+    "edit": "Edit",
+    "spend": "Record spending",
+    "form": {
+      "addTitle": "Add envelope",
+      "editTitle": "Edit envelope",
+      "name": "Name",
+      "namePlaceholder": "e.g. Car tax, Summer trip",
+      "target": "Target amount",
+      "amountPlaceholder": "e.g. 300,000",
+      "nextDue": "Next due date",
+      "repeat": "Repeat",
+      "oneTime": "One-time",
+      "recurring": "Recurring",
+      "cycleMonths": "Cycle",
+      "cycleMonthsUnit": "months",
+      "cycleMonthsPlaceholder": "e.g. 12",
+      "account": "Savings account",
+      "accountPlaceholder": "Select an account",
+      "noAccounts": "Add an account first",
+      "save": "Save",
+      "delete": "Delete",
+      "deleteConfirm": "Delete this envelope? Past records stay intact",
+      "cancel": "Cancel"
+    },
+    "spendSheet": {
+      "title": "Spend from {name}",
+      "saved": "Saved so far",
+      "actual": "Amount actually spent",
+      "amountPlaceholder": "e.g. 230,000",
+      "shortfall": "{amount} KRW short. Where did you cover it from?",
+      "surplus": "{amount} KRW left over. What would you like to do?",
+      "exact": "Spent exactly the saved amount",
+      "source": {
+        "LIVING": "From living",
+        "EMERGENCY": "From emergency"
+      },
+      "carryOver": "Carry over to next cycle",
+      "recover": "Reclaim",
+      "willRenew": "Processing moves the due date to the next cycle",
+      "willClose": "Processing closes this envelope",
+      "submit": "Process",
+      "doneTitle": "Spending recorded",
+      "closed": "Used up '{name}' and closed it",
+      "renewed": "Next due date moved to {date}",
+      "confirm": "OK"
     }
   }
 }
