@@ -88,7 +88,21 @@
     "accounts": "통장 관리",
     "items": "배분 항목 관리",
     "envelopes": "봉투 관리",
+    "import": "노션 표 가져오기",
     "logout": "로그아웃"
+  },
+  "import": {
+    "title": "노션 표 붙여넣기",
+    "subtitle": "고정지출·저축 표를 그대로 붙여넣으면 항목을 자동으로 인식해요",
+    "placeholder": "노션·엑셀 표를 복사해 붙여넣으세요",
+    "recognized": "{n}건을 인식했어요. 확인 후 등록하세요",
+    "none": "인식된 항목이 없어요. 표를 그대로 붙여넣어 주세요",
+    "category": "분류",
+    "account": "대상 통장",
+    "accountPlaceholder": "통장을 선택해 주세요",
+    "noAccounts": "먼저 통장을 추가해 주세요",
+    "startDate": "시작일",
+    "register": "{n}건 등록하기"
   },
   "accounts": {
     "title": "통장 관리",

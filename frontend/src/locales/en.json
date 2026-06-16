@@ -88,7 +88,21 @@
     "accounts": "Manage accounts",
     "items": "Manage budget items",
     "envelopes": "Manage envelopes",
+    "import": "Import from Notion",
     "logout": "Sign out"
+  },
+  "import": {
+    "title": "Paste your table",
+    "subtitle": "Paste a Notion or Excel table and we'll detect the items",
+    "placeholder": "Copy a Notion or Excel table and paste it here",
+    "recognized": "Recognized {n} items. Review and register",
+    "none": "No items recognized. Paste the table as is",
+    "category": "Category",
+    "account": "Target account",
+    "accountPlaceholder": "Select an account",
+    "noAccounts": "Add an account first",
+    "startDate": "Start date",
+    "register": "Register {n}"
   },
   "accounts": {
     "title": "Accounts",

@@ -1,10 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { mount, type VueWrapper } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import router from '@/router'
 import i18n from '@/i18n'
 import MenuView from '../MenuView.vue'
+import ImportSheet from '@/components/ImportSheet.vue'
+import * as accountsApi from '@/api/accounts'
 import { useAuthStore } from '@/stores/auth'
+
+vi.mock('@/api/accounts')
 
 function mountView() {
   return mount(MenuView, { global: { plugins: [router, i18n] } })
@@ -21,6 +25,8 @@ describe('MenuView (SCR-07 전체 허브)', () => {
     setActivePinia(createPinia())
     // 라우트 이동 자체는 spy로만 검증(하위 화면 마운트·API 호출 방지).
     vi.spyOn(router, 'push').mockResolvedValue(undefined)
+    // 허브 진입 시 임포트 시트용 통장을 읽는다(MOD-07) — 네트워크 대신 mock.
+    vi.mocked(accountsApi.listAccounts).mockResolvedValue([])
   })
 
   afterEach(() => {
@@ -44,6 +50,17 @@ describe('MenuView (SCR-07 전체 허브)', () => {
     const wrapper = mountView()
     await buttonByText(wrapper, i18n.global.t('menu.items'))!.trigger('click')
     expect(router.push).toHaveBeenCalledWith('/items')
+  })
+
+  it('노션 표 가져오기 행을 누르면 임포트 시트를 연다', async () => {
+    const wrapper = mountView()
+    await flushPromises() // onMounted 통장 로드
+
+    const sheet = wrapper.findComponent(ImportSheet)
+    expect(sheet.props('open')).toBe(false)
+
+    await buttonByText(wrapper, i18n.global.t('menu.import'))!.trigger('click')
+    expect(sheet.props('open')).toBe(true)
   })
 
   it('로그아웃을 누르면 세션을 비우고 로그인으로 보낸다', async () => {
