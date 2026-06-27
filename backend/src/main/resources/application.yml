@@ -50,6 +50,8 @@ app:
   # 운영 조정 파라미터(구현규칙 6장 app.policy.*). 코드 수정 없이 환경값으로 바꾼다.
   policy:
     fx-buffer-rate: ${FX_BUFFER_RATE:0.05} # 외화 권장 월 이체액 버퍼(ITEM-04)
+    overspend-streak: ${OVERSPEND_STREAK:3} # 보정 제안 발동 연속 사이클 수(SUG-02)
+    surplus-threshold: ${SURPLUS_THRESHOLD:30000} # 잉여 저축 증액 제안 기준액(원, SUG-02)
   # 공휴일 특일 API(CYCLE-01). 서비스 키는 운영 환경변수로만 주입 — 미주입 시 수집 실패→주말 회피 폴백.
   holiday:
     base-uri: ${HOLIDAY_API_URI:https://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getRestDeInfo}

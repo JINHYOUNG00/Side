@@ -6,12 +6,15 @@ import i18n from '@/i18n'
 import HomeView from '../HomeView.vue'
 import { ApiError } from '@/api/client'
 import * as waterfallApi from '@/api/waterfall'
+import * as suggestionsApi from '@/api/suggestions'
 import type { Waterfall } from '@/api/waterfall'
 
 vi.mock('@/api/waterfall')
 // 체크리스트 카드(SCR-03b)는 자체적으로 GET /cycles/current를 호출한다. 폭포 테스트에선 미노출이면
 // 충분하므로 자동 모킹으로 조회가 빈 응답(undefined)을 주게 막아둔다(카드 숨김). 동작은 ChecklistCard.spec.ts.
 vi.mock('@/api/cycle')
+// 제안 카드(MOD-06)도 자체적으로 GET /suggestions를 호출한다 — 폭포 테스트에선 빈 제안으로 막아 미노출.
+vi.mock('@/api/suggestions')
 
 // 평상시 폭포(과배분 아님) — API명세 3장 예시에 맞춘 일관 fixture.
 // remaining = income − Σ소계 − envelope = 2,500,000 − 1,780,000 − 0 = 720,000.
@@ -77,6 +80,8 @@ describe('HomeView (SCR-03 홈 폭포)', () => {
     // prefers-reduced-motion=true로 보고 → 카운트업 생략, 남는 돈이 최종값으로 즉시 렌더.
     vi.stubGlobal('matchMedia', () => ({ matches: true }))
     vi.mocked(waterfallApi.getWaterfall).mockReset()
+    vi.mocked(suggestionsApi.listSuggestions).mockReset()
+    vi.mocked(suggestionsApi.listSuggestions).mockResolvedValue([])
   })
 
   it('폭포를 불러와 남는 돈·비상금·생활비 분배를 표시한다', async () => {

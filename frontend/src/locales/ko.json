@@ -31,6 +31,7 @@
     "ITEM_LIMIT_EXCEEDED": "항목은 최대 100개까지 만들 수 있어요",
     "ENVELOPE_LIMIT_EXCEEDED": "봉투는 최대 50개까지 만들 수 있어요",
     "CHECK_IN_ALREADY_EXISTS": "이번 사이클은 이미 체크인했어요",
+    "SUGGESTION_ALREADY_RESOLVED": "이미 처리한 제안이에요",
     "INTERNAL_ERROR": "잠시 후 다시 시도해 주세요"
   },
   "home": {
@@ -86,6 +87,23 @@
     "surplus": "{amount}원 남겼어요",
     "exact": "계획에 딱 맞췄어요",
     "confirm": "확인"
+  },
+  "suggestion": {
+    "raiseLiving": {
+      "title": "생활비를 늘려볼까요?",
+      "body": "최근 {streak}번 연속 생활비가 평균 {avg}원 초과했어요. 월 {amount}원 늘리는 걸 추천해요"
+    },
+    "raiseSaving": {
+      "title": "저축을 늘려볼까요?",
+      "body": "최근 {streak}번 연속 평균 {avg}원 남았어요. 월 {amount}원 더 저축하는 걸 추천해요"
+    },
+    "maturity": {
+      "title": "‘{name}’ 만기가 다가와요",
+      "body": "{date}에 만기예요. 매달 넣던 {monthly}원을 다른 곳에 다시 배치해 보세요",
+      "expected": "예상 수령 {amount}원"
+    },
+    "apply": "반영하기",
+    "dismiss": "닫기"
   },
   "checklist": {
     "eyebrow": "월급날 · {date}",

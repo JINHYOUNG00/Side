@@ -31,4 +31,11 @@ public interface CycleRepository extends JpaRepository<Cycle, Long> {
      * 차트용으로 시간순(오래된→최근)으로 뒤집는다. 소유권은 user_id로 건다(데이터 접근 계층 강제).
      */
     List<Cycle> findByUserIdOrderByCycleStartDesc(Long userId, Pageable pageable);
+
+    /**
+     * 최근 <b>닫힌</b> 사이클 N건(SUG-02 보정 제안) — {@code cycle_end < today}인 사이클만 최신순으로. 진행 중
+     * 사이클은 아직 체크인 전이라 결측으로 오인되어 streak을 단절시키므로 제외한다(구현규칙 7장). 소유권은 user_id로
+     * 건다. 호출자는 가져온 만큼으로 연속 초과/잉여 패턴을 판정한다.
+     */
+    List<Cycle> findByUserIdAndCycleEndLessThanOrderByCycleStartDesc(Long userId, LocalDate today, Pageable pageable);
 }

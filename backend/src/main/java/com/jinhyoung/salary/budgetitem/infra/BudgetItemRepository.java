@@ -30,6 +30,12 @@ public interface BudgetItemRepository extends JpaRepository<BudgetItem, Long> {
      */
     List<BudgetItem> findByStatusAndEndDateNotNull(ItemStatus status);
 
+    /**
+     * 만기 리밸런싱 제안(SUG-01) — 한 사용자의 만기일 보유 활성 항목. 만기 도래(1개월 전) 판정은 도메인
+     * ({@link com.jinhyoung.salary.suggestion.domain.SuggestionRule})이 기준일과 비교해 수행한다.
+     */
+    List<BudgetItem> findByUserIdAndStatusAndEndDateNotNull(Long userId, ItemStatus status);
+
     /** 개수 상한(활성 항목 100, 구현규칙 6장) 판정용 활성 항목 수. */
     long countByUserIdAndStatus(Long userId, ItemStatus status);
 

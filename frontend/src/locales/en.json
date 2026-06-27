@@ -31,6 +31,7 @@
     "ITEM_LIMIT_EXCEEDED": "You can create up to 100 items",
     "ENVELOPE_LIMIT_EXCEEDED": "You can create up to 50 envelopes",
     "CHECK_IN_ALREADY_EXISTS": "You've already checked in for this cycle",
+    "SUGGESTION_ALREADY_RESOLVED": "This suggestion is already handled",
     "INTERNAL_ERROR": "Something went wrong. Please try again later"
   },
   "home": {
@@ -86,6 +87,23 @@
     "surplus": "{amount} KRW left over",
     "exact": "Right on plan",
     "confirm": "OK"
+  },
+  "suggestion": {
+    "raiseLiving": {
+      "title": "Raise your living budget?",
+      "body": "Living went over by {avg} KRW on average for {streak} cycles in a row. We suggest raising it by {amount} KRW a month"
+    },
+    "raiseSaving": {
+      "title": "Save a bit more?",
+      "body": "You had {avg} KRW left over on average for {streak} cycles in a row. We suggest saving {amount} KRW more a month"
+    },
+    "maturity": {
+      "title": "‘{name}’ is maturing soon",
+      "body": "It matures on {date}. Consider reallocating the {monthly} KRW you put in each month",
+      "expected": "Expected payout {amount} KRW"
+    },
+    "apply": "Apply",
+    "dismiss": "Dismiss"
   },
   "checklist": {
     "eyebrow": "Payday · {date}",

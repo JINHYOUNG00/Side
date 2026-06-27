@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import Card from '@/components/base/Card.vue'
 import MoneyText from '@/components/base/MoneyText.vue'
 import ChecklistCard from '@/components/ChecklistCard.vue'
+import SuggestionCards from '@/components/SuggestionCards.vue'
 import { ApiError } from '@/api/client'
 import { getWaterfall, type Waterfall } from '@/api/waterfall'
 import type { Category } from '@/api/budgetItems'
@@ -145,6 +146,9 @@ onUnmounted(() => {
   <section class="home">
     <!-- 지급일~D+3 월급날 체크리스트(SCR-03b). 구간 밖·스냅샷 미생성이면 스스로 미노출. -->
     <ChecklistCard />
+
+    <!-- 보정/리밸런싱 제안 카드(MOD-06) — 제안이 있을 때만 노출(SCR-03 "제안 존재 시 카드 노출"). -->
+    <SuggestionCards />
 
     <p v-if="loading" class="state">{{ $t('home.loading') }}</p>
     <p v-else-if="errorCode" class="state error" role="alert">{{ $t(`errors.${errorCode}`) }}</p>

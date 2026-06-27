@@ -18,6 +18,7 @@ public enum ErrorCode {
     CYCLE_LOCKED(HttpStatus.CONFLICT),
     LINE_LOCKED_BY_SPEND(HttpStatus.CONFLICT),
     CHECK_IN_ALREADY_EXISTS(HttpStatus.CONFLICT),
+    SUGGESTION_ALREADY_RESOLVED(HttpStatus.CONFLICT),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR);
 
     private final HttpStatus status;

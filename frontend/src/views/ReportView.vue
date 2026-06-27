@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import Card from '@/components/base/Card.vue'
 import MoneyText from '@/components/base/MoneyText.vue'
 import CheckInSheet from '@/components/CheckInSheet.vue'
+import SuggestionCards from '@/components/SuggestionCards.vue'
 import { ApiError } from '@/api/client'
 import { getTrend, getSummary, type TrendPoint, type ReportSummary } from '@/api/reports'
 import { getCurrentCycle, type CurrentCycle } from '@/api/cycle'
@@ -89,6 +90,9 @@ onMounted(load)
     <p v-else-if="errorCode" class="state error" role="alert">{{ $t(`errors.${errorCode}`) }}</p>
 
     <template v-else-if="summary">
+      <!-- 보정/리밸런싱 제안 카드(MOD-06) — 제안이 있을 때만 노출 -->
+      <SuggestionCards />
+
       <!-- 요약 메트릭: 저축률 + 만기 수령 누적 + 봉투 집행 -->
       <Card class="metrics">
         <div class="metric">

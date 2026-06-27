@@ -8,13 +8,16 @@ import { ApiError } from '@/api/client'
 import * as reportsApi from '@/api/reports'
 import * as checkinApi from '@/api/checkin'
 import * as cycleApi from '@/api/cycle'
+import * as suggestionsApi from '@/api/suggestions'
 import type { ReportSummary, TrendPoint } from '@/api/reports'
 import type { CurrentCycle } from '@/api/cycle'
 
-// reports·checkin·cycle 모듈은 함수·타입만 export(상수 없음)라 전체 모킹이 안전하다([[vimock-breaks-const-exports]] 비해당).
+// reports·checkin·cycle·suggestions 모듈은 함수·타입만 export(상수 없음)라 전체 모킹이 안전하다([[vimock-breaks-const-exports]] 비해당).
 vi.mock('@/api/reports')
 vi.mock('@/api/checkin')
 vi.mock('@/api/cycle')
+// 임베드된 SuggestionCards(MOD-06)가 자체적으로 GET /suggestions를 호출한다 — 리포트 테스트에선 빈 제안으로 막아 미노출.
+vi.mock('@/api/suggestions')
 
 // 요약 — 저축률 60.7%(투자 포함)·만기 수령 누적 3,000,000(2건 중 1건)·봉투 집행 80,000.
 const SUMMARY: ReportSummary = {
@@ -59,6 +62,8 @@ describe('ReportView (SCR-06 리포트)', () => {
     vi.mocked(reportsApi.getTrend).mockReset()
     vi.mocked(checkinApi.recordCheckIn).mockReset()
     vi.mocked(cycleApi.getCurrentCycle).mockReset()
+    vi.mocked(suggestionsApi.listSuggestions).mockReset()
+    vi.mocked(suggestionsApi.listSuggestions).mockResolvedValue([])
   })
 
   it('마운트 시 요약·추이를 불러와 메트릭과 추이 차트를 표시한다', async () => {
