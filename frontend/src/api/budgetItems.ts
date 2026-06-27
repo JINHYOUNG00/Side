@@ -1,7 +1,7 @@
 import api from './client'
 
-// 배분 항목 CRUD(ITEM-01·09·07, API명세 4장) + 저축 조건부 필드(이율·세금·예상금액 = ITEM-05/06).
-// 외화 도우미(ITEM-04)는 Phase 3.
+// 배분 항목 CRUD(ITEM-01·09·07, API명세 4장) + 저축 조건부 필드(이율·세금·예상금액 = ITEM-05/06)
+// + 외화 적립 도우미(ITEM-04, preview-fx).
 
 // LIVING은 항목 카테고리가 아니다 — 생활비는 폭포 나머지 계산값(서버 Category enum과 동일, ITEM-01).
 export const CATEGORIES = [
@@ -69,6 +69,23 @@ export interface MaturityPreview {
   total: number
 }
 
+// 외화 적립 도우미(ITEM-04, 서버 FxFrequency enum과 동일). 매일/영업일 빈도로 월 평균 일수를 환산한다.
+export const FX_FREQUENCIES = ['DAILY', 'BUSINESS_DAYS'] as const
+export type FxFrequency = (typeof FX_FREQUENCIES)[number]
+
+// 외화 도우미 입력(MOD-01 폼, 투자 카테고리). 통화는 표시용 메타, unitAmount/fxRate는 외화 금액·환율(소수 가능).
+export interface FxPreviewInput {
+  currency: string
+  unitAmount: number
+  frequency: FxFrequency
+  fxRate: number
+}
+// 권장 월 이체액(원, 1,000원 단위 올림) + 적용 버퍼율("버퍼 N% 포함" 고지용). 저장은 원화 월액으로만 한다.
+export interface FxPreview {
+  recommendedMonthlyKrw: number
+  bufferRate: number
+}
+
 export async function listBudgetItems(): Promise<BudgetItem[]> {
   const { data } = await api.get<BudgetItem[]>('/budget-items')
   return data
@@ -100,6 +117,12 @@ export async function deleteBudgetItem(id: number): Promise<void> {
 // 만기금액 미리보기(ITEM-05). 저장 없는 순수 계산 — 폼의 실시간 "예상 만기금액" 표시에 쓴다.
 export async function previewMaturity(input: MaturityPreviewInput): Promise<MaturityPreview> {
   const { data } = await api.post<MaturityPreview>('/budget-items/preview-maturity', input)
+  return data
+}
+
+// 외화 도우미 미리보기(ITEM-04). 저장 없는 순수 계산 — 폼이 권장 월 이체액을 항목 금액에 채우는 데 쓴다.
+export async function previewFx(input: FxPreviewInput): Promise<FxPreview> {
+  const { data } = await api.post<FxPreview>('/budget-items/preview-fx', input)
   return data
 }
 

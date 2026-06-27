@@ -20,6 +20,7 @@ vi.mock('@/api/budgetItems', async (importOriginal) => {
     updateBudgetItem: vi.fn<typeof actual.updateBudgetItem>(),
     deleteBudgetItem: vi.fn<typeof actual.deleteBudgetItem>(),
     previewMaturity: vi.fn<typeof actual.previewMaturity>(),
+    previewFx: vi.fn<typeof actual.previewFx>(),
   }
 })
 vi.mock('@/api/accounts')
@@ -62,6 +63,7 @@ describe('ItemsView (MOD-01 항목 관리)', () => {
     vi.mocked(itemsApi.updateBudgetItem).mockReset()
     vi.mocked(itemsApi.deleteBudgetItem).mockReset()
     vi.mocked(itemsApi.previewMaturity).mockReset()
+    vi.mocked(itemsApi.previewFx).mockReset()
     vi.mocked(accountsApi.listAccounts).mockReset()
     i18n.global.locale.value = 'ko'
   })
@@ -428,5 +430,86 @@ describe('ItemsView (MOD-01 항목 관리)', () => {
     expect((wrapper.find('#item-manual').element as HTMLInputElement).checked).toBe(true)
     expect((wrapper.find('#item-expected').element as HTMLInputElement).value).toBe('50,000,000')
     expect(wrapper.find('#item-rate').exists()).toBe(false)
+  })
+
+  // ── 외화 적립 도우미(ITEM-04) ─────────────────────────────────────────
+
+  it('투자 항목에서만 외화 도우미 토글이 보인다', async () => {
+    vi.mocked(itemsApi.listBudgetItems).mockResolvedValue([])
+    vi.mocked(accountsApi.listAccounts).mockResolvedValue([KAKAO])
+    const wrapper = mountView()
+    await flushPromises()
+
+    await buttonByText(wrapper, i18n.global.t('items.add'))!.trigger('click')
+    await wrapper.vm.$nextTick()
+    // 기본 카테고리 SAVING에는 외화 도우미가 없다.
+    expect(wrapper.find('#item-fx').exists()).toBe(false)
+
+    await buttonByText(wrapper, i18n.global.t('items.category.INVESTMENT'))!.trigger('click')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('#item-fx').exists()).toBe(true)
+  })
+
+  it('투자+외화 도우미를 켜고 금액·환율을 넣으면 previewFx로 권장 월 이체액 배너를 표시한다', async () => {
+    vi.mocked(itemsApi.listBudgetItems).mockResolvedValue([])
+    vi.mocked(accountsApi.listAccounts).mockResolvedValue([KAKAO])
+    vi.mocked(itemsApi.previewFx).mockResolvedValue({ recommendedMonthlyKrw: 224_000, bufferRate: 0.05 })
+    const wrapper = mountView()
+    await flushPromises()
+
+    await buttonByText(wrapper, i18n.global.t('items.add'))!.trigger('click')
+    await wrapper.vm.$nextTick()
+    await buttonByText(wrapper, i18n.global.t('items.category.INVESTMENT'))!.trigger('click')
+    await wrapper.vm.$nextTick()
+    await wrapper.find('#item-fx').setValue(true)
+    await wrapper.vm.$nextTick()
+    // 외화 입력란이 펼쳐진다(빈도 기본 영업일).
+    expect(wrapper.find('#item-fx-unit').exists()).toBe(true)
+    await wrapper.find('#item-fx-unit').setValue('7')
+    await wrapper.find('#item-fx-rate').setValue('1380')
+    await flushPromises()
+
+    expect(itemsApi.previewFx).toHaveBeenLastCalledWith({
+      currency: 'USD',
+      unitAmount: 7,
+      frequency: 'BUSINESS_DAYS',
+      fxRate: 1380,
+    })
+    const banner = wrapper.find('[data-testid="fx-preview"]')
+    expect(banner.exists()).toBe(true)
+    expect(banner.text()).toContain('224,000')
+  })
+
+  it("'이 금액으로 채우기'를 누르면 권장 월액이 금액에 채워져 생성 페이로드에 실린다", async () => {
+    vi.mocked(itemsApi.listBudgetItems).mockResolvedValue([])
+    vi.mocked(accountsApi.listAccounts).mockResolvedValue([KAKAO])
+    vi.mocked(itemsApi.createBudgetItem).mockResolvedValue(SAVINGS)
+    vi.mocked(itemsApi.previewFx).mockResolvedValue({ recommendedMonthlyKrw: 224_000, bufferRate: 0.05 })
+    const wrapper = mountView()
+    await flushPromises()
+
+    await buttonByText(wrapper, i18n.global.t('items.add'))!.trigger('click')
+    await wrapper.vm.$nextTick()
+    await buttonByText(wrapper, i18n.global.t('items.category.INVESTMENT'))!.trigger('click')
+    await wrapper.vm.$nextTick()
+    await wrapper.find('#item-name').setValue('달러 적립')
+    await wrapper.find('#item-account').setValue('1')
+    await wrapper.find('#item-fx').setValue(true)
+    await wrapper.vm.$nextTick()
+    await wrapper.find('#item-fx-unit').setValue('7')
+    await wrapper.find('#item-fx-rate').setValue('1380')
+    await flushPromises()
+
+    await buttonByText(wrapper, i18n.global.t('items.form.fxApply'))!.trigger('click')
+    await wrapper.vm.$nextTick()
+    // 권장 월액이 금액 입력에 채워진다(저장은 원화 월액 — ITEM-04).
+    expect((wrapper.find('#item-amount').element as HTMLInputElement).value).toBe('224,000')
+
+    await buttonByText(wrapper, i18n.global.t('items.form.save'))!.trigger('click')
+    await flushPromises()
+
+    expect(itemsApi.createBudgetItem).toHaveBeenCalledWith(
+      expect.objectContaining({ category: 'INVESTMENT', name: '달러 적립', amount: 224_000, accountId: 1 }),
+    )
   })
 })

@@ -1,12 +1,17 @@
 package com.jinhyoung.salary.budgetitem;
 
 import com.jinhyoung.salary.budgetitem.domain.Category;
+import com.jinhyoung.salary.budgetitem.domain.FxFrequency;
+import com.jinhyoung.salary.budgetitem.domain.FxRecommendationCalculator;
+import com.jinhyoung.salary.budgetitem.domain.FxRecommendationInput;
+import com.jinhyoung.salary.budgetitem.domain.FxRecommendationResult;
 import com.jinhyoung.salary.budgetitem.domain.MaturityArchiveStats;
 import com.jinhyoung.salary.budgetitem.domain.MaturityCalculator;
 import com.jinhyoung.salary.budgetitem.domain.MaturityInput;
 import com.jinhyoung.salary.budgetitem.domain.MaturityResult;
 import com.jinhyoung.salary.budgetitem.domain.TaxType;
 import com.jinhyoung.salary.budgetitem.infra.BudgetItem;
+import com.jinhyoung.salary.common.PolicyProperties;
 import com.jinhyoung.salary.cycle.CycleSnapshotService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
@@ -61,12 +66,22 @@ public class BudgetItemController {
     /** 납입 개월 수 상한(만기 미리보기) — 50년치. */
     private static final int MONTHS_MAX = 600;
 
+    /** 외화 도우미(ITEM-04) 입력 상한 — 일 외화 금액·기준 환율의 합리적 범위(서버 방어). */
+    private static final String FX_UNIT_MAX = "1000000";
+
+    private static final String FX_RATE_MAX = "100000";
+
     private final BudgetItemService budgetItemService;
     private final CycleSnapshotService cycleSnapshotService;
+    private final PolicyProperties policyProperties;
 
-    public BudgetItemController(BudgetItemService budgetItemService, CycleSnapshotService cycleSnapshotService) {
+    public BudgetItemController(
+            BudgetItemService budgetItemService,
+            CycleSnapshotService cycleSnapshotService,
+            PolicyProperties policyProperties) {
         this.budgetItemService = budgetItemService;
         this.cycleSnapshotService = cycleSnapshotService;
+        this.policyProperties = policyProperties;
     }
 
     @GetMapping
@@ -161,6 +176,19 @@ public class BudgetItemController {
         MaturityResult result = MaturityCalculator.calculate(new MaturityInput(
                 request.monthlyAmount(), request.interestRate(), request.months(), request.taxType()));
         return new MaturityPreviewResponse(result.principal(), result.interest(), result.tax(), result.total());
+    }
+
+    /**
+     * 외화 적립 도우미(ITEM-04, API명세 4장) — 저장 없는 순수 계산이다. 일/회 외화 금액·빈도(매일/영업일)·기준
+     * 환율로 버퍼(app.policy.fx-buffer-rate, 구현규칙 6장)를 포함한 권장 월 이체액(원, 1,000원 단위 올림)을
+     * 돌려준다. 실시간 환율 연동·일별 추적은 하지 않으며(요구사항정의서 ITEM-04) 저장은 원화 월액으로만 한다 —
+     * 화면은 이 권장액을 항목 금액 입력에 채운다. 인증은 필요하나 사용자 데이터는 읽지 않는다.
+     */
+    @PostMapping("/preview-fx")
+    public FxPreviewResponse previewFx(@Valid @RequestBody PreviewFxRequest request) {
+        FxRecommendationResult result = FxRecommendationCalculator.calculate(new FxRecommendationInput(
+                request.unitAmount(), request.frequency(), request.fxRate(), policyProperties.fxBufferRate()));
+        return new FxPreviewResponse(result.recommendedMonthlyKrw(), result.bufferRate());
     }
 
     @DeleteMapping("/{id}")
@@ -268,6 +296,28 @@ public class BudgetItemController {
 
     /** 만기금액 미리보기 응답(ITEM-05) — 원금·세전 이자·이자과세·만기 실수령액. 전부 원 단위 long. 표시는 "예상치". */
     public record MaturityPreviewResponse(long principal, long interest, long tax, long total) {}
+
+    /**
+     * 외화 도우미 미리보기 요청(ITEM-04). 통화(currency)는 표시·보존용 메타라 계산에 쓰지 않으나 입력으로 받는다
+     * (요구사항정의서 "통화" 입력). unitAmount·fxRate는 외화 금액·환율이라 long 원 단위 규칙(규칙 2) 대상이 아니며
+     * 소수가 가능해 BigDecimal로 받는다 — 0 초과·합리적 상한·소수 자릿수 제한으로 방어한다.
+     */
+    public record PreviewFxRequest(
+            @NotBlank @Size(max = 10) String currency,
+            @NotNull
+                    @DecimalMin(value = "0", inclusive = false)
+                    @DecimalMax(FX_UNIT_MAX)
+                    @Digits(integer = 7, fraction = 4)
+                    BigDecimal unitAmount,
+            @NotNull FxFrequency frequency,
+            @NotNull
+                    @DecimalMin(value = "0", inclusive = false)
+                    @DecimalMax(FX_RATE_MAX)
+                    @Digits(integer = 5, fraction = 4)
+                    BigDecimal fxRate) {}
+
+    /** 외화 도우미 미리보기 응답(ITEM-04) — 권장 월 이체액(원, 1,000원 단위 올림) + 적용 버퍼율("버퍼 N% 포함" 고지용). */
+    public record FxPreviewResponse(long recommendedMonthlyKrw, BigDecimal bufferRate) {}
 
     /**
      * 보관함 항목(ITEM-08, SCR-08). 만기일·예상/실제 만기금액을 함께 실어 "예상 vs 실제"를 표시한다. 여기서

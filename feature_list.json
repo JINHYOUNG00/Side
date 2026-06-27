@@ -377,6 +377,14 @@
       "description": "특수 상품 우회(ITEM-06): 청년도약계좌 등 표준 단리 공식이 적용되지 않는 상품은 예상 만기금액 수동 입력(expected_maturity_amount)을 지원한다. 수동값이 있으면 공식 계산 대신 그 값을 쓴다(ERD). 프론트는 MOD-01 폼의 '표준 공식이 아닌 상품(직접 입력)' 토글 + 예상 만기금액 입력란, 수동값이 있던 항목은 수정 시 수동 모드로 프리필",
       "verify": "./gradlew verify 통과(수동값 영속·보관함 수동 우선 통합, ExpectedMaturity 수동 우선 단위) + npm run verify 통과(수동 토글 시 예상금액만 페이로드·이율 입력란 숨김·수정 프리필 뷰 테스트)",
       "passes": true
+    },
+    {
+      "id": "ITEM-04",
+      "phase": 3,
+      "category": "backend",
+      "description": "외화 적립 도우미(ITEM-04): 통화·일/회 외화 금액·매일/영업일 빈도·기준 환율 입력 시 버퍼(app.policy.fx-buffer-rate=0.05)를 포함한 권장 월 이체액을 계산한다. POST /budget-items/preview-fx(저장 없는 미리보기) — 순수 도메인 FxRecommendationCalculator가 빈도별 월 평균 일수(DAILY=30·BUSINESS_DAYS=22)로 환산 후 1,000원 단위 올림(구현규칙 1장). 환율 API 연동·일별 차감 추적 없음, 저장은 원화 월액으로만(요구사항정의서 ITEM-04). 프론트는 MOD-01 폼의 투자 선택 시 외화 도우미 토글 + 일금액·빈도·환율 입력 → 권장 월액 배너('버퍼 N% 포함·예상치' 고지) → '이 금액으로 채우기'로 금액 입력 반영",
+      "verify": "./gradlew verify 통과(미리보기 버퍼 포함 권장액·빈도 환산·검증·인증 통합, FxRecommendationCalculator 올림·정밀도·검증 단위) + npm run verify 통과(투자 한정 도우미 노출·previewFx 호출·권장액 채우기 페이로드 뷰 테스트)",
+      "passes": true
     }
   ]
 }

@@ -47,6 +47,9 @@ app:
       client-id: ${GOOGLE_CLIENT_ID:}
       client-secret: ${GOOGLE_CLIENT_SECRET:}
       redirect-uri: ${GOOGLE_REDIRECT_URI:}
+  # 운영 조정 파라미터(구현규칙 6장 app.policy.*). 코드 수정 없이 환경값으로 바꾼다.
+  policy:
+    fx-buffer-rate: ${FX_BUFFER_RATE:0.05} # 외화 권장 월 이체액 버퍼(ITEM-04)
   # 공휴일 특일 API(CYCLE-01). 서비스 키는 운영 환경변수로만 주입 — 미주입 시 수집 실패→주말 회피 폴백.
   holiday:
     base-uri: ${HOLIDAY_API_URI:https://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getRestDeInfo}

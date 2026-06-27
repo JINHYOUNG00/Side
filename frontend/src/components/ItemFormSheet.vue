@@ -7,14 +7,18 @@ import {
   updateBudgetItem,
   deleteBudgetItem,
   previewMaturity,
+  previewFx,
   CATEGORIES,
   TAX_TYPES,
+  FX_FREQUENCIES,
   type BudgetItem,
   type BudgetItemInput,
   type BudgetItemUpdateInput,
   type Category,
   type TaxType,
   type MaturityPreview,
+  type FxFrequency,
+  type FxPreview,
 } from '@/api/budgetItems'
 import type { Account } from '@/api/accounts'
 
@@ -29,6 +33,9 @@ const NAME_MAX = 50
 const AMOUNT_MIN = 1
 const AMOUNT_MAX = 1_000_000_000
 const RATE_MAX = 100
+// 외화 도우미(ITEM-04) 입력 상한 — 서버 BudgetItemController FX_UNIT_MAX/FX_RATE_MAX와 동일.
+const FX_UNIT_MAX = 1_000_000
+const FX_RATE_MAX = 100_000
 
 const category = ref<Category>('SAVING')
 const name = ref('')
@@ -48,9 +55,19 @@ const manualMaturity = ref(false) // ITEM-06: 표준 공식이 아닌 상품 →
 const expectedMaturity = ref('') // 수동 입력 금액 문자열(천 단위 표시)
 const maturityPreview = ref<MaturityPreview | null>(null)
 
+// 외화 적립 도우미(ITEM-04). 투자 항목에서 켜면 일/회 외화 금액·빈도·환율로 권장 월 이체액을 계산해
+// 금액 입력에 채운다(저장은 원화 월액으로만 — 화면흐름도 "투자+매일 선택 시").
+const fxHelper = ref(false)
+const fxCurrency = ref('USD')
+const fxUnitAmount = ref('') // 외화 일/회 금액(소수 가능)
+const fxFrequency = ref<FxFrequency>('BUSINESS_DAYS')
+const fxRate = ref('') // 기준 환율(외화 1단위당 원)
+const fxPreview = ref<FxPreview | null>(null)
+
 const isManage = computed(() => props.item !== null)
 const hasAccounts = computed(() => props.accounts.length > 0)
 const isSaving = computed(() => category.value === 'SAVING')
+const isInvestment = computed(() => category.value === 'INVESTMENT')
 
 // 천 단위 구분 표시용. 입력은 숫자만 남긴다.
 const amountDisplay = computed({
@@ -93,6 +110,13 @@ watch(
     errorCode.value = null
     confirmingDelete.value = false
     maturityPreview.value = null
+    // 외화 도우미는 항상 꺼진 채로 시작 — FX 원본 입력은 저장하지 않으므로(원화 월액만 저장) 프리필 없음.
+    fxHelper.value = false
+    fxCurrency.value = 'USD'
+    fxUnitAmount.value = ''
+    fxFrequency.value = 'BUSINESS_DAYS'
+    fxRate.value = ''
+    fxPreview.value = null
   },
   { immediate: true },
 )
@@ -177,6 +201,62 @@ watch(
     void refreshPreview()
   },
 )
+
+function parsedFxUnitAmount(): number {
+  return Number(fxUnitAmount.value)
+}
+
+function parsedFxRate(): number {
+  return Number(fxRate.value)
+}
+
+// 투자 항목에서 외화 도우미가 켜지고 일/회 금액·환율이 갖춰지면 서버로 권장 월 이체액을 미리 계산한다(ITEM-04).
+// 입력이 부족하거나 범위를 벗어나면 배너를 숨긴다. 마지막 요청만 반영(경합 가드 — 만기 미리보기와 동일).
+let fxSeq = 0
+async function refreshFxPreview() {
+  const seq = ++fxSeq
+  const unit = parsedFxUnitAmount()
+  const rate = parsedFxRate()
+  if (
+    !isInvestment.value ||
+    !fxHelper.value ||
+    !fxUnitAmount.value ||
+    Number.isNaN(unit) ||
+    unit <= 0 ||
+    unit > FX_UNIT_MAX ||
+    !fxRate.value ||
+    Number.isNaN(rate) ||
+    rate <= 0 ||
+    rate > FX_RATE_MAX
+  ) {
+    fxPreview.value = null
+    return
+  }
+  try {
+    const result = await previewFx({
+      currency: fxCurrency.value.trim() || 'USD',
+      unitAmount: unit,
+      frequency: fxFrequency.value,
+      fxRate: rate,
+    })
+    if (seq === fxSeq) fxPreview.value = result
+  } catch {
+    if (seq === fxSeq) fxPreview.value = null
+  }
+}
+
+watch(
+  () => [isInvestment.value, fxHelper.value, fxUnitAmount.value, fxFrequency.value, fxRate.value, fxCurrency.value],
+  () => {
+    void refreshFxPreview()
+  },
+)
+
+// 권장 월 이체액을 금액 입력에 채운다(저장은 원화 월액 — 요구사항정의서 ITEM-04). 사용자가 명시적으로 적용한다.
+function applyFxRecommendation() {
+  if (!fxPreview.value) return
+  amount.value = fxPreview.value.recommendedMonthlyKrw.toLocaleString('ko-KR')
+}
 
 // 클라 검증(서버 규칙 미러링). 통과하면 null, 아니면 표시할 에러 코드.
 function validate(): string | null {
@@ -394,6 +474,83 @@ async function remove() {
       </template>
     </template>
 
+    <!-- 외화 적립 도우미(ITEM-04) — 투자 선택 시. 켜면 일/회 외화 금액·빈도·환율로 권장 월 이체액을 계산해 금액에 채운다. -->
+    <template v-if="isInvestment">
+      <label class="toggle" for="item-fx">
+        <span class="toggle-text">
+          <span class="toggle-title">{{ $t('items.form.fxHelper') }}</span>
+          <span class="toggle-hint">{{ $t('items.form.fxHelperHint') }}</span>
+        </span>
+        <input id="item-fx" v-model="fxHelper" class="switch" type="checkbox" role="switch" />
+      </label>
+
+      <template v-if="fxHelper">
+        <label class="flabel" for="item-fx-currency">{{ $t('items.form.fxCurrency') }}</label>
+        <input
+          id="item-fx-currency"
+          v-model="fxCurrency"
+          class="input"
+          type="text"
+          maxlength="10"
+          :placeholder="$t('items.form.fxCurrencyPlaceholder')"
+          autocomplete="off"
+        />
+
+        <label class="flabel" for="item-fx-unit">{{ $t('items.form.fxUnitAmount') }}</label>
+        <input
+          id="item-fx-unit"
+          v-model="fxUnitAmount"
+          class="input"
+          type="text"
+          inputmode="decimal"
+          :placeholder="$t('items.form.fxUnitAmountPlaceholder')"
+          autocomplete="off"
+        />
+
+        <span class="flabel">{{ $t('items.form.fxFrequency') }}</span>
+        <div class="chips" role="radiogroup">
+          <button
+            v-for="f in FX_FREQUENCIES"
+            :key="f"
+            type="button"
+            class="chip"
+            :class="{ on: fxFrequency === f }"
+            :aria-pressed="fxFrequency === f"
+            @click="fxFrequency = f"
+          >
+            {{ $t(`items.form.fxFreq.${f}`) }}
+          </button>
+        </div>
+
+        <label class="flabel" for="item-fx-rate">{{ $t('items.form.fxRate') }}</label>
+        <input
+          id="item-fx-rate"
+          v-model="fxRate"
+          class="input"
+          type="text"
+          inputmode="decimal"
+          :placeholder="$t('items.form.fxRatePlaceholder')"
+          autocomplete="off"
+        />
+
+        <!-- 권장 월 이체액 배너 — 파랑(배분/주요 동작). 버퍼 포함 고지 + "이 금액으로 채우기". -->
+        <div v-if="fxPreview" class="fx-preview" data-testid="fx-preview">
+          <div class="fx-preview-head">
+            <span class="preview-label">{{ $t('items.form.fxRecommended') }}</span>
+            <b class="preview-amount"
+              >{{ fxPreview.recommendedMonthlyKrw.toLocaleString('ko-KR') }}{{ $t('common.won') }}</b
+            >
+          </div>
+          <small class="preview-note">
+            {{ $t('items.form.fxBufferNote', { percent: Math.round(fxPreview.bufferRate * 100) }) }}
+          </small>
+          <button type="button" class="fx-apply" @click="applyFxRecommendation">
+            {{ $t('items.form.fxApply') }}
+          </button>
+        </div>
+      </template>
+    </template>
+
     <!-- 수정 모드: 적용 시점 토글. 기본 꺼짐=다음 사이클부터, 켜면 이번 달 미완료 라인 재계산(ITEM-07) -->
     <label v-if="isManage" class="toggle" for="item-apply">
       <span class="toggle-text">
@@ -525,6 +682,41 @@ async function remove() {
   color: var(--green);
   opacity: 0.8;
   font-size: 12px;
+}
+/* 외화 권장 월 이체액 배너 — 파랑(배분/주요 동작 토큰). 버퍼 고지 + 적용 버튼. */
+.fx-preview {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: var(--r);
+  background: var(--blue-soft);
+  color: var(--blue-deep);
+}
+.fx-preview-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+.fx-preview .preview-amount {
+  font-size: 16px;
+  font-weight: 700;
+}
+.fx-preview .preview-note {
+  display: block;
+  margin-top: 4px;
+  color: var(--blue-deep);
+  opacity: 0.8;
+  font-size: 12px;
+}
+.fx-apply {
+  margin-top: 10px;
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--blue);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
 }
 .toggle {
   display: flex;
