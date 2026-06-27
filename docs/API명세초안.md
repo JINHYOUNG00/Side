@@ -98,8 +98,14 @@ GET   /cycles?from=&to=               과거 사이클 목록(리포트용)
 POST /check-ins              { "cycleId": 12, "livingRemaining": 41000, "toppedUp": 0 } (사이클당 1건, RPT-01)
   toppedUp(선택, 기본 0): 사이클 중 생활비 통장에 추가 투입한 금액. 초과액 = toppedUp − livingRemaining
   (잔액만으로는 충당 후 초과를 측정할 수 없으므로 보조 입력으로 보정)
-GET  /reports/trend?months=6 res: [ { "label": "2026-05", "planned": 375000, "actual": 387000, "checkedIn": true }, ... ]
-GET  /reports/summary        저축률·만기 수령 누적·봉투 집행 합계
+GET  /reports/trend?months=6 res: [ { "label": "2026-05", "planned": 375000, "actual": 387000, "checkedIn": true }, ... ] (RPT-02)
+  계획=사이클 LIVING 계획액, 실제=planned+overspend(체크인 도출). 결측(체크인 없음)은 actual:null, checkedIn:false.
+  시간순(오래된→최근) 정렬. months 1~36(기본 6), 범위 밖 400. 사이클 없으면 [].
+GET  /reports/summary        저축률·만기 수령 누적·봉투 집행 합계 (RPT-02)
+  res: { "savingsRate": { "value": 60.7, "includesInvestment": true },
+         "maturity": { "archivedCount": 2, "recordedCount": 1, "totalReceivedAmount": 3000000 },
+         "envelopeSpentTotal": 80000 }
+  savingsRate=폭포와 공통(SET-02), maturity=보관 실수령액 집계(ITEM-08), envelopeSpentTotal=봉투 SPEND 실지출 합
 GET  /suggestions            res: [ { "id": 7, "type": "REBALANCE_MATURITY", "status": "PENDING",
                                       "payload": { "itemName": "OO적금", "monthlyAmount": 300000,
                                                    "expectedMaturityAmount": 3731976, "maturityDate": "2026-07-06" } } ]

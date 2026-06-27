@@ -1,7 +1,9 @@
 package com.jinhyoung.salary.cycle.infra;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
@@ -23,4 +25,10 @@ public interface CycleRepository extends JpaRepository<Cycle, Long> {
      */
     Optional<Cycle> findByUserIdAndCycleStartLessThanEqualAndCycleEndGreaterThanEqual(
             Long userId, LocalDate startBound, LocalDate endBound);
+
+    /**
+     * 최근 사이클 N건(RPT-02 추이 리포트) — 시작일 내림차순으로 {@code Pageable}이 정한 만큼 가져온다. 호출자가
+     * 차트용으로 시간순(오래된→최근)으로 뒤집는다. 소유권은 user_id로 건다(데이터 접근 계층 강제).
+     */
+    List<Cycle> findByUserIdOrderByCycleStartDesc(Long userId, Pageable pageable);
 }
