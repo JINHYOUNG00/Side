@@ -88,8 +88,29 @@
     "accounts": "통장 관리",
     "items": "배분 항목 관리",
     "envelopes": "봉투 관리",
+    "archive": "보관함",
     "import": "노션 표 가져오기",
     "logout": "로그아웃"
+  },
+  "archive": {
+    "title": "보관함",
+    "back": "뒤로",
+    "loading": "불러오는 중이에요",
+    "emptyTitle": "아직 보관된 항목이 없어요",
+    "emptyBody": "만기·해지된 저축 항목이 여기에 모여요",
+    "notRecorded": "미기록",
+    "expected": "예상",
+    "stats": {
+      "received": "만기 수령 누적액",
+      "counts": "보관 {archived}건 · 기록 {recorded}건"
+    },
+    "recordSheet": {
+      "title": "{name} 실수령액",
+      "expected": "예상 만기금액",
+      "amount": "실수령액",
+      "amountPlaceholder": "예: 3,731,976",
+      "save": "기록하기"
+    }
   },
   "import": {
     "title": "노션 표 붙여넣기",

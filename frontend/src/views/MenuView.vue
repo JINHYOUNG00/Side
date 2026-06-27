@@ -7,9 +7,9 @@ import { ApiError } from '@/api/client'
 import { listAccounts, type Account } from '@/api/accounts'
 import { useAuthStore } from '@/stores/auth'
 
-// SCR-07 전체 — 허브 화면. 통장·항목 관리 진입 + 노션 임포트(MOD-07/DATA-01) + 로그아웃.
-// 보관함(SCR-08·P4)·내보내기(DATA-02·P7)·설정 상세(SET-02 투자포함 P5, SET-03 언어 P7)·탈퇴는
-// 백엔드·후속 Phase 의존이라 미연결(고아 링크 금지). 라우트가 생기면 links에 추가만 하면 된다.
+// SCR-07 전체 — 허브 화면. 통장·항목·봉투·보관함(SCR-08) 진입 + 노션 임포트(MOD-07/DATA-01) + 로그아웃.
+// 내보내기(DATA-02·P7)·설정 상세(SET-02 투자포함 P5, SET-03 언어 P7)·탈퇴는 백엔드·후속 Phase 의존이라
+// 미연결(고아 링크 금지). 라우트가 생기면 links에 추가만 하면 된다.
 const router = useRouter()
 const auth = useAuthStore()
 
@@ -17,6 +17,7 @@ const links = [
   { key: 'accounts', to: '/accounts' },
   { key: 'items', to: '/items' },
   { key: 'envelopes', to: '/envelopes' },
+  { key: 'archive', to: '/archive' },
 ] as const
 
 // 임포트 시트의 대상 통장 선택용 — 허브 진입 시 미리 읽어 둔다(실패해도 시트는 열리며 "통장 먼저" 안내).

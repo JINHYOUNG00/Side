@@ -70,3 +70,43 @@ export async function updateBudgetItem(
 export async function deleteBudgetItem(id: number): Promise<void> {
   await api.delete(`/budget-items/${id}`)
 }
+
+// 보관함(ITEM-08, SCR-08). 만기·중도해지로 보관(ARCHIVED)된 항목과 만기일·예상/실제 만기금액을 함께 싣는다.
+// expectedMaturityAmount는 ITEM-05/06(Phase 5) 미구현이라 현재 항상 null, maturityActualAmount는 미기록 시 null.
+export interface ArchivedItem {
+  id: number
+  category: Category
+  name: string
+  amount: number
+  accountId: number | null
+  startDate: string
+  endDate: string | null
+  expectedMaturityAmount: number | null
+  maturityActualAmount: number | null
+  memo: string | null
+  sortOrder: number
+}
+
+// 보관함 이력 통계(MaturityArchiveStats) — 보관 건수·실수령액 기록 건수·만기 수령 누적액(기록분 합).
+export interface MaturityArchiveStats {
+  archivedCount: number
+  recordedCount: number
+  totalReceivedAmount: number
+}
+
+// GET /budget-items/archive 응답 — 보관 항목 목록 + 누적 통계.
+export interface ArchiveResponse {
+  items: ArchivedItem[]
+  stats: MaturityArchiveStats
+}
+
+export async function listArchive(): Promise<ArchiveResponse> {
+  const { data } = await api.get<ArchiveResponse>('/budget-items/archive')
+  return data
+}
+
+// 만기 실수령액 기록(ITEM-08). ACTIVE 항목이면 서버가 ARCHIVED로 전환한다(중도해지). 보관함에선 정정 기록.
+export async function recordMaturity(id: number, actualAmount: number): Promise<ArchivedItem> {
+  const { data } = await api.patch<ArchivedItem>(`/budget-items/${id}/maturity`, { actualAmount })
+  return data
+}

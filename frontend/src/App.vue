@@ -13,6 +13,7 @@ const TAB_BY_ROUTE: Record<string, string> = {
   accounts: 'all',
   items: 'all',
   envelopes: 'all',
+  archive: 'all',
 }
 const current = computed(() => {
   const name = route.name as string | undefined

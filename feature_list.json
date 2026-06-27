@@ -345,6 +345,14 @@
       "description": "보관함(SCR-08 백엔드): 만기·중도해지로 보관(ARCHIVED)된 항목 조회 + 만기 수령 누적액 등 이력 통계 제공 + 중도해지 실수령액 기록(maturity_actual_amount). GET /budget-items/archive(목록+통계), PATCH /budget-items/{id}/maturity(실수령액 기록, ACTIVE면 ARCHIVED 전환). 예상 만기금액(ITEM-05/06)은 조회 노출만(쓰기는 Phase 5)",
       "verify": "./gradlew verify 통과 + 보관함 목록·누적 통계·중도해지 전환·만기 수령액 기록·소유권/상태 게이트(DELETED 제외) 통합 테스트 + 누적 통계 순수 단위 테스트",
       "passes": true
+    },
+    {
+      "id": "SCR-08",
+      "phase": 4,
+      "category": "frontend",
+      "description": "보관함 화면(SCR-08): ARCHIVED 항목 목록·예상 vs 실제 만기금액·만기 수령 누적액 통계 표시 + 실수령액 기록 시트. ITEM-08 API(GET /budget-items/archive·PATCH /budget-items/{id}/maturity) 배선. SCR-07 전체 허브에서 진입. 초록=수령/완료 토큰",
+      "verify": "npm run verify 통과 + 보관함 목록·누적 통계·실수령액 기록(신규/정정)·검증·에러 코드 노출 뷰 테스트",
+      "passes": true
     }
   ]
 }

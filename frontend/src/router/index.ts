@@ -55,6 +55,12 @@ const router = createRouter({
       name: 'envelopes',
       component: () => import('@/views/EnvelopesView.vue'),
     },
+    {
+      // SCR-08 보관함(ARCHIVED 항목·만기 수령 누적 통계·실수령액 기록). ITEM-08. 전체 허브에서 진입.
+      path: '/archive',
+      name: 'archive',
+      component: () => import('@/views/ArchiveView.vue'),
+    },
   ],
 })
 

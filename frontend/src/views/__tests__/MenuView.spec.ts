@@ -52,6 +52,12 @@ describe('MenuView (SCR-07 전체 허브)', () => {
     expect(router.push).toHaveBeenCalledWith('/items')
   })
 
+  it('보관함 행을 누르면 /archive로 이동한다', async () => {
+    const wrapper = mountView()
+    await buttonByText(wrapper, i18n.global.t('menu.archive'))!.trigger('click')
+    expect(router.push).toHaveBeenCalledWith('/archive')
+  })
+
   it('노션 표 가져오기 행을 누르면 임포트 시트를 연다', async () => {
     const wrapper = mountView()
     await flushPromises() // onMounted 통장 로드

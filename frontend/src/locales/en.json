@@ -88,8 +88,29 @@
     "accounts": "Manage accounts",
     "items": "Manage budget items",
     "envelopes": "Manage envelopes",
+    "archive": "Archive",
     "import": "Import from Notion",
     "logout": "Sign out"
+  },
+  "archive": {
+    "title": "Archive",
+    "back": "Back",
+    "loading": "Loading",
+    "emptyTitle": "Nothing archived yet",
+    "emptyBody": "Matured or terminated savings items collect here",
+    "notRecorded": "Not recorded",
+    "expected": "Expected",
+    "stats": {
+      "received": "Total received at maturity",
+      "counts": "{archived} archived · {recorded} recorded"
+    },
+    "recordSheet": {
+      "title": "{name} received amount",
+      "expected": "Expected maturity amount",
+      "amount": "Received amount",
+      "amountPlaceholder": "e.g. 3,731,976",
+      "save": "Record"
+    }
   },
   "import": {
     "title": "Paste your table",
