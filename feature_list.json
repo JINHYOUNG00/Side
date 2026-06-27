@@ -425,6 +425,40 @@
       "description": "리포트 화면(SCR-06): 저축률(투자 포함 토글 반영, SET-02)·만기 수령 누적·봉투 집행 요약 메트릭 + 사이클별 계획 vs 실제 추이 차트(결측 사이클 구분 표시) + 월말 체크인 진입(MOD-05). RPT-02 백엔드(GET /reports/summary·/reports/trend) 배선 — 조회 전용. 추이가 비면 RPT-03 빈 상태('첫 체크인 후 추이가 쌓입니다') 예고. 체크인은 현재 사이클(GET /cycles/current)에 POST /check-ins(RPT-01) — 생활비 잔액·충당 투입액 입력 후 overspend 부호로 달성/초과/잉여 피드백, 사이클당 1건이라 재요청은 CHECK_IN_ALREADY_EXISTS. 하단 탭 '리포트'로 진입. 문구는 i18n 키(규칙 7). 색: 저축률·달성=초록, 계획/배분=파랑",
       "verify": "npm run verify 통과(요약 메트릭·추이 차트·결측 구분·빈 상태·체크인 기록(초과)→추이 재조회·현재 사이클 없으면 진입 숨김·CHECK_IN_ALREADY_EXISTS·검증·조회 실패 뷰 테스트). 골든 무수정",
       "passes": true
+    },
+    {
+      "id": "SUG-02",
+      "phase": 6,
+      "category": "backend",
+      "owner_only": true,
+      "description": "계획 보정 제안(SUG-02): 연속 초과·잔여 패턴을 감지해 배분 조정안을 룰 기반으로 생성한다(구현규칙 7장). 순수 도메인 SuggestionRule — RAISE_LIVING(직전 overspend-streak개 연속 overspend>0 → 평균 초과액 10,000원 올림), RAISE_SAVING(연속 overspend≤−surplus-threshold → 평균 잉여 10,000원 내림, 0이면 미생성), 결측·미달은 streak 단절(제외 아님), 같은 dedup 키 PENDING 존재 시 미생성. 상수는 app.policy(overspend-streak=3·surplus-threshold=30,000). [보정 제안 룰 = owner 영역, owner 위임으로 구현]",
+      "verify": "./gradlew verify 통과(SuggestionRule 단위: 연속 초과/잉여·올림/내림·경계·결측 단절·중복 방지 + 통합: 패턴→영속화·jsonb 왕복·dedup 멱등·진행중 사이클 제외) + npm run verify(MOD-06 카드). 골든 무수정",
+      "passes": true
+    },
+    {
+      "id": "SUG-01",
+      "phase": 6,
+      "category": "backend",
+      "owner_only": true,
+      "description": "만기 리밸런싱 제안(SUG-01): 만기일 30일 전이 도래한 활성 항목마다 REBALANCE_MATURITY 제안을 1회 생성한다(구현규칙 7장). 순수 도메인 SuggestionRule.rebalanceMaturity — today≥end_date−30일이면 payload(itemId·itemName·monthlyAmount·maturityDate·있으면 expectedMaturityAmount[ExpectedMaturity 해석값]) 생성, dedup(type+itemId)로 항목별 1회, 만기 경과 시 ARCHIVED로 빠져 자연 종료. [owner 위임으로 구현]",
+      "verify": "./gradlew verify 통과(rebalanceMaturity 단위: 도래/미도래·항목별·예상금액 생략·중복 방지 + 통합: 만기 항목 제안 생성) + npm run verify(MOD-06 만기 카드). 골든 무수정",
+      "passes": true
+    },
+    {
+      "id": "SUG-03",
+      "phase": 6,
+      "category": "backend",
+      "description": "구조화 데이터 응답(SUG-03): 제안은 서버에서 문장이 아닌 구조화 데이터(type+payload jsonb)로 생성하고(규칙 7), 문장 조립은 클라이언트 i18n 템플릿이 담당한다. Suggestion 엔티티(payload @JdbcTypeCode SqlTypes.JSON)·SuggestionController(GET /suggestions·POST /{id}/apply·/dismiss)·SuggestionService(생성은 일일 배치 DailyBatchScheduler ⑤단계, 멱등 dedup·소유권 user_id 게이트). 반영은 상태 전이(PENDING→APPLIED/DISMISSED)만 — 폭포 자동 변경 없음(owner 도메인 보존)",
+      "verify": "./gradlew verify 통과(GET PENDING 목록·apply→APPLIED·dismiss→DISMISSED·이미 해소 409 SUGGESTION_ALREADY_RESOLVED·타인 404·401 통합) + npm run verify. 골든 무수정",
+      "passes": true
+    },
+    {
+      "id": "MOD-06",
+      "phase": 6,
+      "category": "frontend",
+      "description": "제안 확인·반영(MOD-06): 홈(SCR-03)·리포트(SCR-06)에 PENDING 제안을 보라(제안 색) 카드로 노출하고 반영·닫기를 지원한다. SuggestionCards.vue — listSuggestions로 자체 로드(제안 없으면 미노출), type+payload를 i18n 템플릿으로 문구 조립(규칙 7, RAISE_LIVING/RAISE_SAVING/REBALANCE_MATURITY 각 제목·본문·예상수령), 반영(applySuggestion)·닫기(dismissSuggestion) 시 카드 제거, 실패 시 에러 코드 노출. api/suggestions.ts 배선",
+      "verify": "npm run verify 통과(SuggestionCards: 3종 카드 문구·예상금액 생략·빈 제안 미노출·조회 실패 숨김·반영/닫기 호출·카드 제거·실패 에러 뷰 테스트). 골든 무수정",
+      "passes": true
     }
   ]
 }
