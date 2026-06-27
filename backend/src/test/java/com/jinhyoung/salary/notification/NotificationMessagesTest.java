@@ -74,4 +74,27 @@ class NotificationMessagesTest {
 
         assertThat(body).contains("Car tax").contains("January 10, 2027").contains("1,200,000");
     }
+
+    @Test
+    void 한국어_CHECK_IN_제목과_본문이_렌더된다() {
+        // {0}=체크인 대상일(다음 지급일 전일).
+        Object[] args = {"2026년 1월 25일"};
+
+        String subject = messages.getMessage("notification.check_in.subject", args, Locale.KOREAN);
+        String body = messages.getMessage("notification.check_in.body", args, Locale.KOREAN);
+
+        assertThat(subject).contains("2026년 1월 25일").contains("체크인");
+        assertThat(body).contains("2026년 1월 25일").contains("생활비");
+    }
+
+    @Test
+    void 영어_CHECK_IN_제목과_본문이_렌더된다() {
+        Object[] args = {"January 25, 2026"};
+
+        String subject = messages.getMessage("notification.check_in.subject", args, Locale.ENGLISH);
+        String body = messages.getMessage("notification.check_in.body", args, Locale.ENGLISH);
+
+        assertThat(subject).contains("January 25, 2026").containsIgnoringCase("check-in");
+        assertThat(body).contains("January 25, 2026").containsIgnoringCase("balance");
+    }
 }

@@ -393,6 +393,14 @@
       "description": "월말 체크인(RPT-01): 사이클 종료 전일에 생활비 통장 잔액을 입력받아 계획 대비 실제를 기록한다. 사이클 중 충당 투입액(선택, 기본 0)을 보조 입력받아 초과액(overspend = topped_up − living_remaining, 양수=초과·음수=잉여)을 보정 계산해 저장한다(계산값 비저장 원칙의 예외, ERD 3장). POST /check-ins(사이클당 1건, unique(cycle_id) — 중복 시 CHECK_IN_ALREADY_EXISTS). 초과액 산술은 순수 도메인 CheckInReconciliation. 추이 리포트 조회(GET /reports/*)는 RPT-02 소관. 프론트 체크인 화면은 후속(SCR-06)",
       "verify": "./gradlew verify 통과(초과액 계산·저장·사이클당 1건 멱등(409)·소유권 게이트(404)·범위 검증(400)·인증(401) 통합, overspend 단위) + npm run verify 통과(프론트 무변경)",
       "passes": true
+    },
+    {
+      "id": "NOTI-03",
+      "phase": 5,
+      "category": "backend",
+      "description": "체크인 알림(NOTI-03): 다음 지급일 전일(= 이번 사이클 마지막 날)에 월말 체크인(RPT-01)을 요청하는 알림을 발송한다. NOTI-01 일일 판정·NOTI-04 멱등 게이트·NOTI-05 채널 어댑터를 재사용 — 매일 '내일이 각 사용자의 실제 지급일인가'를 PaydayService(resolvePaydayMonth(today+1))로 판정해 그렇다면 오늘이 다음 지급일 전일이므로 CHECK_IN 알림을 보낸다. 대상일은 오늘(체크인 요청일)이라 사이클당 1회만 발송(멱등). 문구는 메시지 번들(규칙 7). 온보딩 전(base_income=0) 사용자 제외. CheckInReminderNotificationService는 조회만(readOnly)",
+      "verify": "./gradlew verify 통과(다음 지급일 전일 대상자만 발송·지급일 당일/비대상일 미발송·조정 밀린 실지급일 전일 발송·같은 날 재실행 멱등·온보딩 전 제외 통합(Clock 주입), CHECK_IN 메시지 번들 ko/en 단위) + npm run verify 통과(프론트 무변경)",
+      "passes": true
     }
   ]
 }
