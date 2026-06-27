@@ -19,11 +19,13 @@ export interface Me {
 }
 
 // PATCH /me 입력(전체 설정 갱신). livingAccountId는 step 2에서 지정 — onboarding step 1은 기존값 보존.
+// locale(SET-03)은 선택 — 생략하면 서버가 기존 언어를 보존하고, 보내면 ko/en으로 갱신한다.
 export interface MeUpdate {
   baseIncome: number
   payday: number
   paydayAdjustment: PaydayAdjustment
   livingAccountId: number | null
+  locale?: string
 }
 
 export async function getMe(): Promise<Me> {

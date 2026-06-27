@@ -90,6 +90,12 @@
     "envelopes": "Manage envelopes",
     "archive": "Archive",
     "import": "Import from Notion",
+    "language": "Language",
+    "languageError": "Couldn't change the language. Please try again.",
+    "lang": {
+      "ko": "한국어",
+      "en": "English"
+    },
     "logout": "Sign out"
   },
   "archive": {

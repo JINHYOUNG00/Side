@@ -231,6 +231,54 @@ class UserIntegrationTest {
     }
 
     @Test
+    void 언어를_en으로_바꾸면_반영되고_재조회에서_일치한다() throws Exception {
+        mockMvc.perform(patchMe(
+                        aliceToken,
+                        "{\"baseIncome\":2500000,\"payday\":25,\"paydayAdjustment\":\"NONE\",\"locale\":\"en\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.locale").value("en"));
+
+        mockMvc.perform(authed(get("/api/v1/me"), aliceToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.locale").value("en"));
+
+        assertThat(userRepository.findById(aliceId).orElseThrow().getLocale()).isEqualTo("en");
+    }
+
+    @Test
+    void locale를_생략한_PATCH는_기존_언어를_보존한다() throws Exception {
+        mockMvc.perform(patchMe(
+                        aliceToken,
+                        "{\"baseIncome\":2500000,\"payday\":25,\"paydayAdjustment\":\"NONE\",\"locale\":\"en\"}"))
+                .andExpect(status().isOk());
+
+        // locale 없이 다른 설정만 갱신 — 언어는 직전 en 그대로.
+        mockMvc.perform(patchMe(aliceToken, "{\"baseIncome\":3000000,\"payday\":10,\"paydayAdjustment\":\"NONE\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.locale").value("en"));
+
+        assertThat(userRepository.findById(aliceId).orElseThrow().getLocale()).isEqualTo("en");
+    }
+
+    @Test
+    void 지원하지_않는_언어_코드는_400_VALIDATION_FAILED다() throws Exception {
+        mockMvc.perform(patchMe(
+                        aliceToken,
+                        "{\"baseIncome\":2500000,\"payday\":25,\"paydayAdjustment\":\"NONE\",\"locale\":\"fr\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
+        // 빈 문자열도 ko|en 패턴 불일치 — 거부하고 기존 언어(ko)는 불변.
+        mockMvc.perform(patchMe(
+                        aliceToken,
+                        "{\"baseIncome\":2500000,\"payday\":25,\"paydayAdjustment\":\"NONE\",\"locale\":\"\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
+        assertThat(userRepository.findById(aliceId).orElseThrow().getLocale()).isEqualTo("ko");
+    }
+
+    @Test
     void 토큰_없이_GET_me_접근은_401이다() throws Exception {
         mockMvc.perform(get("/api/v1/me"))
                 .andExpect(status().isUnauthorized())

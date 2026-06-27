@@ -100,6 +100,11 @@ public class User {
         this.livingAccountId = livingAccountId;
     }
 
+    /** UI·알림 언어 설정(SET-03). 값 검증(ko/en)은 호출 측이 마친 뒤 반영한다. */
+    public void updateLocale(String locale) {
+        this.locale = locale;
+    }
+
     public Long getId() {
         return id;
     }

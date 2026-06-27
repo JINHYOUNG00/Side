@@ -36,15 +36,26 @@ public class UserService {
      * 기본 정보 등록·수정(SET-01). baseIncome·payday·paydayAdjustment는 필수,
      * livingAccountId는 선택(null이면 생활비 통장 미지정). 값 범위 검증은 컨트롤러 bean validation이 담당하고,
      * 여기서는 생활비 통장 소유권만 추가로 검증한다.
+     *
+     * <p>locale(SET-03)은 선택 — null이면 기존 언어를 보존하고, 값이 있으면(ko/en, 컨트롤러 검증) 반영한다.
+     * 알림 발송은 user.locale을 그대로 읽어 언어를 고르므로(EmailNotificationSender) 별도 연동이 필요 없다.
      */
     @Transactional
     public User updateSettings(
-            long userId, long baseIncome, short payday, PaydayAdjustment paydayAdjustment, Long livingAccountId) {
+            long userId,
+            long baseIncome,
+            short payday,
+            PaydayAdjustment paydayAdjustment,
+            Long livingAccountId,
+            String locale) {
         User user = existingUser(userId);
         if (livingAccountId != null) {
             requireOwnedActiveAccount(userId, livingAccountId);
         }
         user.updateSettings(baseIncome, payday, paydayAdjustment, livingAccountId);
+        if (locale != null) {
+            user.updateLocale(locale);
+        }
         return user;
     }
 
