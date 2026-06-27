@@ -10,7 +10,7 @@ import * as accountsApi from '@/api/accounts'
 import type { BudgetItem } from '@/api/budgetItems'
 import type { Account } from '@/api/accounts'
 
-// 함수만 모킹하고 CATEGORIES 상수·타입은 실제 값을 유지(ItemFormSheet가 칩 렌더에 사용).
+// 함수만 모킹하고 CATEGORIES·TAX_TYPES 상수·타입은 실제 값을 유지(ItemFormSheet가 칩 렌더에 사용).
 vi.mock('@/api/budgetItems', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/api/budgetItems')>()
   return {
@@ -19,6 +19,7 @@ vi.mock('@/api/budgetItems', async (importOriginal) => {
     createBudgetItem: vi.fn<typeof actual.createBudgetItem>(),
     updateBudgetItem: vi.fn<typeof actual.updateBudgetItem>(),
     deleteBudgetItem: vi.fn<typeof actual.deleteBudgetItem>(),
+    previewMaturity: vi.fn<typeof actual.previewMaturity>(),
   }
 })
 vi.mock('@/api/accounts')
@@ -34,6 +35,9 @@ const SAVINGS: BudgetItem = {
   accountId: 1,
   startDate: '2026-07-01',
   endDate: null,
+  interestRate: null,
+  taxType: null,
+  expectedMaturityAmount: null,
   memo: null,
   sortOrder: 0,
 }
@@ -57,7 +61,9 @@ describe('ItemsView (MOD-01 항목 관리)', () => {
     vi.mocked(itemsApi.createBudgetItem).mockReset()
     vi.mocked(itemsApi.updateBudgetItem).mockReset()
     vi.mocked(itemsApi.deleteBudgetItem).mockReset()
+    vi.mocked(itemsApi.previewMaturity).mockReset()
     vi.mocked(accountsApi.listAccounts).mockReset()
+    i18n.global.locale.value = 'ko'
   })
 
   it('마운트 시 항목과 통장을 불러와 표시한다', async () => {
@@ -99,12 +105,14 @@ describe('ItemsView (MOD-01 항목 관리)', () => {
     await buttonByText(wrapper, i18n.global.t('items.form.save'))!.trigger('click')
     await flushPromises()
 
+    // 저축이지만 만기일·이율을 비워두면 endDate만 null로 실리고 이율·세금은 생략된다(ITEM-05 선택).
     expect(itemsApi.createBudgetItem).toHaveBeenCalledWith({
       category: 'SAVING',
       name: 'OO은행 정기적금',
       amount: 300000,
       accountId: 1,
       startDate: '2026-07-01',
+      endDate: null,
     })
     expect(itemsApi.listBudgetItems).toHaveBeenCalledTimes(2)
     expect(wrapper.text()).toContain('OO은행 정기적금')
@@ -276,5 +284,149 @@ describe('ItemsView (MOD-01 항목 관리)', () => {
     await flushPromises()
 
     expect(wrapper.find('[role="alert"]').text()).toBe(i18n.global.t('errors.ITEM_LIMIT_EXCEEDED'))
+  })
+
+  // ── 저축 조건부 필드(ITEM-05/06) ──────────────────────────────────────
+
+  it('저축 선택 시 만기일·이율·세금유형이 보이고, 비저축으로 바꾸면 숨는다', async () => {
+    vi.mocked(itemsApi.listBudgetItems).mockResolvedValue([])
+    vi.mocked(accountsApi.listAccounts).mockResolvedValue([KAKAO])
+    const wrapper = mountView()
+    await flushPromises()
+
+    await buttonByText(wrapper, i18n.global.t('items.add'))!.trigger('click')
+    await wrapper.vm.$nextTick()
+    // 기본 카테고리는 SAVING이라 조건부 필드가 보인다.
+    expect(wrapper.find('#item-end').exists()).toBe(true)
+    expect(wrapper.find('#item-rate').exists()).toBe(true)
+    expect(wrapper.text()).toContain(i18n.global.t('items.taxType.PREFERENTIAL'))
+
+    // 고정지출로 바꾸면 저축 조건부 필드가 사라진다.
+    await buttonByText(wrapper, i18n.global.t('items.category.FIXED'))!.trigger('click')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('#item-end').exists()).toBe(false)
+    expect(wrapper.find('#item-rate').exists()).toBe(false)
+  })
+
+  it('금액·만기일·이율이 갖춰지면 previewMaturity로 예상 만기금액 배너를 표시한다', async () => {
+    vi.mocked(itemsApi.listBudgetItems).mockResolvedValue([])
+    vi.mocked(accountsApi.listAccounts).mockResolvedValue([KAKAO])
+    vi.mocked(itemsApi.previewMaturity).mockResolvedValue({
+      principal: 3_600_000,
+      interest: 156_000,
+      tax: 24_024,
+      total: 3_731_976,
+    })
+    const wrapper = mountView()
+    await flushPromises()
+
+    await buttonByText(wrapper, i18n.global.t('items.add'))!.trigger('click')
+    await wrapper.vm.$nextTick()
+    await wrapper.find('#item-start').setValue('2026-07-01')
+    await wrapper.find('#item-end').setValue('2027-06-30')
+    await wrapper.find('#item-amount').setValue('300000')
+    await wrapper.find('#item-rate').setValue('8.0')
+    await flushPromises()
+
+    // 개월 수는 시작~만기(end-inclusive)로 12개월, 세금유형 기본 일반과세.
+    expect(itemsApi.previewMaturity).toHaveBeenLastCalledWith({
+      monthlyAmount: 300000,
+      months: 12,
+      interestRate: 8,
+      taxType: 'NORMAL_15_4',
+    })
+    const banner = wrapper.find('[data-testid="maturity-preview"]')
+    expect(banner.exists()).toBe(true)
+    expect(banner.text()).toContain('3,731,976')
+  })
+
+  it('저축 항목을 이율·세금유형·만기일과 함께 생성하면 조건부 필드가 페이로드에 실린다', async () => {
+    vi.mocked(itemsApi.listBudgetItems).mockResolvedValue([])
+    vi.mocked(accountsApi.listAccounts).mockResolvedValue([KAKAO])
+    vi.mocked(itemsApi.createBudgetItem).mockResolvedValue(SAVINGS)
+    vi.mocked(itemsApi.previewMaturity).mockResolvedValue({
+      principal: 0,
+      interest: 0,
+      tax: 0,
+      total: 0,
+    })
+    const wrapper = mountView()
+    await flushPromises()
+
+    await buttonByText(wrapper, i18n.global.t('items.add'))!.trigger('click')
+    await wrapper.vm.$nextTick()
+    await wrapper.find('#item-name').setValue('OO적금')
+    await wrapper.find('#item-amount').setValue('300000')
+    await wrapper.find('#item-account').setValue('1')
+    await wrapper.find('#item-start').setValue('2026-07-01')
+    await wrapper.find('#item-end').setValue('2027-06-30')
+    await wrapper.find('#item-rate').setValue('4.5')
+    await buttonByText(wrapper, i18n.global.t('items.taxType.PREFERENTIAL'))!.trigger('click')
+    await buttonByText(wrapper, i18n.global.t('items.form.save'))!.trigger('click')
+    await flushPromises()
+
+    expect(itemsApi.createBudgetItem).toHaveBeenCalledWith({
+      category: 'SAVING',
+      name: 'OO적금',
+      amount: 300000,
+      accountId: 1,
+      startDate: '2026-07-01',
+      endDate: '2027-06-30',
+      interestRate: 4.5,
+      taxType: 'PREFERENTIAL',
+    })
+  })
+
+  it('특수 상품 수동 입력을 켜면 예상 만기금액만 실리고 이율·세금유형은 빠진다(ITEM-06)', async () => {
+    vi.mocked(itemsApi.listBudgetItems).mockResolvedValue([])
+    vi.mocked(accountsApi.listAccounts).mockResolvedValue([KAKAO])
+    vi.mocked(itemsApi.createBudgetItem).mockResolvedValue(SAVINGS)
+    const wrapper = mountView()
+    await flushPromises()
+
+    await buttonByText(wrapper, i18n.global.t('items.add'))!.trigger('click')
+    await wrapper.vm.$nextTick()
+    await wrapper.find('#item-name').setValue('청년도약계좌')
+    await wrapper.find('#item-amount').setValue('700000')
+    await wrapper.find('#item-account').setValue('1')
+    await wrapper.find('#item-start').setValue('2026-07-01')
+    await wrapper.find('#item-end').setValue('2031-06-30')
+    await wrapper.find('#item-manual').setValue(true)
+    await wrapper.vm.$nextTick()
+    // 수동 모드에선 이율 입력란이 사라지고 예상 만기금액 입력란이 나타난다.
+    expect(wrapper.find('#item-rate').exists()).toBe(false)
+    await wrapper.find('#item-expected').setValue('50000000')
+    await buttonByText(wrapper, i18n.global.t('items.form.save'))!.trigger('click')
+    await flushPromises()
+
+    expect(itemsApi.createBudgetItem).toHaveBeenCalledWith({
+      category: 'SAVING',
+      name: '청년도약계좌',
+      amount: 700000,
+      accountId: 1,
+      startDate: '2026-07-01',
+      endDate: '2031-06-30',
+      expectedMaturityAmount: 50000000,
+    })
+  })
+
+  it('수동 예상금액이 있던 항목은 수정 시 수동 입력 모드로 프리필된다', async () => {
+    const manualItem: BudgetItem = {
+      ...SAVINGS,
+      id: 11,
+      name: '청년도약계좌',
+      expectedMaturityAmount: 50_000_000,
+    }
+    vi.mocked(itemsApi.listBudgetItems).mockResolvedValue([manualItem])
+    vi.mocked(accountsApi.listAccounts).mockResolvedValue([KAKAO])
+    const wrapper = mountView()
+    await flushPromises()
+
+    await wrapper.find('button.row').trigger('click')
+    await wrapper.vm.$nextTick()
+
+    expect((wrapper.find('#item-manual').element as HTMLInputElement).checked).toBe(true)
+    expect((wrapper.find('#item-expected').element as HTMLInputElement).value).toBe('50,000,000')
+    expect(wrapper.find('#item-rate').exists()).toBe(false)
   })
 })

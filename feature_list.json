@@ -361,6 +361,22 @@
       "description": "언어 설정(SET-03): UI·알림 언어(ko/en, 기본 ko)를 설정한다. PATCH /me에 선택 필드 locale(@Pattern ko|en) 추가 — 온보딩 필수값과 달리 값이 있을 때만 반영하고 없으면 기존 언어 보존. 알림은 EmailNotificationSender가 user.locale을 그대로 읽어 언어를 고르므로 별도 연동 불요. 프론트는 SCR-07 전체 허브의 언어 토글 + i18n locale 전환·localStorage 지속, 허브 진입 시 서버 locale로 동기화",
       "verify": "./gradlew verify 통과(locale 갱신·보존·미지원 코드 400 통합 테스트) + npm run verify 통과(현재 언어 선택 표시·en 전환 시 전체 설정 PATCH·실패 시 미전환 뷰 테스트)",
       "passes": true
+    },
+    {
+      "id": "ITEM-05",
+      "phase": 5,
+      "category": "backend",
+      "description": "적금 만기금액 계산·미리보기(ITEM-05): 이율·만기일이 있는 저축 항목의 예상 만기금액을 단리 공식과 세금유형(일반 15.4%/세금우대 1.4%/비과세)으로 자동 계산한다. POST /budget-items/preview-maturity(저장 없는 미리보기), 저축 조건부 필드(interest_rate·tax_type) 생성/수정 쓰기. 표시용 예상 만기금액은 순수 도메인 ExpectedMaturity가 해석(계산값 비저장 원칙) — 보관함(SCR-08)의 '예상 vs 실제'가 실데이터로 채워진다. 프론트는 MOD-01 폼에 저축 선택 시 조건부 필드 + 실시간 미리보기 배너('세후·예상치' 고지). MaturityCalculator 골든(3,731,976) 재사용",
+      "verify": "./gradlew verify 통과(미리보기 분해값·검증·인증 + 조건부 필드 영속 + 보관함 해석값 통합, ExpectedMaturity 단위) + npm run verify 통과(저축 조건부 필드 노출·미리보기 호출·생성 페이로드 뷰 테스트). 골든 무수정",
+      "passes": true
+    },
+    {
+      "id": "ITEM-06",
+      "phase": 5,
+      "category": "backend",
+      "description": "특수 상품 우회(ITEM-06): 청년도약계좌 등 표준 단리 공식이 적용되지 않는 상품은 예상 만기금액 수동 입력(expected_maturity_amount)을 지원한다. 수동값이 있으면 공식 계산 대신 그 값을 쓴다(ERD). 프론트는 MOD-01 폼의 '표준 공식이 아닌 상품(직접 입력)' 토글 + 예상 만기금액 입력란, 수동값이 있던 항목은 수정 시 수동 모드로 프리필",
+      "verify": "./gradlew verify 통과(수동값 영속·보관함 수동 우선 통합, ExpectedMaturity 수동 우선 단위) + npm run verify 통과(수동 토글 시 예상금액만 페이로드·이율 입력란 숨김·수정 프리필 뷰 테스트)",
+      "passes": true
     }
   ]
 }

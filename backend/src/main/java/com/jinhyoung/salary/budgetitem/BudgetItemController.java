@@ -2,15 +2,23 @@ package com.jinhyoung.salary.budgetitem;
 
 import com.jinhyoung.salary.budgetitem.domain.Category;
 import com.jinhyoung.salary.budgetitem.domain.MaturityArchiveStats;
+import com.jinhyoung.salary.budgetitem.domain.MaturityCalculator;
+import com.jinhyoung.salary.budgetitem.domain.MaturityInput;
+import com.jinhyoung.salary.budgetitem.domain.MaturityResult;
+import com.jinhyoung.salary.budgetitem.domain.TaxType;
 import com.jinhyoung.salary.budgetitem.infra.BudgetItem;
 import com.jinhyoung.salary.cycle.CycleSnapshotService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -44,6 +52,14 @@ public class BudgetItemController {
     private static final long AMOUNT_MIN = 1;
 
     private static final long AMOUNT_MAX = 1_000_000_000;
+
+    /** 연이율(%) 상한 — interest_rate numeric(5,2)와 일치(정수 3자리·소수 2자리), 0 ≤ x ≤ 100. */
+    private static final String RATE_MIN = "0.0";
+
+    private static final String RATE_MAX = "100.00";
+
+    /** 납입 개월 수 상한(만기 미리보기) — 50년치. */
+    private static final int MONTHS_MAX = 600;
 
     private final BudgetItemService budgetItemService;
     private final CycleSnapshotService cycleSnapshotService;
@@ -86,6 +102,9 @@ public class BudgetItemController {
                 request.accountId(),
                 request.startDate(),
                 request.endDate(),
+                request.interestRate(),
+                request.taxType(),
+                request.expectedMaturityAmount(),
                 request.memo());
         return BudgetItemResponse.from(item);
     }
@@ -110,6 +129,9 @@ public class BudgetItemController {
                 request.accountId(),
                 request.startDate(),
                 request.endDate(),
+                request.interestRate(),
+                request.taxType(),
+                request.expectedMaturityAmount(),
                 request.memo());
         if (applyToCurrentCycle) {
             cycleSnapshotService.regenerateCurrentCycle(userId);
@@ -129,13 +151,30 @@ public class BudgetItemController {
         return ArchivedItemResponse.from(budgetItemService.recordMaturityActual(userId, id, request.actualAmount()));
     }
 
+    /**
+     * 적금 만기금액 미리보기(ITEM-05, API명세 4장) — 저장 없는 순수 계산이다. 월 납입액·개월 수·연이율·세금유형으로
+     * 단리 공식(구현규칙 1장: 이자 반올림 → 세금 반올림)을 적용해 원금·이자·세금·만기 실수령액 분해를 돌려준다.
+     * 결과는 "예상치"이며 은행 실수령과 수원 단위 차이가 날 수 있다. 인증은 필요하나 사용자 데이터는 읽지 않는다.
+     */
+    @PostMapping("/preview-maturity")
+    public MaturityPreviewResponse previewMaturity(@Valid @RequestBody PreviewMaturityRequest request) {
+        MaturityResult result = MaturityCalculator.calculate(new MaturityInput(
+                request.monthlyAmount(), request.interestRate(), request.months(), request.taxType()));
+        return new MaturityPreviewResponse(result.principal(), result.interest(), result.tax(), result.total());
+    }
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@AuthenticationPrincipal Long userId, @PathVariable long id) {
         budgetItemService.delete(userId, id);
     }
 
-    /** 만기일(endDate)은 선택(기한 없는 항목은 null). 있으면 시작일보다 뒤여야 한다(구현규칙 5장). */
+    /**
+     * 항목 생성 요청. 만기일(endDate)은 선택(기한 없는 항목은 null). 있으면 시작일보다 뒤여야 한다(구현규칙 5장).
+     * 저축 조건부 필드(interestRate·taxType·expectedMaturityAmount, ITEM-05/06)는 전부 선택 — 비저축 항목이면
+     * 보내지 않는다. 이율·세금이 있으면 만기금액을 공식 계산하고, expectedMaturityAmount(수동값)가 있으면 공식
+     * 대신 그 값을 쓴다(특수 상품, ERD). 어느 쪽도 강제하지 않으며 표시 시점에 해석한다.
+     */
     public record CreateRequest(
             @NotNull Category category,
             @NotBlank @Size(max = NAME_MAX) String name,
@@ -143,6 +182,9 @@ public class BudgetItemController {
             @NotNull Long accountId,
             @NotNull LocalDate startDate,
             LocalDate endDate,
+            @DecimalMin(RATE_MIN) @DecimalMax(RATE_MAX) @Digits(integer = 3, fraction = 2) BigDecimal interestRate,
+            TaxType taxType,
+            @Min(AMOUNT_MIN) @Max(AMOUNT_MAX) Long expectedMaturityAmount,
             @Size(max = MEMO_MAX) String memo) {
 
         /** end_date > start_date 교차 검증(ITEM-02). 위반 시 400 VALIDATION_FAILED(핸들러가 코드만 반환). */
@@ -163,6 +205,9 @@ public class BudgetItemController {
             @NotNull Long accountId,
             @NotNull LocalDate startDate,
             LocalDate endDate,
+            @DecimalMin(RATE_MIN) @DecimalMax(RATE_MAX) @Digits(integer = 3, fraction = 2) BigDecimal interestRate,
+            TaxType taxType,
+            @Min(AMOUNT_MIN) @Max(AMOUNT_MAX) Long expectedMaturityAmount,
             @Size(max = MEMO_MAX) String memo) {
 
         /** end_date > start_date 교차 검증(ITEM-02). 위반 시 400 VALIDATION_FAILED(핸들러가 코드만 반환). */
@@ -172,6 +217,11 @@ public class BudgetItemController {
         }
     }
 
+    /**
+     * 항목 응답. 저축 조건부 필드(interestRate·taxType·expectedMaturityAmount, ITEM-05/06)를 함께 실어 항목 폼이
+     * 수정 시 프리필·재미리보기할 수 있게 한다. 여기서 expectedMaturityAmount는 <b>수동 입력 원본값</b>이다(폼의
+     * 특수 상품 입력란 프리필용) — 공식 계산값과 합친 표시용 해석값은 보관함(ITEM-08, "예상 vs 실제")에서 내린다.
+     */
     public record BudgetItemResponse(
             Long id,
             Category category,
@@ -180,6 +230,9 @@ public class BudgetItemController {
             Long accountId,
             LocalDate startDate,
             LocalDate endDate,
+            BigDecimal interestRate,
+            TaxType taxType,
+            Long expectedMaturityAmount,
             String memo,
             int sortOrder) {
         static BudgetItemResponse from(BudgetItem item) {
@@ -191,6 +244,9 @@ public class BudgetItemController {
                     item.getAccountId(),
                     item.getStartDate(),
                     item.getEndDate(),
+                    item.getInterestRate(),
+                    item.getTaxType(),
+                    item.getExpectedMaturityAmount(),
                     item.getMemo(),
                     item.getSortOrder());
         }
@@ -200,8 +256,23 @@ public class BudgetItemController {
     public record RecordMaturityRequest(@Min(AMOUNT_MIN) @Max(AMOUNT_MAX) long actualAmount) {}
 
     /**
-     * 보관함 항목(ITEM-08, SCR-08). 만기일·예상/실제 만기금액을 함께 실어 "예상 vs 실제"를 표시한다.
-     * expectedMaturityAmount는 ITEM-05/06 미구현이라 현재 null, maturityActualAmount는 미기록 시 null.
+     * 만기금액 미리보기 요청(ITEM-05). 월 납입액·납입 개월 수·연이율(%)·세금유형 — 전부 필수. 이율은 numeric(5,2)
+     * 범위(0~100, 소수 2자리), 개월 수는 1~600(50년).
+     */
+    public record PreviewMaturityRequest(
+            @Min(AMOUNT_MIN) @Max(AMOUNT_MAX) long monthlyAmount,
+            @Min(1) @Max(MONTHS_MAX) int months,
+            @NotNull @DecimalMin(RATE_MIN) @DecimalMax(RATE_MAX) @Digits(integer = 3, fraction = 2)
+                    BigDecimal interestRate,
+            @NotNull TaxType taxType) {}
+
+    /** 만기금액 미리보기 응답(ITEM-05) — 원금·세전 이자·이자과세·만기 실수령액. 전부 원 단위 long. 표시는 "예상치". */
+    public record MaturityPreviewResponse(long principal, long interest, long tax, long total) {}
+
+    /**
+     * 보관함 항목(ITEM-08, SCR-08). 만기일·예상/실제 만기금액을 함께 실어 "예상 vs 실제"를 표시한다. 여기서
+     * expectedMaturityAmount는 표시용 <b>해석값</b>이다(ITEM-05/06) — 수동 입력값이 있으면 그 값, 없으면 저축
+     * 항목 단리 공식으로 계산하며(이율·세금·만기일이 없으면 null), maturityActualAmount는 미기록 시 null.
      */
     public record ArchivedItemResponse(
             Long id,
@@ -224,7 +295,7 @@ public class BudgetItemController {
                     item.getAccountId(),
                     item.getStartDate(),
                     item.getEndDate(),
-                    item.getExpectedMaturityAmount(),
+                    item.resolveExpectedMaturityAmount(),
                     item.getMaturityActualAmount(),
                     item.getMemo(),
                     item.getSortOrder());

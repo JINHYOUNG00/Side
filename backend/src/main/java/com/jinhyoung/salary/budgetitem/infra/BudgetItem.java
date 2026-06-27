@@ -1,6 +1,8 @@
 package com.jinhyoung.salary.budgetitem.infra;
 
 import com.jinhyoung.salary.budgetitem.domain.Category;
+import com.jinhyoung.salary.budgetitem.domain.ExpectedMaturity;
+import com.jinhyoung.salary.budgetitem.domain.TaxType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -9,15 +11,17 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 /**
  * 배분 항목(ERD budget_items, ITEM-01). 엔티티는 infra에 둔다(아키텍처 v1.1) — domain은 순수 계산만.
  *
- * <p>ITEM-01(생성·조회) + ITEM-02(만기일·만기 보관 전환)을 다룬다: 카테고리·이름·금액·대상 통장·
- * 시작일·만기일(end_date). 이율·세금(ITEM-05), 일 단위 입력(ITEM-03), 수정 적용 시점(ITEM-07)은 별도
- * 요구사항이라 해당 컬럼은 매핑하지 않고 DB 기본값/NULL로 둔다. 금액은 long 원 단위 — double/float
- * 금지(규칙 2). soft delete는 status로(규칙 5), 만기 보관도 status로(ARCHIVED).
+ * <p>ITEM-01(생성·조회) + ITEM-02(만기일·만기 보관 전환) + ITEM-05/06(저축 조건부 필드)을 다룬다:
+ * 카테고리·이름·금액·대상 통장·시작일·만기일(end_date)·연이율(interest_rate)·세금유형(tax_type)·예상 만기금액
+ * 수동값(expected_maturity_amount). 일 단위 입력(ITEM-03)은 별도 요구사항이라 해당 컬럼은 매핑하지 않고
+ * DB 기본값/NULL로 둔다. 금액은 long 원 단위 — double/float 금지(규칙 2). soft delete는 status로(규칙 5),
+ * 만기 보관도 status로(ARCHIVED).
  */
 @Entity
 @Table(name = "budget_items")
@@ -50,9 +54,18 @@ public class BudgetItem {
     @Column(name = "end_date")
     private LocalDate endDate;
 
+    /** 연이율(%)(ITEM-05). 저축 항목 예상 만기금액 공식 계산에 쓴다. NULL이면 계산하지 않는다. double 금지라 BigDecimal. */
+    @Column(name = "interest_rate")
+    private BigDecimal interestRate;
+
+    /** 이자 과세 유형(ITEM-05). 예상 만기금액 공식의 세금 단계에 쓴다. NULL이면 계산하지 않는다. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tax_type")
+    private TaxType taxType;
+
     /**
-     * 예상 만기금액(ITEM-05·06 수동 입력값). 보관함(ITEM-08)의 "예상 vs 실제" 표시에 읽는다. 현재는 ITEM-05/06
-     * 폼 미구현이라 항상 NULL이며, 이 매핑은 조회 노출만 담당한다(쓰기는 Phase 5에서 추가).
+     * 예상 만기금액 수동 입력값(ITEM-06). 청년도약계좌 등 표준 공식이 적용되지 않는 특수 상품에서 사용자가 직접
+     * 입력한 값으로, 있으면 공식 계산 대신 이 값을 쓴다(ERD). NULL이면 SAVING 항목은 공식으로 계산한다.
      */
     @Column(name = "expected_maturity_amount")
     private Long expectedMaturityAmount;
@@ -83,6 +96,9 @@ public class BudgetItem {
             long amount,
             LocalDate startDate,
             LocalDate endDate,
+            BigDecimal interestRate,
+            TaxType taxType,
+            Long expectedMaturityAmount,
             String memo,
             int sortOrder) {
         this.userId = userId;
@@ -92,13 +108,17 @@ public class BudgetItem {
         this.amount = amount;
         this.startDate = startDate;
         this.endDate = endDate;
+        this.interestRate = interestRate;
+        this.taxType = taxType;
+        this.expectedMaturityAmount = expectedMaturityAmount;
         this.memo = memo;
         this.sortOrder = sortOrder;
         this.status = ItemStatus.ACTIVE;
     }
 
     /**
-     * 새 항목 생성(ITEM-01·ITEM-02). endDate는 만기일로 NULL 허용(기한 없는 항목). sortOrder는 호출 측
+     * 새 항목 생성(ITEM-01·ITEM-02·ITEM-05/06). endDate는 만기일로 NULL 허용(기한 없는 항목). interestRate·
+     * taxType·expectedMaturityAmount는 저축 조건부 필드로 비저축 항목이면 NULL이다. sortOrder는 호출 측
      * (서비스)이 사용자별 끝자리로 부여한다. status는 ACTIVE.
      */
     public static BudgetItem create(
@@ -109,9 +129,38 @@ public class BudgetItem {
             long amount,
             LocalDate startDate,
             LocalDate endDate,
+            BigDecimal interestRate,
+            TaxType taxType,
+            Long expectedMaturityAmount,
             String memo,
             int sortOrder) {
-        return new BudgetItem(userId, accountId, category, name, amount, startDate, endDate, memo, sortOrder);
+        return new BudgetItem(
+                userId,
+                accountId,
+                category,
+                name,
+                amount,
+                startDate,
+                endDate,
+                interestRate,
+                taxType,
+                expectedMaturityAmount,
+                memo,
+                sortOrder);
+    }
+
+    /** 저축 조건부 필드 없이 생성(ITEM-01·02) — 이율·세금·예상금액 수동값을 NULL로 둔다. */
+    public static BudgetItem create(
+            Long userId,
+            Long accountId,
+            Category category,
+            String name,
+            long amount,
+            LocalDate startDate,
+            LocalDate endDate,
+            String memo,
+            int sortOrder) {
+        return create(userId, accountId, category, name, amount, startDate, endDate, null, null, null, memo, sortOrder);
     }
 
     public Long getId() {
@@ -146,8 +195,26 @@ public class BudgetItem {
         return endDate;
     }
 
+    public BigDecimal getInterestRate() {
+        return interestRate;
+    }
+
+    public TaxType getTaxType() {
+        return taxType;
+    }
+
+    /** 예상 만기금액 수동 입력값(ITEM-06). 공식 계산값이 아닌 사용자 입력값 — 폼 프리필·정정에 쓴다. */
     public Long getExpectedMaturityAmount() {
         return expectedMaturityAmount;
+    }
+
+    /**
+     * 표시용 예상 만기금액(ITEM-05/06) — 수동 입력값이 있으면 그 값, 없으면 저축 항목 단리 공식으로 계산한다
+     * (계산 불가 시 null). 보관함(ITEM-08)의 "예상 vs 실제" 등 조회 노출용. 순수 계산은 도메인이 맡는다.
+     */
+    public Long resolveExpectedMaturityAmount() {
+        return ExpectedMaturity.resolve(
+                category, amount, interestRate, startDate, endDate, taxType, expectedMaturityAmount);
     }
 
     public Long getMaturityActualAmount() {
@@ -167,7 +234,8 @@ public class BudgetItem {
     }
 
     /**
-     * 항목 수정(ITEM-07) — 카테고리·이름·금액·대상 통장·시작일·만기일·메모를 갱신한다. user_id·sort_order·status는
+     * 항목 수정(ITEM-07) — 카테고리·이름·금액·대상 통장·시작일·만기일·저축 조건부 필드(이율·세금·예상금액 수동값)·
+     * 메모를 갱신한다. user_id·sort_order·status는
      * 불변이다. 이 수정은 <b>budget_items 원본만</b> 바꾼다 — 과거·현재 사이클의 plan_lines는 값을 복사 보유한
      * 불변 스냅샷이라(규칙 4) 영향받지 않으며, 수정값은 다음 사이클 스냅샷 생성 시 반영된다. 현재 사이클에 즉시
      * 반영하는 "이번 달 반영"은 {@link com.jinhyoung.salary.cycle.CycleSnapshotService#regenerateCurrentCycle}이
@@ -180,6 +248,9 @@ public class BudgetItem {
             Long accountId,
             LocalDate startDate,
             LocalDate endDate,
+            BigDecimal interestRate,
+            TaxType taxType,
+            Long expectedMaturityAmount,
             String memo) {
         this.category = category;
         this.name = name;
@@ -187,7 +258,22 @@ public class BudgetItem {
         this.accountId = accountId;
         this.startDate = startDate;
         this.endDate = endDate;
+        this.interestRate = interestRate;
+        this.taxType = taxType;
+        this.expectedMaturityAmount = expectedMaturityAmount;
         this.memo = memo;
+    }
+
+    /** 저축 조건부 필드 없이 수정(ITEM-07) — 이율·세금·예상금액 수동값을 NULL로 둔다. */
+    public void update(
+            Category category,
+            String name,
+            long amount,
+            Long accountId,
+            LocalDate startDate,
+            LocalDate endDate,
+            String memo) {
+        update(category, name, amount, accountId, startDate, endDate, null, null, null, memo);
     }
 
     /**

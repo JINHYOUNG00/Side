@@ -2,11 +2,13 @@ package com.jinhyoung.salary.budgetitem;
 
 import com.jinhyoung.salary.account.infra.AccountRepository;
 import com.jinhyoung.salary.budgetitem.domain.Category;
+import com.jinhyoung.salary.budgetitem.domain.TaxType;
 import com.jinhyoung.salary.budgetitem.infra.BudgetItem;
 import com.jinhyoung.salary.budgetitem.infra.BudgetItemRepository;
 import com.jinhyoung.salary.budgetitem.infra.ItemStatus;
 import com.jinhyoung.salary.common.ApiException;
 import com.jinhyoung.salary.common.ErrorCode;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -77,14 +79,28 @@ public class BudgetItemService {
             long accountId,
             LocalDate startDate,
             LocalDate endDate,
+            BigDecimal interestRate,
+            TaxType taxType,
+            Long expectedMaturityAmount,
             String memo) {
         requireOwnedActiveAccount(userId, accountId);
         if (budgetItemRepository.countByUserIdAndStatus(userId, ItemStatus.ACTIVE) >= MAX_ACTIVE_ITEMS) {
             throw new ApiException(ErrorCode.ITEM_LIMIT_EXCEEDED, Map.of("limit", MAX_ACTIVE_ITEMS));
         }
         int sortOrder = budgetItemRepository.maxSortOrder(userId) + 1;
-        return budgetItemRepository.save(
-                BudgetItem.create(userId, accountId, category, name, amount, startDate, endDate, memo, sortOrder));
+        return budgetItemRepository.save(BudgetItem.create(
+                userId,
+                accountId,
+                category,
+                name,
+                amount,
+                startDate,
+                endDate,
+                interestRate,
+                taxType,
+                expectedMaturityAmount,
+                memo,
+                sortOrder));
     }
 
     /**
@@ -103,10 +119,23 @@ public class BudgetItemService {
             long accountId,
             LocalDate startDate,
             LocalDate endDate,
+            BigDecimal interestRate,
+            TaxType taxType,
+            Long expectedMaturityAmount,
             String memo) {
         BudgetItem item = ownedActiveOrThrow(userId, itemId);
         requireOwnedActiveAccount(userId, accountId);
-        item.update(category, name, amount, accountId, startDate, endDate, memo);
+        item.update(
+                category,
+                name,
+                amount,
+                accountId,
+                startDate,
+                endDate,
+                interestRate,
+                taxType,
+                expectedMaturityAmount,
+                memo);
         return item;
     }
 

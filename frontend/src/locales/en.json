@@ -169,6 +169,11 @@
       "SUBSCRIPTION": "Subscription",
       "EMERGENCY": "Emergency"
     },
+    "taxType": {
+      "NORMAL_15_4": "Standard 15.4%",
+      "PREFERENTIAL": "Tax-preferred 1.4%",
+      "TAX_FREE": "Tax-free"
+    },
     "form": {
       "addTitle": "Add item",
       "category": "Category",
@@ -180,6 +185,16 @@
       "accountPlaceholder": "Select an account",
       "noAccounts": "Add an account first",
       "startDate": "Start date",
+      "maturityDate": "Maturity date",
+      "interestRate": "Annual rate (%)",
+      "interestRatePlaceholder": "e.g. 4.5",
+      "taxType": "Tax type",
+      "maturityPreview": "Expected maturity",
+      "maturityEstimateNote": "after tax · estimate",
+      "manualMaturity": "Non-standard product (enter manually)",
+      "manualMaturityHint": "For products the simple-interest formula can't compute (e.g. youth leap accounts), enter the expected maturity amount directly",
+      "expectedMaturity": "Expected maturity amount",
+      "expectedMaturityPlaceholder": "e.g. 3,731,976",
       "editTitle": "Edit item",
       "applyCurrentCycle": "Apply to this month now",
       "applyCurrentCycleHint": "When on, this month's not-yet-done transfers are recalculated with the new amount. Transfers you've already done stay as they are. When off, it applies from next month.",

@@ -6,23 +6,29 @@ import {
   createBudgetItem,
   updateBudgetItem,
   deleteBudgetItem,
+  previewMaturity,
   CATEGORIES,
+  TAX_TYPES,
   type BudgetItem,
   type BudgetItemInput,
   type BudgetItemUpdateInput,
   type Category,
+  type TaxType,
+  type MaturityPreview,
 } from '@/api/budgetItems'
 import type { Account } from '@/api/accounts'
 
-// MOD-01 항목 폼 v1. item=null이면 추가(공통 필드 입력→생성), 있으면 수정(같은 필드 편집→PATCH) + soft delete.
+// MOD-01 항목 폼. item=null이면 추가, 있으면 수정(전체 교체 PATCH) + soft delete. 저축(SAVING) 선택 시
+// 조건부 필드(만기일·이율·세금유형·예상 만기금액 미리보기 ITEM-05, 특수 상품 수동 입력 ITEM-06)가 펼쳐진다.
 // 수정 기본은 다음 사이클부터 적용 — '이번 달 반영' 토글을 켜야 현재 사이클 미완료 라인 재계산(ITEM-07, 구현규칙 4장).
 const props = defineProps<{ open: boolean; item: BudgetItem | null; accounts: Account[] }>()
 const emit = defineEmits<{ close: []; saved: [] }>()
 
-// 서버 검증과 동일한 상한(BudgetItemController NAME_MAX/AMOUNT_MIN/MAX, 구현규칙 5장).
+// 서버 검증과 동일한 상한(BudgetItemController NAME_MAX/AMOUNT_MIN/MAX/RATE/MONTHS, 구현규칙 5장).
 const NAME_MAX = 50
 const AMOUNT_MIN = 1
 const AMOUNT_MAX = 1_000_000_000
+const RATE_MAX = 100
 
 const category = ref<Category>('SAVING')
 const name = ref('')
@@ -34,20 +40,39 @@ const errorCode = ref<string | null>(null)
 const submitting = ref(false)
 const confirmingDelete = ref(false)
 
+// 저축 조건부 필드(ITEM-05/06). 만기일·이율·세금유형은 공식 계산용, 수동 입력 모드는 특수 상품용.
+const endDate = ref('')
+const interestRate = ref('') // % 문자열
+const taxType = ref<TaxType>('NORMAL_15_4')
+const manualMaturity = ref(false) // ITEM-06: 표준 공식이 아닌 상품 → 예상 만기금액 직접 입력
+const expectedMaturity = ref('') // 수동 입력 금액 문자열(천 단위 표시)
+const maturityPreview = ref<MaturityPreview | null>(null)
+
 const isManage = computed(() => props.item !== null)
 const hasAccounts = computed(() => props.accounts.length > 0)
+const isSaving = computed(() => category.value === 'SAVING')
 
 // 천 단위 구분 표시용. 입력은 숫자만 남긴다.
 const amountDisplay = computed({
   get: () => amount.value,
   set: (raw: string) => {
-    const digits = raw.replace(/[^0-9]/g, '')
-    amount.value = digits ? Number(digits).toLocaleString('ko-KR') : ''
+    amount.value = formatThousands(raw)
+  },
+})
+const expectedMaturityDisplay = computed({
+  get: () => expectedMaturity.value,
+  set: (raw: string) => {
+    expectedMaturity.value = formatThousands(raw)
   },
 })
 
-// 시트가 열릴 때마다 폼을 초기화. 추가 모드는 빈 값 + 시작일 오늘 기본,
-// 수정 모드는 기존 항목 값으로 프리필(endDate/memo는 v1 입력란이 없어 제출 시 원본을 그대로 보존).
+function formatThousands(raw: string): string {
+  const digits = raw.replace(/[^0-9]/g, '')
+  return digits ? Number(digits).toLocaleString('ko-KR') : ''
+}
+
+// 시트가 열릴 때마다 폼을 초기화. 추가 모드는 빈 값 + 시작일 오늘 기본, 수정 모드는 기존 항목 값으로 프리필.
+// 예상 만기금액 수동값이 있던 항목은 수동 입력 모드로, 없으면 이율·세금유형으로 프리필한다(ITEM-05/06).
 watch(
   () => [props.open, props.item] as const,
   ([open, item]) => {
@@ -57,9 +82,17 @@ watch(
     amount.value = item ? item.amount.toLocaleString('ko-KR') : ''
     accountId.value = item ? item.accountId : null
     startDate.value = item ? item.startDate : today()
+    endDate.value = item?.endDate ?? ''
+    manualMaturity.value = item?.expectedMaturityAmount != null
+    expectedMaturity.value = item?.expectedMaturityAmount != null
+      ? item.expectedMaturityAmount.toLocaleString('ko-KR')
+      : ''
+    interestRate.value = item?.interestRate != null ? String(item.interestRate) : ''
+    taxType.value = item?.taxType ?? 'NORMAL_15_4'
     applyToCurrentCycle.value = false
     errorCode.value = null
     confirmingDelete.value = false
+    maturityPreview.value = null
   },
   { immediate: true },
 )
@@ -76,6 +109,75 @@ function parsedAmount(): number {
   return Number(amount.value.replace(/[^0-9]/g, ''))
 }
 
+function parsedExpectedMaturity(): number {
+  return Number(expectedMaturity.value.replace(/[^0-9]/g, ''))
+}
+
+function parsedRate(): number {
+  return Number(interestRate.value)
+}
+
+// 시작일~만기일 납입 개월 수(end-inclusive) — 서버 ExpectedMaturity와 동일 규칙(만기일 다음 날까지의 완전 월 수).
+function monthsBetweenInclusive(start: string, end: string): number {
+  const s = new Date(start)
+  const e = new Date(end)
+  e.setDate(e.getDate() + 1)
+  let m = (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth())
+  if (e.getDate() < s.getDate()) m -= 1
+  return m
+}
+
+// 이율·세금·만기일이 갖춰진 저축 항목(수동 모드 아님)일 때 서버로 예상 만기금액을 미리 계산해 표시(ITEM-05).
+// 입력이 부족하거나 계산 불가(개월<1)면 배너를 숨긴다. 마지막 요청만 반영(경합 가드).
+let previewSeq = 0
+async function refreshPreview() {
+  const seq = ++previewSeq
+  const amt = parsedAmount()
+  const rate = parsedRate()
+  if (
+    !isSaving.value ||
+    manualMaturity.value ||
+    !startDate.value ||
+    !endDate.value ||
+    !Number.isInteger(amt) ||
+    amt < AMOUNT_MIN ||
+    amt > AMOUNT_MAX ||
+    !interestRate.value ||
+    Number.isNaN(rate) ||
+    rate < 0 ||
+    rate > RATE_MAX
+  ) {
+    maturityPreview.value = null
+    return
+  }
+  const months = monthsBetweenInclusive(startDate.value, endDate.value)
+  if (months < 1) {
+    maturityPreview.value = null
+    return
+  }
+  try {
+    const result = await previewMaturity({ monthlyAmount: amt, months, interestRate: rate, taxType: taxType.value })
+    if (seq === previewSeq) maturityPreview.value = result
+  } catch {
+    if (seq === previewSeq) maturityPreview.value = null
+  }
+}
+
+watch(
+  () => [
+    isSaving.value,
+    manualMaturity.value,
+    amount.value,
+    startDate.value,
+    endDate.value,
+    interestRate.value,
+    taxType.value,
+  ],
+  () => {
+    void refreshPreview()
+  },
+)
+
 // 클라 검증(서버 규칙 미러링). 통과하면 null, 아니면 표시할 에러 코드.
 function validate(): string | null {
   const n = name.value.trim()
@@ -84,11 +186,34 @@ function validate(): string | null {
   if (!Number.isInteger(amt) || amt < AMOUNT_MIN || amt > AMOUNT_MAX) return 'VALIDATION_FAILED'
   if (accountId.value === null) return 'VALIDATION_FAILED'
   if (!startDate.value) return 'VALIDATION_FAILED'
+  if (isSaving.value) {
+    if (endDate.value && endDate.value <= startDate.value) return 'VALIDATION_FAILED'
+    if (manualMaturity.value) {
+      const exp = parsedExpectedMaturity()
+      if (!Number.isInteger(exp) || exp < AMOUNT_MIN || exp > AMOUNT_MAX) return 'VALIDATION_FAILED'
+    } else if (interestRate.value) {
+      const rate = parsedRate()
+      if (Number.isNaN(rate) || rate < 0 || rate > RATE_MAX) return 'VALIDATION_FAILED'
+    }
+  }
   return null
 }
 
 function close() {
   emit('close')
+}
+
+// 저축 조건부 필드를 페이로드에 싣는다(ITEM-05/06). 수동 모드면 예상 만기금액(공식 대신), 아니면 이율·세금유형.
+// 비저축 항목이면 셋 다 보내지 않아(전체 교체에서 누락=서버 null) 깨끗이 비워진다.
+function applySavingFields(payload: BudgetItemInput) {
+  if (!isSaving.value) return
+  payload.endDate = endDate.value || null
+  if (manualMaturity.value) {
+    payload.expectedMaturityAmount = parsedExpectedMaturity()
+  } else if (interestRate.value) {
+    payload.interestRate = parsedRate()
+    payload.taxType = taxType.value
+  }
 }
 
 async function submit() {
@@ -107,12 +232,13 @@ async function submit() {
     accountId: accountId.value as number,
     startDate: startDate.value,
   }
+  applySavingFields(payload)
   try {
     if (props.item) {
-      // 전체 교체 — v1 미입력 필드(endDate/memo)는 원본을 그대로 실어 보존한다.
+      // 전체 교체 — 저축 외 미입력 필드(endDate/memo)는 원본을 그대로 실어 보존한다.
       const update: BudgetItemUpdateInput = {
         ...payload,
-        endDate: props.item.endDate,
+        endDate: isSaving.value ? endDate.value || null : props.item.endDate,
         memo: props.item.memo,
       }
       await updateBudgetItem(props.item.id, update, applyToCurrentCycle.value)
@@ -196,6 +322,77 @@ async function remove() {
 
     <label class="flabel" for="item-start">{{ $t('items.form.startDate') }}</label>
     <input id="item-start" v-model="startDate" class="input" type="date" />
+
+    <!-- 저축 조건부 필드(ITEM-05/06) — 저축 선택 시에만 펼쳐진다. -->
+    <template v-if="isSaving">
+      <label class="flabel" for="item-end">{{ $t('items.form.maturityDate') }}</label>
+      <input id="item-end" v-model="endDate" class="input" type="date" />
+
+      <!-- 특수 상품 수동 입력 토글(ITEM-06): 표준 공식이 아닌 상품은 예상 만기금액을 직접 입력 -->
+      <label class="toggle" for="item-manual">
+        <span class="toggle-text">
+          <span class="toggle-title">{{ $t('items.form.manualMaturity') }}</span>
+          <span class="toggle-hint">{{ $t('items.form.manualMaturityHint') }}</span>
+        </span>
+        <input
+          id="item-manual"
+          v-model="manualMaturity"
+          class="switch"
+          type="checkbox"
+          role="switch"
+        />
+      </label>
+
+      <template v-if="manualMaturity">
+        <label class="flabel" for="item-expected">{{ $t('items.form.expectedMaturity') }}</label>
+        <div class="amount-wrap">
+          <input
+            id="item-expected"
+            v-model="expectedMaturityDisplay"
+            class="input"
+            type="text"
+            inputmode="numeric"
+            :placeholder="$t('items.form.expectedMaturityPlaceholder')"
+            autocomplete="off"
+          />
+          <span class="unit">{{ $t('common.won') }}</span>
+        </div>
+      </template>
+      <template v-else>
+        <label class="flabel" for="item-rate">{{ $t('items.form.interestRate') }}</label>
+        <input
+          id="item-rate"
+          v-model="interestRate"
+          class="input"
+          type="text"
+          inputmode="decimal"
+          :placeholder="$t('items.form.interestRatePlaceholder')"
+          autocomplete="off"
+        />
+
+        <span class="flabel">{{ $t('items.form.taxType') }}</span>
+        <div class="chips" role="radiogroup">
+          <button
+            v-for="t in TAX_TYPES"
+            :key="t"
+            type="button"
+            class="chip"
+            :class="{ on: taxType === t }"
+            :aria-pressed="taxType === t"
+            @click="taxType = t"
+          >
+            {{ $t(`items.taxType.${t}`) }}
+          </button>
+        </div>
+
+        <!-- 예상 만기금액 미리보기(ITEM-05). 초록=완료/수령. "세후 · 예상치" 고지 동반(NFR-07). -->
+        <p v-if="maturityPreview" class="preview" data-testid="maturity-preview">
+          <span class="preview-label">{{ $t('items.form.maturityPreview') }}</span>
+          <b class="preview-amount">{{ maturityPreview.total.toLocaleString('ko-KR') }}{{ $t('common.won') }}</b>
+          <small class="preview-note">{{ $t('items.form.maturityEstimateNote') }}</small>
+        </p>
+      </template>
+    </template>
 
     <!-- 수정 모드: 적용 시점 토글. 기본 꺼짐=다음 사이클부터, 켜면 이번 달 미완료 라인 재계산(ITEM-07) -->
     <label v-if="isManage" class="toggle" for="item-apply">
@@ -305,6 +502,29 @@ async function remove() {
   color: var(--hint);
   margin-top: 8px;
   line-height: 1.5;
+}
+/* 예상 만기금액 미리보기 배너 — 초록(완료/수령 토큰). 화면설계.html banner.green 대응. */
+.preview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: var(--r);
+  background: var(--green-soft);
+  color: var(--green);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.preview-amount {
+  font-size: 16px;
+  font-weight: 700;
+}
+.preview-note {
+  color: var(--green);
+  opacity: 0.8;
+  font-size: 12px;
 }
 .toggle {
   display: flex;

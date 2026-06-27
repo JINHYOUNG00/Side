@@ -169,6 +169,11 @@
       "SUBSCRIPTION": "구독",
       "EMERGENCY": "비상금"
     },
+    "taxType": {
+      "NORMAL_15_4": "일반과세 15.4%",
+      "PREFERENTIAL": "세금우대 1.4%",
+      "TAX_FREE": "비과세"
+    },
     "form": {
       "addTitle": "항목 추가",
       "category": "분류",
@@ -180,6 +185,16 @@
       "accountPlaceholder": "통장을 선택해 주세요",
       "noAccounts": "먼저 통장을 추가해 주세요",
       "startDate": "시작일",
+      "maturityDate": "만기일",
+      "interestRate": "연이율 (%)",
+      "interestRatePlaceholder": "예: 4.5",
+      "taxType": "세금유형",
+      "maturityPreview": "예상 만기금액",
+      "maturityEstimateNote": "세후 · 예상치",
+      "manualMaturity": "표준 공식이 아닌 상품 (직접 입력)",
+      "manualMaturityHint": "청년도약계좌 등 단리 공식으로 계산하기 어려운 상품은 예상 만기금액을 직접 입력하세요",
+      "expectedMaturity": "예상 만기금액",
+      "expectedMaturityPlaceholder": "예: 3,731,976",
       "editTitle": "항목 수정",
       "applyCurrentCycle": "이번 달에 바로 반영",
       "applyCurrentCycleHint": "켜면 이번 달 아직 안 한 이체가 새 금액으로 다시 계산돼요. 이미 완료한 이체는 그대로예요. 끄면 다음 달부터 반영돼요.",

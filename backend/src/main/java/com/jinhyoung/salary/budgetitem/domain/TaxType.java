@@ -9,6 +9,8 @@ import java.math.BigDecimal;
 public enum TaxType {
     /** 일반과세 15.4% (소득세 14% + 지방세 1.4%). */
     NORMAL_15_4(new BigDecimal("0.154")),
+    /** 세금우대(세금우대종합저축) — 이자소득세 면제, 농어촌특별세 1.4%만(ITEM-05). */
+    PREFERENTIAL(new BigDecimal("0.014")),
     /** 비과세 — 세금 0. */
     TAX_FREE(BigDecimal.ZERO);
 

@@ -1,7 +1,7 @@
 import api from './client'
 
-// 배분 항목 CRUD(ITEM-01·09·07, API명세 4장). MOD-01 v1은 공통 필드(생성·조회·삭제·수정)만 다룬다.
-// 저축 조건부 필드(만기일·이율·세금·예상금액 = ITEM-05/06)는 Phase 5, 외화 도우미(ITEM-04)는 Phase 3.
+// 배분 항목 CRUD(ITEM-01·09·07, API명세 4장) + 저축 조건부 필드(이율·세금·예상금액 = ITEM-05/06).
+// 외화 도우미(ITEM-04)는 Phase 3.
 
 // LIVING은 항목 카테고리가 아니다 — 생활비는 폭포 나머지 계산값(서버 Category enum과 동일, ITEM-01).
 export const CATEGORIES = [
@@ -14,7 +14,12 @@ export const CATEGORIES = [
 ] as const
 export type Category = (typeof CATEGORIES)[number]
 
-// 서버 응답(BudgetItemResponse). endDate/memo는 v1 폼에서 입력하지 않아 항상 null로 생성된다.
+// 이자 과세 유형(ITEM-05, 서버 TaxType enum과 동일). 세금우대는 농특세 1.4%만.
+export const TAX_TYPES = ['NORMAL_15_4', 'PREFERENTIAL', 'TAX_FREE'] as const
+export type TaxType = (typeof TAX_TYPES)[number]
+
+// 서버 응답(BudgetItemResponse). 저축 조건부 필드(interestRate·taxType·expectedMaturityAmount)는 비저축
+// 항목이면 null. expectedMaturityAmount는 수동 입력 원본값(폼 프리필용) — 보관함의 표시용 해석값과 구분된다.
 export interface BudgetItem {
   id: number
   category: Category
@@ -23,24 +28,45 @@ export interface BudgetItem {
   accountId: number
   startDate: string // YYYY-MM-DD (Asia/Seoul)
   endDate: string | null
+  interestRate: number | null
+  taxType: TaxType | null
+  expectedMaturityAmount: number | null
   memo: string | null
   sortOrder: number
 }
 
-// 생성 입력(MOD-01 폼) — ITEM-01 공통 필드만. endDate/memo는 보내지 않아 서버에서 null이 된다.
+// 생성 입력(MOD-01 폼) — 공통 필드 + 저축 조건부 필드(선택). 저축 항목일 때만 채워 보낸다.
 export interface BudgetItemInput {
   category: Category
   name: string
   amount: number
   accountId: number
   startDate: string
+  endDate?: string | null
+  interestRate?: number | null
+  taxType?: TaxType | null
+  expectedMaturityAmount?: number | null
 }
 
 // 수정 입력(ITEM-07 PATCH) — 부분 갱신이 아닌 전체 교체라 endDate/memo도 함께 보낸다.
-// v1 폼은 이 둘을 입력하지 않으므로 기존 항목 값을 그대로 실어 보존한다(누락 시 서버에서 null이 됨).
+// 폼이 입력하지 않는 필드는 기존 항목 값을 그대로 실어 보존한다(누락 시 서버에서 null이 됨).
 export interface BudgetItemUpdateInput extends BudgetItemInput {
   endDate: string | null
   memo: string | null
+}
+
+// 만기금액 미리보기(ITEM-05). 저장 없이 단리 공식 분해(원금·이자·세금·만기 실수령액)를 받는다.
+export interface MaturityPreviewInput {
+  monthlyAmount: number
+  months: number
+  interestRate: number
+  taxType: TaxType
+}
+export interface MaturityPreview {
+  principal: number
+  interest: number
+  tax: number
+  total: number
 }
 
 export async function listBudgetItems(): Promise<BudgetItem[]> {
@@ -69,6 +95,12 @@ export async function updateBudgetItem(
 // soft delete — 서버는 status=DELETED로 처리(규칙 5, ITEM-09). 응답 204.
 export async function deleteBudgetItem(id: number): Promise<void> {
   await api.delete(`/budget-items/${id}`)
+}
+
+// 만기금액 미리보기(ITEM-05). 저장 없는 순수 계산 — 폼의 실시간 "예상 만기금액" 표시에 쓴다.
+export async function previewMaturity(input: MaturityPreviewInput): Promise<MaturityPreview> {
+  const { data } = await api.post<MaturityPreview>('/budget-items/preview-maturity', input)
+  return data
 }
 
 // 보관함(ITEM-08, SCR-08). 만기·중도해지로 보관(ARCHIVED)된 항목과 만기일·예상/실제 만기금액을 함께 싣는다.

@@ -25,6 +25,9 @@ function fakeItem(name: string): BudgetItem {
     accountId: 1,
     startDate: '2026-06-16',
     endDate: null,
+    interestRate: null,
+    taxType: null,
+    expectedMaturityAmount: null,
     memo: null,
     sortOrder: 0,
   }
