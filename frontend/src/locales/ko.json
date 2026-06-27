@@ -40,6 +40,9 @@
     "living": "생활비",
     "envelope": "봉투 적립",
     "count": "{n}건",
+    "savingsRate": "저축률 {percent}%",
+    "savingsWithInvestment": "투자 포함",
+    "savingsWithoutInvestment": "투자 제외",
     "overAllocated": {
       "banner": "배분이 월급을 {amount}원 초과했어요. 아래에서 줄일 항목을 골라보세요"
     },
@@ -96,6 +99,11 @@
       "ko": "한국어",
       "en": "English"
     },
+    "savingsInvestment": "저축률에 투자 포함",
+    "savingsInclude": "포함",
+    "savingsExclude": "제외",
+    "savingsInvestmentHint": "저축률을 계산할 때 투자 항목을 저축에 넣을지 정해요. 홈·리포트에 함께 적용돼요.",
+    "savingsInvestmentError": "설정을 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.",
     "logout": "로그아웃"
   },
   "archive": {

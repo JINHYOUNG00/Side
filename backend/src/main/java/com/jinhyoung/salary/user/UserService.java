@@ -39,6 +39,9 @@ public class UserService {
      *
      * <p>locale(SET-03)은 선택 — null이면 기존 언어를 보존하고, 값이 있으면(ko/en, 컨트롤러 검증) 반영한다.
      * 알림 발송은 user.locale을 그대로 읽어 언어를 고르므로(EmailNotificationSender) 별도 연동이 필요 없다.
+     *
+     * <p>includeInvestmentInSavingsRate(SET-02)도 선택 — null이면 기존 설정을 보존하고, 값이 있으면 반영한다.
+     * 저축률 산정은 폭포·리포트가 user 설정을 그대로 읽으므로(SavingsRate) 별도 연동이 필요 없다.
      */
     @Transactional
     public User updateSettings(
@@ -47,7 +50,8 @@ public class UserService {
             short payday,
             PaydayAdjustment paydayAdjustment,
             Long livingAccountId,
-            String locale) {
+            String locale,
+            Boolean includeInvestmentInSavingsRate) {
         User user = existingUser(userId);
         if (livingAccountId != null) {
             requireOwnedActiveAccount(userId, livingAccountId);
@@ -55,6 +59,9 @@ public class UserService {
         user.updateSettings(baseIncome, payday, paydayAdjustment, livingAccountId);
         if (locale != null) {
             user.updateLocale(locale);
+        }
+        if (includeInvestmentInSavingsRate != null) {
+            user.updateInvestmentInclusion(includeInvestmentInSavingsRate);
         }
         return user;
     }

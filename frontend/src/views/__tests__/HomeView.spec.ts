@@ -48,6 +48,8 @@ const NORMAL: Waterfall = {
   remaining: 720000,
   split: { emergency: 200000, living: 520000 },
   overAllocated: false,
+  // 저축률(SET-02): (700,000 + 800,000) / 2,500,000 = 60.0%, 기본은 투자 포함.
+  savingsRate: { value: 60.0, includesInvestment: true },
 }
 
 // 과배분 fixture — Σ소계(2,200,000) > income(2,000,000) → remaining −200,000, living −300,000.
@@ -62,6 +64,7 @@ const OVER: Waterfall = {
   remaining: -200000,
   split: { emergency: 100000, living: -300000 },
   overAllocated: true,
+  savingsRate: { value: 95.0, includesInvestment: true },
 }
 
 function mountView() {
@@ -116,6 +119,7 @@ describe('HomeView (SCR-03 홈 폭포)', () => {
       remaining: 0,
       split: { emergency: 0, living: 0 },
       overAllocated: false,
+      savingsRate: { value: 0.0, includesInvestment: true },
     })
     const wrapper = mountView()
     await flushPromises()
@@ -152,6 +156,30 @@ describe('HomeView (SCR-03 홈 폭포)', () => {
     ])
     // 첫 후보는 유연 태그.
     expect(wrapper.find('.candidate .flex-tag').text()).toBe(i18n.global.t('home.flex.0'))
+  })
+
+  it('저축률을 표시한다 — 투자 포함이면 포함 표시(SET-02)', async () => {
+    vi.mocked(waterfallApi.getWaterfall).mockResolvedValue(NORMAL)
+    const wrapper = mountView()
+    await flushPromises()
+
+    const savings = wrapper.find('.savings')
+    expect(savings.exists()).toBe(true)
+    expect(savings.text()).toContain(i18n.global.t('home.savingsRate', { percent: '60.0' }))
+    expect(savings.text()).toContain(i18n.global.t('home.savingsWithInvestment'))
+  })
+
+  it('투자 제외로 산정된 저축률은 제외 표시를 붙인다(SET-02)', async () => {
+    vi.mocked(waterfallApi.getWaterfall).mockResolvedValue({
+      ...NORMAL,
+      savingsRate: { value: 28.3, includesInvestment: false },
+    })
+    const wrapper = mountView()
+    await flushPromises()
+
+    const savings = wrapper.find('.savings')
+    expect(savings.text()).toContain(i18n.global.t('home.savingsRate', { percent: '28.3' }))
+    expect(savings.text()).toContain(i18n.global.t('home.savingsWithoutInvestment'))
   })
 
   it('조회 실패 시 에러 코드를 표시한다', async () => {

@@ -28,6 +28,13 @@ export interface WaterfallSplit {
   living: number
 }
 
+// 저축률(SET-02). value는 소수 첫째 자리 비율(%) — 저축액(SAVING + 토글 시 INVESTMENT) ÷ 수입.
+// includesInvestment는 투자 포함 토글 값(users 설정). 폭포·리포트가 같은 정의를 공유한다.
+export interface SavingsRate {
+  value: number
+  includesInvestment: boolean
+}
+
 // GET /me/waterfall 응답(WaterfallResponse). remaining = income − Σ소계 − envelopeContribution.
 // overAllocated = split.living < 0(비상금 포함 배분이 income 초과). envelopeContribution은 봉투(Phase 3)
 // 미구현이라 현재 항상 0.
@@ -38,6 +45,7 @@ export interface Waterfall {
   remaining: number
   split: WaterfallSplit
   overAllocated: boolean
+  savingsRate: SavingsRate
 }
 
 export async function getWaterfall(): Promise<Waterfall> {

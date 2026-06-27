@@ -43,12 +43,18 @@ const FLEX_RANK: Record<string, number> = {
 
 const hasPlan = computed(() => (data.value?.groups.length ?? 0) > 0)
 
-// 헤더 캡션의 비율(남는 돈 / 월급). 저축률(SET-02·Phase 5)이 아니라 단순 표시 비율이다.
+// 헤더 캡션의 비율(남는 돈 / 월급). 저축률(savingsRate)과 다른 단순 표시 비율이다 — 저축률은 서버가
+// SET-02 토글을 반영해 산정한 값(data.savingsRate)을 그대로 쓴다.
 const remainingPercent = computed(() => {
   const d = data.value
   if (!d || d.income <= 0) return null
   return Math.round((d.remaining / d.income) * 100)
 })
+
+// 저축률(SET-02) 표시 — 서버가 소수 첫째 자리로 반올림한 비율을 그대로 1자리로 포맷(60 → "60.0").
+function formatRate(value: number): string {
+  return value.toFixed(1)
+}
 
 // 스택 바 세그먼트 — 각 그룹 소계 + 남는 돈(양수일 때). flex는 width 비율(income 기준).
 const barSegments = computed(() => {
@@ -152,6 +158,12 @@ onUnmounted(() => {
         </p>
         <p v-if="remainingPercent !== null" class="caption">
           {{ $t('home.incomeOf', { income: new Intl.NumberFormat('ko-KR').format(data.income), percent: remainingPercent }) }}
+        </p>
+        <p v-if="data.income > 0" class="savings">
+          <span class="savings-rate">{{ $t('home.savingsRate', { percent: formatRate(data.savingsRate.value) }) }}</span>
+          <span class="savings-note">{{
+            $t(data.savingsRate.includesInvestment ? 'home.savingsWithInvestment' : 'home.savingsWithoutInvestment')
+          }}</span>
         </p>
         <div class="split">
           <div class="split-cell">
@@ -257,6 +269,21 @@ onUnmounted(() => {
   font-size: 13px;
   color: var(--hint);
   margin-top: 6px;
+}
+.savings {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 10px;
+}
+.savings-rate {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--green);
+}
+.savings-note {
+  font-size: 12px;
+  color: var(--hint);
 }
 .split {
   display: flex;

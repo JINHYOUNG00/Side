@@ -401,6 +401,14 @@
       "description": "체크인 알림(NOTI-03): 다음 지급일 전일(= 이번 사이클 마지막 날)에 월말 체크인(RPT-01)을 요청하는 알림을 발송한다. NOTI-01 일일 판정·NOTI-04 멱등 게이트·NOTI-05 채널 어댑터를 재사용 — 매일 '내일이 각 사용자의 실제 지급일인가'를 PaydayService(resolvePaydayMonth(today+1))로 판정해 그렇다면 오늘이 다음 지급일 전일이므로 CHECK_IN 알림을 보낸다. 대상일은 오늘(체크인 요청일)이라 사이클당 1회만 발송(멱등). 문구는 메시지 번들(규칙 7). 온보딩 전(base_income=0) 사용자 제외. CheckInReminderNotificationService는 조회만(readOnly)",
       "verify": "./gradlew verify 통과(다음 지급일 전일 대상자만 발송·지급일 당일/비대상일 미발송·조정 밀린 실지급일 전일 발송·같은 날 재실행 멱등·온보딩 전 제외 통합(Clock 주입), CHECK_IN 메시지 번들 ko/en 단위) + npm run verify 통과(프론트 무변경)",
       "passes": true
+    },
+    {
+      "id": "SET-02",
+      "phase": 5,
+      "category": "backend",
+      "description": "저축률 산정 방식(SET-02): 저축률 계산에 투자 포함 여부를 토글로 설정하고 폭포·리포트 표시에 공통 적용한다. PATCH /me에 선택 필드 includeInvestmentInSavingsRate 추가 — 온보딩 필수값과 달리 값이 있을 때만 반영하고 없으면 기존 설정 보존(locale 패턴 미러). 저축률은 순수 도메인 SavingsRate가 산정 — 저축액(SAVING 합 + 토글 시 INVESTMENT 합) ÷ 수입 × 100을 소수 첫째 자리 반올림(구현규칙 1장), EMERGENCY·LIVING 제외. GET /me/waterfall(FLOW-02) 응답에 savingsRate{value, includesInvestment} 추가. 비율은 BigDecimal(double/float 금지, 규칙 2). 프론트는 SCR-07 허브의 투자 포함 토글(언어 토글 미러) + 홈(SCR-03) 저축률 표시(투자 포함/제외 고지). 리포트(RPT-02) 표시는 같은 SavingsRate 도메인을 후속 재사용",
+      "verify": "./gradlew verify 통과(토글 갱신·생략 시 보존 통합 + 폭포 응답 savingsRate 투자 포함/제외 통합, SavingsRate 산정·반올림·수입0·빈항목 단위) + npm run verify 통과(허브 토글 PATCH·실패 시 미전환·홈 저축률 표시 뷰 테스트). 골든 무수정",
+      "passes": true
     }
   ]
 }

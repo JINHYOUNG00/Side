@@ -1,6 +1,7 @@
 package com.jinhyoung.salary.cycle;
 
 import com.jinhyoung.salary.budgetitem.domain.Category;
+import com.jinhyoung.salary.cycle.domain.SavingsRate;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -23,10 +24,11 @@ import java.util.List;
  * <p>응답에서 의도적으로 제외:
  *
  * <ul>
- *   <li>{@code savingsRate}: 저축률 산정 방식(투자 포함 토글)은 SET-02(Phase 5)가 "폭포 표시에 공통 적용"으로
- *       소유한다 — 그 Phase에서 추가.
  *   <li>{@code Item.expectedMaturityAmount}: 적금 만기 예상금액(ITEM-05, Phase 5) — 현재 항상 null.
  * </ul>
+ *
+ * <p>{@code savingsRate}(SET-02)는 저축률 산정 방식(투자 포함 토글)을 "폭포 표시에 공통 적용"한 결과다 — 순수
+ * 도메인 {@link SavingsRate}가 저축액(SAVING + 토글 시 INVESTMENT) ÷ 수입으로 산정한다.
  *
  * @param income 이번 폭포의 수입(= users.base_income, 원)
  * @param groups EMERGENCY·LIVING 제외, 표시 순서로 정렬된 그룹(빈 카테고리 생략)
@@ -34,6 +36,7 @@ import java.util.List;
  * @param remaining 남는 돈(= income − Σ소계 − envelopeContribution, 음수 가능)
  * @param split 남는 돈의 비상금/생활비 분배(FLOW-03)
  * @param overAllocated 과배분 경고(= split.living < 0)
+ * @param savingsRate 저축률(SET-02, 투자 포함 토글 반영)
  */
 public record WaterfallResponse(
         long income,
@@ -41,7 +44,8 @@ public record WaterfallResponse(
         long envelopeContribution,
         long remaining,
         Split split,
-        boolean overAllocated) {
+        boolean overAllocated,
+        SavingsRate savingsRate) {
 
     /**
      * 카테고리 그룹 1건 — 소계 + 그 그룹의 항목(입력 순서=sort_order 보존).

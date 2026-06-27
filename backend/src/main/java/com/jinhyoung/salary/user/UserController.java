@@ -18,8 +18,8 @@ import org.springframework.web.bind.annotation.RestController;
  * 프로필·기본 정보 설정(SET-01, API명세 2장). 인증 필수 — principal=userId(JwtAuthenticationFilter)로 본인만 다룬다.
  *
  * <p>{@code GET /me}는 프로필+설정을 조회하고, {@code PATCH /me}는 온보딩 기본 정보(실수령액·월급일·조정 규칙·생활비 통장)를
- * 등록·수정한다. 언어(SET-03, locale ko/en)도 같은 PATCH로 갱신하는데 — 온보딩 필수값과 달리 선택 필드라 값이 있을 때만
- * 반영하고 없으면 기존 언어를 보존한다. 투자 포함 토글(SET-02)은 Phase 5에서 쓰기를 추가하며 지금은 응답에 현재값만 노출한다.
+ * 등록·수정한다. 언어(SET-03, locale ko/en)와 투자 포함 토글(SET-02, includeInvestmentInSavingsRate)도 같은
+ * PATCH로 갱신하는데 — 온보딩 필수값과 달리 선택 필드라 값이 있을 때만 반영하고 없으면 기존 값을 보존한다.
  */
 @RestController
 @RequestMapping("/api/v1/me")
@@ -55,7 +55,8 @@ public class UserController {
                 (short) (int) request.payday(),
                 request.paydayAdjustment(),
                 request.livingAccountId(),
-                request.locale());
+                request.locale(),
+                request.includeInvestmentInSavingsRate());
         return MeResponse.from(user);
     }
 
@@ -64,7 +65,8 @@ public class UserController {
             @NotNull @Min(PAYDAY_MIN) @Max(PAYDAY_MAX) Integer payday,
             @NotNull PaydayAdjustment paydayAdjustment,
             Long livingAccountId,
-            @Pattern(regexp = LOCALE_PATTERN) String locale) {}
+            @Pattern(regexp = LOCALE_PATTERN) String locale,
+            Boolean includeInvestmentInSavingsRate) {}
 
     public record MeResponse(
             Long id,

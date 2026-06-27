@@ -11,8 +11,8 @@ import { setLocale, LOCALES, type Locale } from '@/i18n'
 import { useAuthStore } from '@/stores/auth'
 
 // SCR-07 전체 — 허브 화면. 통장·항목·봉투·보관함(SCR-08) 진입 + 노션 임포트(MOD-07/DATA-01) +
-// 언어 설정(SET-03) + 로그아웃. 내보내기(DATA-02·P7)·투자 포함 토글(SET-02·P5)·탈퇴는 후속 Phase 의존이라
-// 미연결(고아 링크 금지). 라우트가 생기면 links에 추가만 하면 된다.
+// 저축률 투자 포함 토글(SET-02) + 언어 설정(SET-03) + 로그아웃. 내보내기(DATA-02·P7)·탈퇴는 후속 Phase
+// 의존이라 미연결(고아 링크 금지). 라우트가 생기면 links에 추가만 하면 된다.
 const router = useRouter()
 const auth = useAuthStore()
 const { locale } = useI18n()
@@ -33,6 +33,10 @@ const importOpen = ref(false)
 const me = ref<Me | null>(null)
 const switching = ref(false)
 const langError = ref(false)
+
+// 저축률 투자 포함 토글(SET-02). 언어와 동일하게 현재 설정을 읽어 두었다가 토글만 바꿔 되돌려 보낸다.
+const savingSwitching = ref(false)
+const savingError = ref(false)
 
 async function loadAccounts() {
   try {
@@ -77,6 +81,29 @@ async function selectLocale(next: Locale) {
     langError.value = true
   } finally {
     switching.value = false
+  }
+}
+
+// 저축률 투자 포함 토글(SET-02). 언어와 동일하게 현재 전체 설정 + 바뀐 토글만 PATCH로 되돌려 보낸다.
+async function toggleInvestment(next: boolean) {
+  const current = me.value
+  if (savingSwitching.value || current === null || next === current.includeInvestmentInSavingsRate) return
+  savingError.value = false
+  savingSwitching.value = true
+  try {
+    await updateMe({
+      baseIncome: current.baseIncome,
+      payday: current.payday,
+      paydayAdjustment: current.paydayAdjustment,
+      livingAccountId: current.livingAccountId,
+      includeInvestmentInSavingsRate: next,
+    })
+    me.value = { ...current, includeInvestmentInSavingsRate: next }
+  } catch (e) {
+    if (!(e instanceof ApiError)) throw e
+    savingError.value = true
+  } finally {
+    savingSwitching.value = false
   }
 }
 
@@ -145,6 +172,36 @@ onMounted(() => {
         </div>
       </div>
       <p v-if="langError" class="lang-err" role="alert">{{ $t('menu.languageError') }}</p>
+    </Card>
+
+    <Card class="lang">
+      <div class="lang-row">
+        <span class="nm">{{ $t('menu.savingsInvestment') }}</span>
+        <div class="seg" role="radiogroup" :aria-label="$t('menu.savingsInvestment')">
+          <button
+            type="button"
+            class="seg-btn"
+            :class="{ on: me?.includeInvestmentInSavingsRate === true }"
+            :aria-pressed="me?.includeInvestmentInSavingsRate === true"
+            :disabled="me === null || savingSwitching"
+            @click="toggleInvestment(true)"
+          >
+            {{ $t('menu.savingsInclude') }}
+          </button>
+          <button
+            type="button"
+            class="seg-btn"
+            :class="{ on: me?.includeInvestmentInSavingsRate === false }"
+            :aria-pressed="me?.includeInvestmentInSavingsRate === false"
+            :disabled="me === null || savingSwitching"
+            @click="toggleInvestment(false)"
+          >
+            {{ $t('menu.savingsExclude') }}
+          </button>
+        </div>
+      </div>
+      <p class="lang-hint">{{ $t('menu.savingsInvestmentHint') }}</p>
+      <p v-if="savingError" class="lang-err" role="alert">{{ $t('menu.savingsInvestmentError') }}</p>
     </Card>
 
     <button class="logout" type="button" @click="logout">{{ $t('menu.logout') }}</button>
@@ -217,6 +274,12 @@ onMounted(() => {
 }
 .seg-btn:disabled {
   opacity: 0.5;
+}
+.lang-hint {
+  font-size: 12px;
+  color: var(--hint);
+  line-height: 1.5;
+  padding: 0 0 13px;
 }
 .lang-err {
   font-size: 13px;

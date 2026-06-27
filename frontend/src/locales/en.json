@@ -40,6 +40,9 @@
     "living": "Living",
     "envelope": "Envelopes",
     "count": "{n}",
+    "savingsRate": "Savings rate {percent}%",
+    "savingsWithInvestment": "investment included",
+    "savingsWithoutInvestment": "investment excluded",
     "overAllocated": {
       "banner": "Allocation exceeds your salary by {amount} KRW. Pick something to reduce below"
     },
@@ -96,6 +99,11 @@
       "ko": "한국어",
       "en": "English"
     },
+    "savingsInvestment": "Include investment in savings rate",
+    "savingsInclude": "Include",
+    "savingsExclude": "Exclude",
+    "savingsInvestmentHint": "Choose whether investment items count toward your savings rate. Applies to home and reports.",
+    "savingsInvestmentError": "Couldn't change the setting. Please try again.",
     "logout": "Sign out"
   },
   "archive": {

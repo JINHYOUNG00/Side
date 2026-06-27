@@ -7,6 +7,7 @@ import com.jinhyoung.salary.budgetitem.infra.BudgetItemRepository;
 import com.jinhyoung.salary.budgetitem.infra.ItemStatus;
 import com.jinhyoung.salary.common.ApiException;
 import com.jinhyoung.salary.common.ErrorCode;
+import com.jinhyoung.salary.cycle.domain.SavingsRate;
 import com.jinhyoung.salary.cycle.domain.WaterfallCalculator;
 import com.jinhyoung.salary.cycle.domain.WaterfallLine;
 import com.jinhyoung.salary.cycle.domain.WaterfallResult;
@@ -70,6 +71,10 @@ public class WaterfallQueryService {
                 WaterfallCalculator.calculate(user.getBaseIncome(), lines, ENVELOPE_CONTRIBUTION_UNAVAILABLE);
         WaterfallSplit split = WaterfallSplit.from(result);
 
+        // 저축률(SET-02) — 투자 포함 토글을 반영해 SavingsRate가 산정. 폭포·리포트가 같은 정의를 공유한다.
+        SavingsRate savingsRate =
+                SavingsRate.from(result.groups(), result.income(), user.isIncludeInvestmentInSavingsRate());
+
         // 응답 항목 메타 재조립: budgetItemId → 항목, accountId → 통장 별칭.
         Map<Long, BudgetItem> itemsById =
                 items.stream().collect(Collectors.toMap(BudgetItem::getId, Function.identity()));
@@ -90,7 +95,8 @@ public class WaterfallQueryService {
                 result.envelopeContribution(),
                 result.remaining(),
                 new WaterfallResponse.Split(split.emergency(), split.living()),
-                split.shortfall());
+                split.shortfall(),
+                savingsRate);
     }
 
     /** 항목이 참조하는 통장들의 별칭을 한 번에 조회한다. 비활성화된 통장은 조회되지 않아 별칭이 null이 된다. */

@@ -105,6 +105,11 @@ public class User {
         this.locale = locale;
     }
 
+    /** 저축률에 투자 포함 여부 설정(SET-02). 폭포·리포트 저축률 산정에 공통 적용된다. */
+    public void updateInvestmentInclusion(boolean include) {
+        this.includeInvestmentInSavingsRate = include;
+    }
+
     public Long getId() {
         return id;
     }

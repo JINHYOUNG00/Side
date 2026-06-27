@@ -129,6 +129,48 @@ describe('MenuView (SCR-07 전체 허브)', () => {
     expect(i18n.global.locale.value).toBe('ko')
   })
 
+  it('현재 투자 포함 설정(포함)을 선택 상태로 표시한다', async () => {
+    const wrapper = mountView()
+    await flushPromises() // onMounted me 로드
+
+    const includeBtn = buttonByText(wrapper, i18n.global.t('menu.savingsInclude'))!
+    expect(includeBtn.classes()).toContain('on')
+    expect(includeBtn.attributes('aria-pressed')).toBe('true')
+  })
+
+  it('제외를 누르면 전체 설정과 함께 투자 포함 토글을 false로 PATCH한다', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    await buttonByText(wrapper, i18n.global.t('menu.savingsExclude'))!.trigger('click')
+    await flushPromises()
+
+    // 온보딩 필수값을 보존한 채 투자 포함만 끄고, locale은 건드리지 않는다(보존).
+    expect(meApi.updateMe).toHaveBeenCalledWith({
+      baseIncome: 2_500_000,
+      payday: 25,
+      paydayAdjustment: 'PREV_BUSINESS_DAY',
+      livingAccountId: null,
+      includeInvestmentInSavingsRate: false,
+    })
+    const excludeBtn = buttonByText(wrapper, i18n.global.t('menu.savingsExclude'))!
+    expect(excludeBtn.classes()).toContain('on')
+  })
+
+  it('투자 포함 변경에 실패하면 에러를 보이고 설정을 바꾸지 않는다', async () => {
+    vi.mocked(meApi.updateMe).mockRejectedValue(new ApiError('INTERNAL_ERROR', {}, 500))
+    const wrapper = mountView()
+    await flushPromises()
+
+    await buttonByText(wrapper, i18n.global.t('menu.savingsExclude'))!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain(i18n.global.t('menu.savingsInvestmentError'))
+    // 포함(true)이 그대로 선택 상태.
+    const includeBtn = buttonByText(wrapper, i18n.global.t('menu.savingsInclude'))!
+    expect(includeBtn.classes()).toContain('on')
+  })
+
   it('로그아웃을 누르면 세션을 비우고 로그인으로 보낸다', async () => {
     const auth = useAuthStore()
     auth.setSession({ accessToken: 't', isNewUser: false })

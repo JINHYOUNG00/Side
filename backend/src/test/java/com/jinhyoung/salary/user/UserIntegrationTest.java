@@ -279,6 +279,41 @@ class UserIntegrationTest {
     }
 
     @Test
+    void 투자_포함_토글을_끄면_반영되고_재조회에서_일치한다() throws Exception {
+        mockMvc.perform(patchMe(
+                        aliceToken,
+                        "{\"baseIncome\":2500000,\"payday\":25,\"paydayAdjustment\":\"NONE\","
+                                + "\"includeInvestmentInSavingsRate\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.includeInvestmentInSavingsRate").value(false));
+
+        mockMvc.perform(authed(get("/api/v1/me"), aliceToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.includeInvestmentInSavingsRate").value(false));
+
+        assertThat(userRepository.findById(aliceId).orElseThrow().isIncludeInvestmentInSavingsRate())
+                .isFalse();
+    }
+
+    @Test
+    void 투자_포함_토글을_생략한_PATCH는_기존_설정을_보존한다() throws Exception {
+        // 먼저 false로 바꾼 뒤,
+        mockMvc.perform(patchMe(
+                        aliceToken,
+                        "{\"baseIncome\":2500000,\"payday\":25,\"paydayAdjustment\":\"NONE\","
+                                + "\"includeInvestmentInSavingsRate\":false}"))
+                .andExpect(status().isOk());
+
+        // 토글 없이 다른 설정만 갱신 — 투자 포함 여부는 직전 false 그대로(기본값 true로 되돌아가지 않는다).
+        mockMvc.perform(patchMe(aliceToken, "{\"baseIncome\":3000000,\"payday\":10,\"paydayAdjustment\":\"NONE\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.includeInvestmentInSavingsRate").value(false));
+
+        assertThat(userRepository.findById(aliceId).orElseThrow().isIncludeInvestmentInSavingsRate())
+                .isFalse();
+    }
+
+    @Test
     void 토큰_없이_GET_me_접근은_401이다() throws Exception {
         mockMvc.perform(get("/api/v1/me"))
                 .andExpect(status().isUnauthorized())

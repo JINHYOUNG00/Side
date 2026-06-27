@@ -142,7 +142,33 @@ class WaterfallIntegrationTest {
                 .andExpect(jsonPath("$.remaining").value(556_107))
                 .andExpect(jsonPath("$.split.emergency").value(200_000))
                 .andExpect(jsonPath("$.split.living").value(356_107))
-                .andExpect(jsonPath("$.overAllocated").value(false));
+                .andExpect(jsonPath("$.overAllocated").value(false))
+                // 저축률(SET-02) 기본값은 투자 포함 — (700,000 + 800,000) / 2,473,110 = 60.7%.
+                .andExpect(jsonPath("$.savingsRate.value").value(60.7))
+                .andExpect(jsonPath("$.savingsRate.includesInvestment").value(true));
+    }
+
+    @Test
+    void 투자_포함_토글을_끄면_저축률에서_INVESTMENT가_빠진다() throws Exception {
+        long savings = createAccount(aliceToken, "국민");
+        long etc = createAccount(aliceToken, "기타통장");
+        setIncome(aliceToken, 2_473_110);
+        createItem(aliceToken, "SAVING", "청년도약계좌", 700_000, savings);
+        createItem(aliceToken, "INVESTMENT", "ETF", 800_000, etc);
+
+        // 투자 포함 토글만 꺼서(나머지 설정은 그대로) 저축률 정의를 바꾼다.
+        mockMvc.perform(authed(patch("/api/v1/me"), aliceToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"baseIncome\":2473110,\"payday\":25,\"paydayAdjustment\":\"NONE\","
+                                + "\"includeInvestmentInSavingsRate\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.includeInvestmentInSavingsRate").value(false));
+
+        // 700,000 / 2,473,110 = 28.3% — 투자(800,000)는 저축액에서 빠진다.
+        mockMvc.perform(authed(get("/api/v1/me/waterfall"), aliceToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.savingsRate.value").value(28.3))
+                .andExpect(jsonPath("$.savingsRate.includesInvestment").value(false));
     }
 
     @Test
