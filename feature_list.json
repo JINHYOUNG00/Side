@@ -385,6 +385,14 @@
       "description": "외화 적립 도우미(ITEM-04): 통화·일/회 외화 금액·매일/영업일 빈도·기준 환율 입력 시 버퍼(app.policy.fx-buffer-rate=0.05)를 포함한 권장 월 이체액을 계산한다. POST /budget-items/preview-fx(저장 없는 미리보기) — 순수 도메인 FxRecommendationCalculator가 빈도별 월 평균 일수(DAILY=30·BUSINESS_DAYS=22)로 환산 후 1,000원 단위 올림(구현규칙 1장). 환율 API 연동·일별 차감 추적 없음, 저장은 원화 월액으로만(요구사항정의서 ITEM-04). 프론트는 MOD-01 폼의 투자 선택 시 외화 도우미 토글 + 일금액·빈도·환율 입력 → 권장 월액 배너('버퍼 N% 포함·예상치' 고지) → '이 금액으로 채우기'로 금액 입력 반영",
       "verify": "./gradlew verify 통과(미리보기 버퍼 포함 권장액·빈도 환산·검증·인증 통합, FxRecommendationCalculator 올림·정밀도·검증 단위) + npm run verify 통과(투자 한정 도우미 노출·previewFx 호출·권장액 채우기 페이로드 뷰 테스트)",
       "passes": true
+    },
+    {
+      "id": "RPT-01",
+      "phase": 5,
+      "category": "backend",
+      "description": "월말 체크인(RPT-01): 사이클 종료 전일에 생활비 통장 잔액을 입력받아 계획 대비 실제를 기록한다. 사이클 중 충당 투입액(선택, 기본 0)을 보조 입력받아 초과액(overspend = topped_up − living_remaining, 양수=초과·음수=잉여)을 보정 계산해 저장한다(계산값 비저장 원칙의 예외, ERD 3장). POST /check-ins(사이클당 1건, unique(cycle_id) — 중복 시 CHECK_IN_ALREADY_EXISTS). 초과액 산술은 순수 도메인 CheckInReconciliation. 추이 리포트 조회(GET /reports/*)는 RPT-02 소관. 프론트 체크인 화면은 후속(SCR-06)",
+      "verify": "./gradlew verify 통과(초과액 계산·저장·사이클당 1건 멱등(409)·소유권 게이트(404)·범위 검증(400)·인증(401) 통합, overspend 단위) + npm run verify 통과(프론트 무변경)",
+      "passes": true
     }
   ]
 }
