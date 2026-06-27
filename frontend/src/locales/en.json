@@ -30,6 +30,7 @@
     "ACCOUNT_LIMIT_EXCEEDED": "You can create up to 20 accounts",
     "ITEM_LIMIT_EXCEEDED": "You can create up to 100 items",
     "ENVELOPE_LIMIT_EXCEEDED": "You can create up to 50 envelopes",
+    "CHECK_IN_ALREADY_EXISTS": "You've already checked in for this cycle",
     "INTERNAL_ERROR": "Something went wrong. Please try again later"
   },
   "home": {
@@ -53,6 +54,38 @@
     },
     "emptyTitle": "No allocation plan yet",
     "emptyBody": "Set your income and budget items to see the waterfall here"
+  },
+  "report": {
+    "title": "Report",
+    "loading": "Loading",
+    "savingsRate": "Savings rate",
+    "withInvestment": "investment included",
+    "withoutInvestment": "investment excluded",
+    "maturityReceived": "Total received at maturity",
+    "maturityCounts": "{archived} archived · {recorded} recorded",
+    "envelopeSpent": "Total envelope spending",
+    "trendTitle": "Planned vs actual",
+    "planned": "Planned",
+    "actual": "Actual",
+    "missing": "No check-in",
+    "emptyTitle": "No trend yet",
+    "emptyBody": "Your first check-in starts building planned vs actual here",
+    "checkInCta": "Check in for this month"
+  },
+  "checkin": {
+    "title": "How much living budget is left?",
+    "cycle": "{label} cycle",
+    "living": "Living account balance",
+    "livingPlaceholder": "e.g. 41,000",
+    "toppedUp": "Topped up this month",
+    "toppedUpHint": "If you added money because living ran short, enter it (leave blank if none)",
+    "toppedUpPlaceholder": "e.g. 0",
+    "submit": "Record",
+    "doneTitle": "Check-in recorded",
+    "over": "{amount} KRW over plan",
+    "surplus": "{amount} KRW left over",
+    "exact": "Right on plan",
+    "confirm": "OK"
   },
   "checklist": {
     "eyebrow": "Payday · {date}",

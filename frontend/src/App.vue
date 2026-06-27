@@ -9,6 +9,7 @@ const router = useRouter()
 // 라우트 → 하단 탭 키 매핑. 전체 허브와 그 하위(통장·항목)는 '전체' 탭을 활성 유지.
 const TAB_BY_ROUTE: Record<string, string> = {
   home: 'home',
+  reports: 'report',
   menu: 'all',
   accounts: 'all',
   items: 'all',
@@ -25,10 +26,12 @@ const showChrome = computed(() => route.meta.chrome !== false)
 function onSelect(key: string) {
   if (key === 'home') {
     router.push('/')
+  } else if (key === 'report') {
+    router.push('/reports')
   } else if (key === 'all') {
     router.push('/menu')
   }
-  // checklist(봉투·SCR-04)·report(SCR-06) 탭은 해당 화면 도입(Phase 3/5) 시 연결
+  // checklist(봉투·SCR-04) 탭은 해당 화면 도입(Phase 3) 시 연결
 }
 </script>
 

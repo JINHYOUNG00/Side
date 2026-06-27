@@ -61,6 +61,12 @@ const router = createRouter({
       name: 'archive',
       component: () => import('@/views/ArchiveView.vue'),
     },
+    {
+      // SCR-06 리포트(계획 vs 실제 추이·요약 메트릭·결측 구분 + MOD-05 체크인). RPT-02/03. 하단 탭 '리포트'.
+      path: '/reports',
+      name: 'reports',
+      component: () => import('@/views/ReportView.vue'),
+    },
   ],
 })
 

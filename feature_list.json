@@ -417,6 +417,14 @@
       "description": "추이 리포트(RPT-02): 사이클별 계획 vs 실제·요약 메트릭을 조회로 제공한다(SCR-06 데이터 소스). GET /reports/trend?months=N(기본 6, 1~36) — 최근 N개 사이클을 시간순(오래된→최근)으로, 각 점은 {label, planned(LIVING 계획액), actual, checkedIn}. 실제는 순수 도메인 ReportTrendPoint가 actual=planned+overspend로 도출(체크인 RPT-01), 체크인 없는 결측 사이클은 actual=null·checkedIn=false로 구분(예외 흐름 5.1). GET /reports/summary — {savingsRate{value,includesInvestment}, maturity{archivedCount,recordedCount,totalReceivedAmount}, envelopeSpentTotal}. 각 메트릭은 기존 순수 도메인 재사용: 저축률은 폭포(WaterfallQueryService·SavingsRate SET-02)와 공통, 만기 누적은 보관 실수령액(MaturityArchiveStats ITEM-08), 봉투 집행은 SPEND 실지출 합. 조회 전용·소유권은 리포지토리 user_id 강제. 프론트 SCR-06은 후속. 비율 BigDecimal(규칙 2)·문장 미생성 구조화 데이터(규칙 7)",
       "verify": "./gradlew verify 통과(추이 계획/실제/결측·정렬·months 범위 400·소유권·빈 목록·요약 저축률/만기/봉투집행 집계·본인것만·DEPOSIT 제외·빈 사용자·401 통합, ReportTrendPoint 초과/잉여/정확/결측 단위) + npm run verify 통과(프론트 무변경). 골든 무수정",
       "passes": true
+    },
+    {
+      "id": "SCR-06",
+      "phase": 5,
+      "category": "frontend",
+      "description": "리포트 화면(SCR-06): 저축률(투자 포함 토글 반영, SET-02)·만기 수령 누적·봉투 집행 요약 메트릭 + 사이클별 계획 vs 실제 추이 차트(결측 사이클 구분 표시) + 월말 체크인 진입(MOD-05). RPT-02 백엔드(GET /reports/summary·/reports/trend) 배선 — 조회 전용. 추이가 비면 RPT-03 빈 상태('첫 체크인 후 추이가 쌓입니다') 예고. 체크인은 현재 사이클(GET /cycles/current)에 POST /check-ins(RPT-01) — 생활비 잔액·충당 투입액 입력 후 overspend 부호로 달성/초과/잉여 피드백, 사이클당 1건이라 재요청은 CHECK_IN_ALREADY_EXISTS. 하단 탭 '리포트'로 진입. 문구는 i18n 키(규칙 7). 색: 저축률·달성=초록, 계획/배분=파랑",
+      "verify": "npm run verify 통과(요약 메트릭·추이 차트·결측 구분·빈 상태·체크인 기록(초과)→추이 재조회·현재 사이클 없으면 진입 숨김·CHECK_IN_ALREADY_EXISTS·검증·조회 실패 뷰 테스트). 골든 무수정",
+      "passes": true
     }
   ]
 }

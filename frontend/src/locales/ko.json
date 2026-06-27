@@ -30,6 +30,7 @@
     "ACCOUNT_LIMIT_EXCEEDED": "통장은 최대 20개까지 만들 수 있어요",
     "ITEM_LIMIT_EXCEEDED": "항목은 최대 100개까지 만들 수 있어요",
     "ENVELOPE_LIMIT_EXCEEDED": "봉투는 최대 50개까지 만들 수 있어요",
+    "CHECK_IN_ALREADY_EXISTS": "이번 사이클은 이미 체크인했어요",
     "INTERNAL_ERROR": "잠시 후 다시 시도해 주세요"
   },
   "home": {
@@ -53,6 +54,38 @@
     },
     "emptyTitle": "아직 배분 계획이 없어요",
     "emptyBody": "월급과 배분 항목을 설정하면 여기에 폭포가 그려져요"
+  },
+  "report": {
+    "title": "리포트",
+    "loading": "불러오는 중이에요",
+    "savingsRate": "저축률",
+    "withInvestment": "투자 포함",
+    "withoutInvestment": "투자 제외",
+    "maturityReceived": "만기 수령 누적",
+    "maturityCounts": "보관 {archived}건 · 기록 {recorded}건",
+    "envelopeSpent": "봉투 집행 누적",
+    "trendTitle": "계획 vs 실제 추이",
+    "planned": "계획",
+    "actual": "실제",
+    "missing": "미체크인",
+    "emptyTitle": "아직 추이가 없어요",
+    "emptyBody": "첫 체크인을 하면 계획 대비 실제가 여기에 쌓여요",
+    "checkInCta": "이번 달 체크인하기"
+  },
+  "checkin": {
+    "title": "이번 달, 생활비 얼마 남았나요?",
+    "cycle": "{label} 사이클",
+    "living": "생활비 통장 잔액",
+    "livingPlaceholder": "예: 41,000",
+    "toppedUp": "이번 달 충당해 넣은 돈",
+    "toppedUpHint": "생활비가 모자라 추가로 넣은 돈이 있다면 적어주세요 (없으면 비워두세요)",
+    "toppedUpPlaceholder": "예: 0",
+    "submit": "기록하기",
+    "doneTitle": "체크인을 기록했어요",
+    "over": "{amount}원 초과했어요",
+    "surplus": "{amount}원 남겼어요",
+    "exact": "계획에 딱 맞췄어요",
+    "confirm": "확인"
   },
   "checklist": {
     "eyebrow": "월급날 · {date}",
