@@ -337,6 +337,14 @@
       "description": "노션 임포트(MOD-07): 노션·엑셀 표 텍스트를 붙여넣으면 항목 후보(이름·금액)를 파싱해 제시하고, 사용자가 분류·대상 통장·포함 여부를 확정하면 기존 생성 API(ITEM-01)로 일괄 등록한다. 완전 자동이 아닌 후보 제시 + 수동 확정 방식. SCR-07 전체 허브에서 진입",
       "verify": "npm run verify 통과 + 표 붙여넣기→후보 인식→일괄 등록 동선(파서 단위 테스트 + 시트 컴포넌트 테스트)",
       "passes": true
+    },
+    {
+      "id": "ITEM-08",
+      "phase": 4,
+      "category": "backend",
+      "description": "보관함(SCR-08 백엔드): 만기·중도해지로 보관(ARCHIVED)된 항목 조회 + 만기 수령 누적액 등 이력 통계 제공 + 중도해지 실수령액 기록(maturity_actual_amount). GET /budget-items/archive(목록+통계), PATCH /budget-items/{id}/maturity(실수령액 기록, ACTIVE면 ARCHIVED 전환). 예상 만기금액(ITEM-05/06)은 조회 노출만(쓰기는 Phase 5)",
+      "verify": "./gradlew verify 통과 + 보관함 목록·누적 통계·중도해지 전환·만기 수령액 기록·소유권/상태 게이트(DELETED 제외) 통합 테스트 + 누적 통계 순수 단위 테스트",
+      "passes": true
     }
   ]
 }

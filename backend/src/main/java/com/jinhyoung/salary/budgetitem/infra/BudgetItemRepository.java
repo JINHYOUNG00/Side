@@ -1,5 +1,6 @@
 package com.jinhyoung.salary.budgetitem.infra;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -16,6 +17,12 @@ public interface BudgetItemRepository extends JpaRepository<BudgetItem, Long> {
 
     /** 소유권 + 상태 동시 검증 — 미소유·비활성·부재는 모두 empty(존재 여부를 노출하지 않음). */
     Optional<BudgetItem> findByIdAndUserIdAndStatus(Long id, Long userId, ItemStatus status);
+
+    /**
+     * 소유권 + 상태집합 검증(ITEM-08 실수령액 기록) — ACTIVE(중도해지)·ARCHIVED(만기 수령) 둘 다 허용하되
+     * DELETED·미소유·부재는 empty(존재 비노출). 실수령액은 활성 항목 중도해지나 보관 항목 수령에만 기록한다.
+     */
+    Optional<BudgetItem> findByIdAndUserIdAndStatusIn(Long id, Long userId, Collection<ItemStatus> statuses);
 
     /**
      * 만기 보관 배치(ITEM-02) — 만기일이 있는 특정 상태(ACTIVE)의 항목을 전 사용자에 걸쳐 조회한다. 만기 경과

@@ -44,6 +44,30 @@ public class BudgetItemService {
         return ownedActiveOrThrow(userId, itemId);
     }
 
+    /**
+     * 보관함 조회(ITEM-08) — 만기·중도해지로 보관(ARCHIVED)된 항목을 정렬 순으로 반환한다. soft delete(DELETED)와
+     * 활성(ACTIVE)은 제외된다. 누적 통계(만기 수령 누적액 등)는 호출 측이 이 목록의 실수령액으로 집계한다.
+     */
+    @Transactional(readOnly = true)
+    public List<BudgetItem> listArchived(long userId) {
+        return budgetItemRepository.findByUserIdAndStatusOrderBySortOrderAsc(userId, ItemStatus.ARCHIVED);
+    }
+
+    /**
+     * 실수령액 기록(ITEM-08) — 만기·중도해지 시 실제로 받은 금액을 기록한다. 호출 사용자의 ACTIVE(중도해지)·
+     * ARCHIVED(만기 수령) 항목만 대상이며, ACTIVE면 엔티티가 ARCHIVED로 함께 전환한다(사용자 주도, 날짜 무관).
+     * DELETED·미소유·부재는 NOT_FOUND(존재 비노출). 재호출 시 값이 덮어써져 정정 가능하다.
+     */
+    @Transactional
+    public BudgetItem recordMaturityActual(long userId, long itemId, long actualAmount) {
+        BudgetItem item = budgetItemRepository
+                .findByIdAndUserIdAndStatusIn(itemId, userId, List.of(ItemStatus.ACTIVE, ItemStatus.ARCHIVED))
+                .orElseThrow(
+                        () -> new ApiException(ErrorCode.NOT_FOUND, Map.of("resource", "budgetItem", "id", itemId)));
+        item.recordMaturityActual(actualAmount);
+        return item;
+    }
+
     @Transactional
     public BudgetItem create(
             long userId,

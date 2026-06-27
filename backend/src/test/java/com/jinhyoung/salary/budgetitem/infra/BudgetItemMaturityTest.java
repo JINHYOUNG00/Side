@@ -37,4 +37,26 @@ class BudgetItemMaturityTest {
     void 만기일이_없으면_기한_없는_항목이라_보관_대상이_아니다() {
         assertThat(itemWithEndDate(null).isMaturedAsOf(TODAY)).isFalse();
     }
+
+    @Test
+    void 활성_항목에_실수령액을_기록하면_중도해지로_ARCHIVED_전환된다() {
+        BudgetItem item = itemWithEndDate(null);
+
+        item.recordMaturityActual(1_234_567L);
+
+        assertThat(item.getStatus()).isEqualTo(ItemStatus.ARCHIVED);
+        assertThat(item.getMaturityActualAmount()).isEqualTo(1_234_567L);
+    }
+
+    @Test
+    void 이미_보관된_항목에_실수령액을_기록하면_상태는_ARCHIVED로_유지되고_금액만_갱신된다() {
+        BudgetItem item = itemWithEndDate(null);
+        item.markArchived();
+
+        item.recordMaturityActual(1_000_000L);
+        item.recordMaturityActual(1_050_000L);
+
+        assertThat(item.getStatus()).isEqualTo(ItemStatus.ARCHIVED);
+        assertThat(item.getMaturityActualAmount()).isEqualTo(1_050_000L);
+    }
 }

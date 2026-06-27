@@ -50,6 +50,17 @@ public class BudgetItem {
     @Column(name = "end_date")
     private LocalDate endDate;
 
+    /**
+     * 예상 만기금액(ITEM-05·06 수동 입력값). 보관함(ITEM-08)의 "예상 vs 실제" 표시에 읽는다. 현재는 ITEM-05/06
+     * 폼 미구현이라 항상 NULL이며, 이 매핑은 조회 노출만 담당한다(쓰기는 Phase 5에서 추가).
+     */
+    @Column(name = "expected_maturity_amount")
+    private Long expectedMaturityAmount;
+
+    /** 만기·중도해지 시 실수령액(ITEM-08). NULL이면 아직 미기록. 누적 수령 통계의 합산 대상. */
+    @Column(name = "maturity_actual_amount")
+    private Long maturityActualAmount;
+
     @Column
     private String memo;
 
@@ -135,6 +146,14 @@ public class BudgetItem {
         return endDate;
     }
 
+    public Long getExpectedMaturityAmount() {
+        return expectedMaturityAmount;
+    }
+
+    public Long getMaturityActualAmount() {
+        return maturityActualAmount;
+    }
+
     public String getMemo() {
         return memo;
     }
@@ -194,5 +213,18 @@ public class BudgetItem {
      */
     public void markDeleted() {
         this.status = ItemStatus.DELETED;
+    }
+
+    /**
+     * 실수령액 기록(ITEM-08). 만기·중도해지 시 실제로 받은 금액(원)을 기록한다. 항목이 아직 ACTIVE면 이는
+     * <b>중도해지</b>이므로 ARCHIVED로 함께 전환한다(만기 보관 배치 ITEM-02와 달리 사용자 주도, 날짜 무관).
+     * 이미 ARCHIVED면 자연 만기 수령액 기록(또는 정정)으로 상태는 그대로 둔다. DELETED 항목은 서비스 단계의
+     * 조회 게이트에서 걸러져 여기 도달하지 않는다. 과거 사이클 스냅샷(plan_lines)은 불변(규칙 4).
+     */
+    public void recordMaturityActual(long actualAmount) {
+        this.maturityActualAmount = actualAmount;
+        if (this.status == ItemStatus.ACTIVE) {
+            this.status = ItemStatus.ARCHIVED;
+        }
     }
 }

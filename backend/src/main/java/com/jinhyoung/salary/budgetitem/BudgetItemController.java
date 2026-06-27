@@ -1,6 +1,7 @@
 package com.jinhyoung.salary.budgetitem;
 
 import com.jinhyoung.salary.budgetitem.domain.Category;
+import com.jinhyoung.salary.budgetitem.domain.MaturityArchiveStats;
 import com.jinhyoung.salary.budgetitem.infra.BudgetItem;
 import com.jinhyoung.salary.cycle.CycleSnapshotService;
 import jakarta.validation.Valid;
@@ -28,6 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * 배분 항목 생성·조회·삭제(ITEM-01·ITEM-09, API명세 4장). 인증 필수 — principal=userId(JwtAuthenticationFilter)로
  * 소유분만 다룬다. DELETE는 물리 삭제가 아닌 status=DELETED(soft delete, 규칙 5). 수정(PATCH)은 ITEM-07.
+ * 보관함 조회와 실수령액 기록(ITEM-08)은 {@code GET /archive}·{@code PATCH /{id}/maturity}로 다룬다.
  */
 @RestController
 @RequestMapping("/api/v1/budget-items")
@@ -61,6 +63,16 @@ public class BudgetItemController {
     @GetMapping("/{id}")
     public BudgetItemResponse get(@AuthenticationPrincipal Long userId, @PathVariable long id) {
         return BudgetItemResponse.from(budgetItemService.get(userId, id));
+    }
+
+    /**
+     * 보관함 조회(ITEM-08, SCR-08). 만기·중도해지로 보관(ARCHIVED)된 항목 목록과 이력 통계(보관 건수·실수령액
+     * 기록 건수·만기 수령 누적액)를 함께 내린다. 항목에는 예상(ITEM-05/06)·실제 만기금액을 실어 "예상 vs 실제"를
+     * 표시할 수 있게 한다(예상은 Phase 5 전까지 null).
+     */
+    @GetMapping("/archive")
+    public ArchiveResponse archive(@AuthenticationPrincipal Long userId) {
+        return ArchiveResponse.from(budgetItemService.listArchived(userId));
     }
 
     @PostMapping
@@ -103,6 +115,18 @@ public class BudgetItemController {
             cycleSnapshotService.regenerateCurrentCycle(userId);
         }
         return BudgetItemResponse.from(item);
+    }
+
+    /**
+     * 실수령액 기록(ITEM-08). 만기·중도해지 시 실제로 받은 금액을 기록한다. ACTIVE 항목이면 중도해지로 보아
+     * ARCHIVED로 전환하고, 이미 ARCHIVED면 만기 수령액을 기록(정정)한다. DELETED·미소유·부재는 NOT_FOUND.
+     */
+    @PatchMapping("/{id}/maturity")
+    public ArchivedItemResponse recordMaturity(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable long id,
+            @Valid @RequestBody RecordMaturityRequest request) {
+        return ArchivedItemResponse.from(budgetItemService.recordMaturityActual(userId, id, request.actualAmount()));
     }
 
     @DeleteMapping("/{id}")
@@ -169,6 +193,55 @@ public class BudgetItemController {
                     item.getEndDate(),
                     item.getMemo(),
                     item.getSortOrder());
+        }
+    }
+
+    /** 실수령액 기록 요청(ITEM-08). 금액은 long 원 단위, 1 ≤ x ≤ 10억(구현규칙 5장). */
+    public record RecordMaturityRequest(@Min(AMOUNT_MIN) @Max(AMOUNT_MAX) long actualAmount) {}
+
+    /**
+     * 보관함 항목(ITEM-08, SCR-08). 만기일·예상/실제 만기금액을 함께 실어 "예상 vs 실제"를 표시한다.
+     * expectedMaturityAmount는 ITEM-05/06 미구현이라 현재 null, maturityActualAmount는 미기록 시 null.
+     */
+    public record ArchivedItemResponse(
+            Long id,
+            Category category,
+            String name,
+            long amount,
+            Long accountId,
+            LocalDate startDate,
+            LocalDate endDate,
+            Long expectedMaturityAmount,
+            Long maturityActualAmount,
+            String memo,
+            int sortOrder) {
+        static ArchivedItemResponse from(BudgetItem item) {
+            return new ArchivedItemResponse(
+                    item.getId(),
+                    item.getCategory(),
+                    item.getName(),
+                    item.getAmount(),
+                    item.getAccountId(),
+                    item.getStartDate(),
+                    item.getEndDate(),
+                    item.getExpectedMaturityAmount(),
+                    item.getMaturityActualAmount(),
+                    item.getMemo(),
+                    item.getSortOrder());
+        }
+    }
+
+    /**
+     * 보관함 응답(ITEM-08) — 보관 항목 목록 + 이력 통계. 통계는 순수 클래스 {@link MaturityArchiveStats}가
+     * 실수령액 목록으로부터 집계한다(누적 합산, 미기록 제외).
+     */
+    public record ArchiveResponse(List<ArchivedItemResponse> items, MaturityArchiveStats stats) {
+        static ArchiveResponse from(List<BudgetItem> archived) {
+            List<ArchivedItemResponse> items =
+                    archived.stream().map(ArchivedItemResponse::from).toList();
+            MaturityArchiveStats stats = MaturityArchiveStats.from(
+                    archived.stream().map(BudgetItem::getMaturityActualAmount).toList());
+            return new ArchiveResponse(items, stats);
         }
     }
 }
