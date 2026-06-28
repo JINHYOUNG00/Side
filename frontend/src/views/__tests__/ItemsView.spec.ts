@@ -21,6 +21,7 @@ vi.mock('@/api/budgetItems', async (importOriginal) => {
     deleteBudgetItem: vi.fn<typeof actual.deleteBudgetItem>(),
     previewMaturity: vi.fn<typeof actual.previewMaturity>(),
     previewFx: vi.fn<typeof actual.previewFx>(),
+    previewDaily: vi.fn<typeof actual.previewDaily>(),
   }
 })
 vi.mock('@/api/accounts')
@@ -41,6 +42,8 @@ const SAVINGS: BudgetItem = {
   expectedMaturityAmount: null,
   memo: null,
   sortOrder: 0,
+  inputCycle: 'MONTHLY',
+  inputMeta: null,
 }
 
 // Teleport를 인라인 렌더해 시트 내부 요소를 wrapper.find로 찾을 수 있게 한다(MOD-03 동일 패턴).
@@ -64,6 +67,7 @@ describe('ItemsView (MOD-01 항목 관리)', () => {
     vi.mocked(itemsApi.deleteBudgetItem).mockReset()
     vi.mocked(itemsApi.previewMaturity).mockReset()
     vi.mocked(itemsApi.previewFx).mockReset()
+    vi.mocked(itemsApi.previewDaily).mockReset()
     vi.mocked(accountsApi.listAccounts).mockReset()
     i18n.global.locale.value = 'ko'
   })
@@ -511,5 +515,103 @@ describe('ItemsView (MOD-01 항목 관리)', () => {
     expect(itemsApi.createBudgetItem).toHaveBeenCalledWith(
       expect.objectContaining({ category: 'INVESTMENT', name: '달러 적립', amount: 224_000, accountId: 1 }),
     )
+  })
+
+  // ── 일 단위 입력(ITEM-03) ─────────────────────────────────────────────
+
+  it('일 단위 입력 토글을 켜면 일 금액·빈도 입력란이 나오고 월 금액 입력란은 숨는다', async () => {
+    vi.mocked(itemsApi.listBudgetItems).mockResolvedValue([])
+    vi.mocked(accountsApi.listAccounts).mockResolvedValue([KAKAO])
+    const wrapper = mountView()
+    await flushPromises()
+
+    await buttonByText(wrapper, i18n.global.t('items.add'))!.trigger('click')
+    await wrapper.vm.$nextTick()
+    // 기본은 월 금액 입력란.
+    expect(wrapper.find('#item-amount').exists()).toBe(true)
+    expect(wrapper.find('#item-daily-amount').exists()).toBe(false)
+
+    await wrapper.find('#item-daily').setValue(true)
+    await wrapper.vm.$nextTick()
+    // 일 단위로 바뀌면 월 금액 입력란은 사라지고 일 금액 입력란이 나온다.
+    expect(wrapper.find('#item-amount').exists()).toBe(false)
+    expect(wrapper.find('#item-daily-amount').exists()).toBe(true)
+  })
+
+  it('일 금액·빈도를 넣으면 previewDaily로 월 환산 미리보기 배너를 표시한다', async () => {
+    vi.mocked(itemsApi.listBudgetItems).mockResolvedValue([])
+    vi.mocked(accountsApi.listAccounts).mockResolvedValue([KAKAO])
+    vi.mocked(itemsApi.previewDaily).mockResolvedValue({ monthlyAmount: 300_000 })
+    const wrapper = mountView()
+    await flushPromises()
+
+    await buttonByText(wrapper, i18n.global.t('items.add'))!.trigger('click')
+    await wrapper.vm.$nextTick()
+    await wrapper.find('#item-daily').setValue(true)
+    await wrapper.vm.$nextTick()
+    await wrapper.find('#item-daily-amount').setValue('10000')
+    await flushPromises()
+
+    // 빈도 기본 매일(DAILY) — 일 10,000 × 30 = 300,000.
+    expect(itemsApi.previewDaily).toHaveBeenLastCalledWith({ dailyAmount: 10000, frequency: 'DAILY' })
+    const banner = wrapper.find('[data-testid="daily-preview"]')
+    expect(banner.exists()).toBe(true)
+    expect(banner.text()).toContain('300,000')
+  })
+
+  it('일 단위 항목을 생성하면 inputCycle·inputMeta가 실리고 amount는 보내지 않는다(서버 환산)', async () => {
+    vi.mocked(itemsApi.listBudgetItems).mockResolvedValue([])
+    vi.mocked(accountsApi.listAccounts).mockResolvedValue([KAKAO])
+    vi.mocked(itemsApi.createBudgetItem).mockResolvedValue(SAVINGS)
+    vi.mocked(itemsApi.previewDaily).mockResolvedValue({ monthlyAmount: 220_000 })
+    const wrapper = mountView()
+    await flushPromises()
+
+    await buttonByText(wrapper, i18n.global.t('items.add'))!.trigger('click')
+    await wrapper.vm.$nextTick()
+    await buttonByText(wrapper, i18n.global.t('items.category.INVESTMENT'))!.trigger('click')
+    await wrapper.find('#item-name').setValue('매일적립')
+    await wrapper.find('#item-account').setValue('1')
+    await wrapper.find('#item-daily').setValue(true)
+    await wrapper.vm.$nextTick()
+    await wrapper.find('#item-daily-amount').setValue('10000')
+    // 빈도 영업일로 변경.
+    await buttonByText(wrapper, i18n.global.t('items.form.fxFreq.BUSINESS_DAYS'))!.trigger('click')
+    await flushPromises()
+
+    await buttonByText(wrapper, i18n.global.t('items.form.save'))!.trigger('click')
+    await flushPromises()
+
+    const payload = vi.mocked(itemsApi.createBudgetItem).mock.calls[0]![0]
+    expect(payload).toMatchObject({
+      category: 'INVESTMENT',
+      name: '매일적립',
+      accountId: 1,
+      inputCycle: 'DAILY',
+      inputMeta: { dailyAmount: 10000, frequency: 'BUSINESS_DAYS' },
+    })
+    expect(payload.amount).toBeUndefined()
+  })
+
+  it('일 단위 항목은 수정 시 일 단위 모드로 프리필된다', async () => {
+    const dailyItem: BudgetItem = {
+      ...SAVINGS,
+      id: 12,
+      name: '매일적립',
+      amount: 300_000,
+      inputCycle: 'DAILY',
+      inputMeta: { dailyAmount: 10_000, frequency: 'DAILY' },
+    }
+    vi.mocked(itemsApi.listBudgetItems).mockResolvedValue([dailyItem])
+    vi.mocked(accountsApi.listAccounts).mockResolvedValue([KAKAO])
+    const wrapper = mountView()
+    await flushPromises()
+
+    await wrapper.find('button.row').trigger('click')
+    await wrapper.vm.$nextTick()
+
+    expect((wrapper.find('#item-daily').element as HTMLInputElement).checked).toBe(true)
+    expect((wrapper.find('#item-daily-amount').element as HTMLInputElement).value).toBe('10,000')
+    expect(wrapper.find('#item-amount').exists()).toBe(false)
   })
 })

@@ -2,6 +2,8 @@ package com.jinhyoung.salary.budgetitem;
 
 import com.jinhyoung.salary.account.infra.AccountRepository;
 import com.jinhyoung.salary.budgetitem.domain.Category;
+import com.jinhyoung.salary.budgetitem.domain.DailyInput;
+import com.jinhyoung.salary.budgetitem.domain.InputCycle;
 import com.jinhyoung.salary.budgetitem.domain.TaxType;
 import com.jinhyoung.salary.budgetitem.infra.BudgetItem;
 import com.jinhyoung.salary.budgetitem.infra.BudgetItemRepository;
@@ -27,6 +29,11 @@ public class BudgetItemService {
 
     /** 활성 항목 개수 상한(구현규칙 6장). */
     static final long MAX_ACTIVE_ITEMS = 100;
+
+    /** 월 환산 금액 범위(원) — 구현규칙 5장(컨트롤러 amount 검증과 동일). DAILY 환산 결과도 이 범위 안이어야 한다. */
+    private static final long AMOUNT_MIN = 1;
+
+    private static final long AMOUNT_MAX = 1_000_000_000;
 
     private final BudgetItemRepository budgetItemRepository;
     private final AccountRepository accountRepository;
@@ -75,32 +82,37 @@ public class BudgetItemService {
             long userId,
             Category category,
             String name,
-            long amount,
+            Long monthlyAmount,
             long accountId,
             LocalDate startDate,
             LocalDate endDate,
             BigDecimal interestRate,
             TaxType taxType,
             Long expectedMaturityAmount,
-            String memo) {
+            String memo,
+            InputCycle inputCycle,
+            DailyInput dailyInput) {
         requireOwnedActiveAccount(userId, accountId);
         if (budgetItemRepository.countByUserIdAndStatus(userId, ItemStatus.ACTIVE) >= MAX_ACTIVE_ITEMS) {
             throw new ApiException(ErrorCode.ITEM_LIMIT_EXCEEDED, Map.of("limit", MAX_ACTIVE_ITEMS));
         }
+        ResolvedAmount resolved = resolveAmount(inputCycle, monthlyAmount, dailyInput);
         int sortOrder = budgetItemRepository.maxSortOrder(userId) + 1;
         return budgetItemRepository.save(BudgetItem.create(
                 userId,
                 accountId,
                 category,
                 name,
-                amount,
+                resolved.amount(),
                 startDate,
                 endDate,
                 interestRate,
                 taxType,
                 expectedMaturityAmount,
                 memo,
-                sortOrder));
+                sortOrder,
+                inputCycle,
+                resolved.inputMeta()));
     }
 
     /**
@@ -115,29 +127,58 @@ public class BudgetItemService {
             long itemId,
             Category category,
             String name,
-            long amount,
+            Long monthlyAmount,
             long accountId,
             LocalDate startDate,
             LocalDate endDate,
             BigDecimal interestRate,
             TaxType taxType,
             Long expectedMaturityAmount,
-            String memo) {
+            String memo,
+            InputCycle inputCycle,
+            DailyInput dailyInput) {
         BudgetItem item = ownedActiveOrThrow(userId, itemId);
         requireOwnedActiveAccount(userId, accountId);
+        ResolvedAmount resolved = resolveAmount(inputCycle, monthlyAmount, dailyInput);
         item.update(
                 category,
                 name,
-                amount,
+                resolved.amount(),
                 accountId,
                 startDate,
                 endDate,
                 interestRate,
                 taxType,
                 expectedMaturityAmount,
-                memo);
+                memo,
+                inputCycle,
+                resolved.inputMeta());
         return item;
     }
+
+    /**
+     * 입력 단위에 따라 저장할 월 환산 금액과 원본 보존 input_meta를 도출한다(ITEM-03). DAILY면 {@link DailyInput}이
+     * 월 환산을 계산하고(자동 계산, 서버 권위) 원본 일 금액·빈도를 jsonb 맵으로 보존한다 — 환산값이 금액 범위를
+     * 벗어나면 VALIDATION_FAILED. MONTHLY면 입력 금액을 그대로 쓰고 input_meta는 null이다. 입력 구조(존재·짝)
+     * 검증은 컨트롤러 DTO가 먼저 거른다.
+     */
+    private ResolvedAmount resolveAmount(InputCycle inputCycle, Long monthlyAmount, DailyInput dailyInput) {
+        if (inputCycle == InputCycle.DAILY) {
+            long monthly = dailyInput.toMonthlyAmount();
+            if (monthly < AMOUNT_MIN || monthly > AMOUNT_MAX) {
+                throw new ApiException(ErrorCode.VALIDATION_FAILED, Map.of("field", "inputMeta"));
+            }
+            return new ResolvedAmount(
+                    monthly,
+                    Map.of(
+                            "dailyAmount", dailyInput.dailyAmount(),
+                            "frequency", dailyInput.frequency().name()));
+        }
+        return new ResolvedAmount(monthlyAmount, null);
+    }
+
+    /** 저장할 월 환산 금액 + 원본 보존 input_meta(MONTHLY면 null). */
+    private record ResolvedAmount(long amount, Map<String, Object> inputMeta) {}
 
     /**
      * 항목 soft delete(ITEM-09) — 활성 항목을 DELETED로 전환한다. 행은 잔존하며 이후 조회(목록·단건)에서

@@ -475,7 +475,7 @@
       "category": "backend",
       "description": "일 단위 입력(ITEM-03): 매일 적립식 항목은 일 금액 입력 시 월 환산액을 자동 계산하고 원본 입력값은 보존한다(요구사항 2.3). budget_items의 input_cycle(MONTHLY|DAILY)·input_meta(jsonb, 원본 일금액·빈도) 컬럼은 V1에 이미 존재 — 매핑·환산 도메인·MOD-01 폼 일금액 입력만 추가. 환산은 순수 도메인(빈도별 월 평균 일수)으로, 저장은 월 환산 원화액. 원본 input_meta 보존으로 수정 시 프리필",
       "verify": "./gradlew verify 통과(input_cycle/input_meta 영속·환산값·원본 보존 통합 + 환산 순수 단위) + npm run verify 통과(MOD-01 일 단위 토글·일금액 입력→월환산 미리보기·원본 프리필 뷰 테스트)",
-      "passes": false
+      "passes": true
     },
     {
       "id": "RPT-03",

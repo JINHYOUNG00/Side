@@ -65,6 +65,9 @@ POST /budget-items/preview-maturity     만기금액 미리보기(저장 없음,
 POST /budget-items/preview-fx           외화 도우미(ITEM-04)
   req: { "unitAmount": 7, "currency": "USD", "frequency": "BUSINESS_DAYS", "fxRate": 1380 }
   res: { "recommendedMonthlyKrw": 223000, "bufferRate": 0.05 }
+POST /budget-items/preview-daily        일 단위 입력 월 환산(저장 없음, ITEM-03)
+  req: { "dailyAmount": 10000, "frequency": "DAILY" } → res: { "monthlyAmount": 300000 }
+  (DAILY 생성/수정: body에 inputCycle="DAILY" + inputMeta={dailyAmount,frequency}, amount는 서버가 환산)
 
 GET|POST /envelopes         PATCH|DELETE /envelopes/{id}
 GET /envelopes/{id}/transactions

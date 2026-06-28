@@ -1,10 +1,12 @@
 package com.jinhyoung.salary.budgetitem;
 
 import com.jinhyoung.salary.budgetitem.domain.Category;
+import com.jinhyoung.salary.budgetitem.domain.DailyInput;
 import com.jinhyoung.salary.budgetitem.domain.FxFrequency;
 import com.jinhyoung.salary.budgetitem.domain.FxRecommendationCalculator;
 import com.jinhyoung.salary.budgetitem.domain.FxRecommendationInput;
 import com.jinhyoung.salary.budgetitem.domain.FxRecommendationResult;
+import com.jinhyoung.salary.budgetitem.domain.InputCycle;
 import com.jinhyoung.salary.budgetitem.domain.MaturityArchiveStats;
 import com.jinhyoung.salary.budgetitem.domain.MaturityCalculator;
 import com.jinhyoung.salary.budgetitem.domain.MaturityInput;
@@ -26,6 +28,7 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -120,7 +123,9 @@ public class BudgetItemController {
                 request.interestRate(),
                 request.taxType(),
                 request.expectedMaturityAmount(),
-                request.memo());
+                request.memo(),
+                request.resolvedInputCycle(),
+                request.toDailyInput());
         return BudgetItemResponse.from(item);
     }
 
@@ -147,7 +152,9 @@ public class BudgetItemController {
                 request.interestRate(),
                 request.taxType(),
                 request.expectedMaturityAmount(),
-                request.memo());
+                request.memo(),
+                request.resolvedInputCycle(),
+                request.toDailyInput());
         if (applyToCurrentCycle) {
             cycleSnapshotService.regenerateCurrentCycle(userId);
         }
@@ -191,10 +198,41 @@ public class BudgetItemController {
         return new FxPreviewResponse(result.recommendedMonthlyKrw(), result.bufferRate());
     }
 
+    /**
+     * 일 단위 입력 월 환산 미리보기(ITEM-03, API명세 4장) — 저장 없는 순수 계산이다. 일 금액·빈도(매일/영업일)로
+     * 월 환산 금액(원, 일 금액 × 월 평균 일수)을 돌려준다. 폼이 일 금액 입력 시 "월 환산 N원"을 표시하는 데 쓴다.
+     * 환산값은 생성·수정 시 서버가 다시 계산해 저장하므로(권위) 이 미리보기와 일치한다. 인증은 필요하나 사용자
+     * 데이터는 읽지 않는다.
+     */
+    @PostMapping("/preview-daily")
+    public DailyPreviewResponse previewDaily(@Valid @RequestBody PreviewDailyRequest request) {
+        long monthlyAmount = new DailyInput(request.dailyAmount(), request.frequency()).toMonthlyAmount();
+        return new DailyPreviewResponse(monthlyAmount);
+    }
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@AuthenticationPrincipal Long userId, @PathVariable long id) {
         budgetItemService.delete(userId, id);
+    }
+
+    /**
+     * 입력 단위와 금액·input_meta의 짝 검증(ITEM-03) — 생성·수정 요청이 공유한다. MONTHLY는 amount 필수에
+     * input_meta 없음, DAILY는 input_meta 필수(amount는 서버가 재계산하므로 무시). 환산값 범위는 서비스가 검증.
+     */
+    private static boolean inputModeConsistent(InputCycle cycle, Long amount, InputMetaRequest inputMeta) {
+        if (cycle == InputCycle.DAILY) {
+            return inputMeta != null;
+        }
+        return amount != null && inputMeta == null;
+    }
+
+    /** DAILY면 input_meta로 순수 {@link DailyInput}을 만들고, MONTHLY면 null(ITEM-03) — 생성·수정 요청이 공유한다. */
+    private static DailyInput dailyInputOf(InputCycle cycle, InputMetaRequest inputMeta) {
+        if (cycle == InputCycle.DAILY && inputMeta != null) {
+            return new DailyInput(inputMeta.dailyAmount(), inputMeta.frequency());
+        }
+        return null;
     }
 
     /**
@@ -206,19 +244,35 @@ public class BudgetItemController {
     public record CreateRequest(
             @NotNull Category category,
             @NotBlank @Size(max = NAME_MAX) String name,
-            @Min(AMOUNT_MIN) @Max(AMOUNT_MAX) long amount,
+            @Min(AMOUNT_MIN) @Max(AMOUNT_MAX) Long amount,
             @NotNull Long accountId,
             @NotNull LocalDate startDate,
             LocalDate endDate,
             @DecimalMin(RATE_MIN) @DecimalMax(RATE_MAX) @Digits(integer = 3, fraction = 2) BigDecimal interestRate,
             TaxType taxType,
             @Min(AMOUNT_MIN) @Max(AMOUNT_MAX) Long expectedMaturityAmount,
-            @Size(max = MEMO_MAX) String memo) {
+            @Size(max = MEMO_MAX) String memo,
+            InputCycle inputCycle,
+            @Valid InputMetaRequest inputMeta) {
 
         /** end_date > start_date 교차 검증(ITEM-02). 위반 시 400 VALIDATION_FAILED(핸들러가 코드만 반환). */
         @AssertTrue
         public boolean isEndDateAfterStartDate() {
             return endDate == null || startDate == null || endDate.isAfter(startDate);
+        }
+
+        /** 입력 단위(ITEM-03)와 금액·input_meta의 짝이 맞는지 검증한다(MONTHLY=amount·meta없음 / DAILY=meta필수). */
+        @AssertTrue
+        public boolean isInputModeConsistent() {
+            return inputModeConsistent(resolvedInputCycle(), amount, inputMeta);
+        }
+
+        InputCycle resolvedInputCycle() {
+            return inputCycle == null ? InputCycle.MONTHLY : inputCycle;
+        }
+
+        DailyInput toDailyInput() {
+            return dailyInputOf(resolvedInputCycle(), inputMeta);
         }
     }
 
@@ -229,19 +283,35 @@ public class BudgetItemController {
     public record UpdateRequest(
             @NotNull Category category,
             @NotBlank @Size(max = NAME_MAX) String name,
-            @Min(AMOUNT_MIN) @Max(AMOUNT_MAX) long amount,
+            @Min(AMOUNT_MIN) @Max(AMOUNT_MAX) Long amount,
             @NotNull Long accountId,
             @NotNull LocalDate startDate,
             LocalDate endDate,
             @DecimalMin(RATE_MIN) @DecimalMax(RATE_MAX) @Digits(integer = 3, fraction = 2) BigDecimal interestRate,
             TaxType taxType,
             @Min(AMOUNT_MIN) @Max(AMOUNT_MAX) Long expectedMaturityAmount,
-            @Size(max = MEMO_MAX) String memo) {
+            @Size(max = MEMO_MAX) String memo,
+            InputCycle inputCycle,
+            @Valid InputMetaRequest inputMeta) {
 
         /** end_date > start_date 교차 검증(ITEM-02). 위반 시 400 VALIDATION_FAILED(핸들러가 코드만 반환). */
         @AssertTrue
         public boolean isEndDateAfterStartDate() {
             return endDate == null || startDate == null || endDate.isAfter(startDate);
+        }
+
+        /** 입력 단위(ITEM-03)와 금액·input_meta의 짝이 맞는지 검증한다(MONTHLY=amount·meta없음 / DAILY=meta필수). */
+        @AssertTrue
+        public boolean isInputModeConsistent() {
+            return inputModeConsistent(resolvedInputCycle(), amount, inputMeta);
+        }
+
+        InputCycle resolvedInputCycle() {
+            return inputCycle == null ? InputCycle.MONTHLY : inputCycle;
+        }
+
+        DailyInput toDailyInput() {
+            return dailyInputOf(resolvedInputCycle(), inputMeta);
         }
     }
 
@@ -262,7 +332,9 @@ public class BudgetItemController {
             TaxType taxType,
             Long expectedMaturityAmount,
             String memo,
-            int sortOrder) {
+            int sortOrder,
+            InputCycle inputCycle,
+            InputMetaResponse inputMeta) {
         static BudgetItemResponse from(BudgetItem item) {
             return new BudgetItemResponse(
                     item.getId(),
@@ -276,9 +348,40 @@ public class BudgetItemController {
                     item.getTaxType(),
                     item.getExpectedMaturityAmount(),
                     item.getMemo(),
-                    item.getSortOrder());
+                    item.getSortOrder(),
+                    item.getInputCycle(),
+                    InputMetaResponse.from(item.getInputMeta()));
         }
     }
+
+    /**
+     * 일 단위 입력 원본(ITEM-03) — 생성·수정 요청의 input_meta. DAILY일 때만 보내며 일 금액(원)·빈도(매일/영업일)를
+     * 담는다. 환산 월액은 서버가 계산하므로 보내지 않는다. dailyAmount는 amount와 동일 범위(1~10억)로 방어한다.
+     */
+    public record InputMetaRequest(
+            @NotNull @Min(AMOUNT_MIN) @Max(AMOUNT_MAX) Long dailyAmount, @NotNull FxFrequency frequency) {}
+
+    /**
+     * 일 단위 입력 원본 응답(ITEM-03) — DAILY 항목의 보존된 일 금액·빈도. MONTHLY 항목이면 null이다. 폼이 수정 시
+     * 일 단위 모드로 프리필하는 데 쓴다. jsonb 맵의 숫자는 Number로 왕복하므로 longValue로 해석한다(왕복 안전).
+     */
+    public record InputMetaResponse(long dailyAmount, FxFrequency frequency) {
+        static InputMetaResponse from(Map<String, Object> inputMeta) {
+            if (inputMeta == null) {
+                return null;
+            }
+            return new InputMetaResponse(
+                    ((Number) inputMeta.get("dailyAmount")).longValue(),
+                    FxFrequency.valueOf((String) inputMeta.get("frequency")));
+        }
+    }
+
+    /** 일 단위 입력 미리보기 요청(ITEM-03). 일 금액(원)·빈도(매일/영업일) — 둘 다 필수. */
+    public record PreviewDailyRequest(
+            @NotNull @Min(AMOUNT_MIN) @Max(AMOUNT_MAX) Long dailyAmount, @NotNull FxFrequency frequency) {}
+
+    /** 일 단위 입력 미리보기 응답(ITEM-03) — 월 환산 금액(원, 일 금액 × 월 평균 일수). */
+    public record DailyPreviewResponse(long monthlyAmount) {}
 
     /** 실수령액 기록 요청(ITEM-08). 금액은 long 원 단위, 1 ≤ x ≤ 10억(구현규칙 5장). */
     public record RecordMaturityRequest(@Min(AMOUNT_MIN) @Max(AMOUNT_MAX) long actualAmount) {}

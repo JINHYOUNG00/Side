@@ -2,6 +2,7 @@ package com.jinhyoung.salary.budgetitem.infra;
 
 import com.jinhyoung.salary.budgetitem.domain.Category;
 import com.jinhyoung.salary.budgetitem.domain.ExpectedMaturity;
+import com.jinhyoung.salary.budgetitem.domain.InputCycle;
 import com.jinhyoung.salary.budgetitem.domain.TaxType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -13,6 +14,9 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Map;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * 배분 항목(ERD budget_items, ITEM-01). 엔티티는 infra에 둔다(아키텍처 v1.1) — domain은 순수 계산만.
@@ -46,6 +50,23 @@ public class BudgetItem {
 
     @Column(nullable = false)
     private long amount;
+
+    /**
+     * 금액 입력 단위(ITEM-03). MONTHLY(기본)는 amount를 그대로 입력, DAILY는 input_meta의 일 금액·빈도로
+     * amount(월 환산)를 자동 계산한 항목임을 나타낸다. amount는 두 경우 모두 월 환산 금액이라 폭포·스냅샷은 불변.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "input_cycle", nullable = false, length = 10)
+    private InputCycle inputCycle;
+
+    /**
+     * 원본 입력 보존(ITEM-03, ERD). DAILY 항목의 일 금액·빈도를 {@code {"dailyAmount":..,"frequency":".."}}
+     * jsonb로 담아 수정 시 프리필한다. MONTHLY 항목은 null. {@link JdbcTypeCode SqlTypes.JSON}으로 매핑한다
+     * (suggestions.payload 전례). 숫자는 Number로 왕복하므로 읽을 때 longValue로 해석한다.
+     */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "input_meta", columnDefinition = "jsonb")
+    private Map<String, Object> inputMeta;
 
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
@@ -100,7 +121,9 @@ public class BudgetItem {
             TaxType taxType,
             Long expectedMaturityAmount,
             String memo,
-            int sortOrder) {
+            int sortOrder,
+            InputCycle inputCycle,
+            Map<String, Object> inputMeta) {
         this.userId = userId;
         this.accountId = accountId;
         this.category = category;
@@ -113,13 +136,16 @@ public class BudgetItem {
         this.expectedMaturityAmount = expectedMaturityAmount;
         this.memo = memo;
         this.sortOrder = sortOrder;
+        this.inputCycle = inputCycle;
+        this.inputMeta = inputMeta;
         this.status = ItemStatus.ACTIVE;
     }
 
     /**
-     * 새 항목 생성(ITEM-01·ITEM-02·ITEM-05/06). endDate는 만기일로 NULL 허용(기한 없는 항목). interestRate·
-     * taxType·expectedMaturityAmount는 저축 조건부 필드로 비저축 항목이면 NULL이다. sortOrder는 호출 측
-     * (서비스)이 사용자별 끝자리로 부여한다. status는 ACTIVE.
+     * 새 항목 생성(ITEM-01·02·03·05/06). endDate는 만기일로 NULL 허용(기한 없는 항목). interestRate·taxType·
+     * expectedMaturityAmount는 저축 조건부 필드로 비저축 항목이면 NULL이다. inputCycle은 입력 단위(MONTHLY/DAILY),
+     * inputMeta는 DAILY 항목의 원본 일 금액·빈도(ITEM-03, MONTHLY면 null) — amount는 호출 측이 도출한 월 환산
+     * 금액이다. sortOrder는 호출 측(서비스)이 사용자별 끝자리로 부여한다. status는 ACTIVE.
      */
     public static BudgetItem create(
             Long userId,
@@ -133,7 +159,9 @@ public class BudgetItem {
             TaxType taxType,
             Long expectedMaturityAmount,
             String memo,
-            int sortOrder) {
+            int sortOrder,
+            InputCycle inputCycle,
+            Map<String, Object> inputMeta) {
         return new BudgetItem(
                 userId,
                 accountId,
@@ -146,10 +174,12 @@ public class BudgetItem {
                 taxType,
                 expectedMaturityAmount,
                 memo,
-                sortOrder);
+                sortOrder,
+                inputCycle,
+                inputMeta);
     }
 
-    /** 저축 조건부 필드 없이 생성(ITEM-01·02) — 이율·세금·예상금액 수동값을 NULL로 둔다. */
+    /** 저축 조건부 필드 없이 생성(ITEM-01·02) — 이율·세금·예상금액 수동값을 NULL, 입력 단위를 MONTHLY로 둔다. */
     public static BudgetItem create(
             Long userId,
             Long accountId,
@@ -160,7 +190,52 @@ public class BudgetItem {
             LocalDate endDate,
             String memo,
             int sortOrder) {
-        return create(userId, accountId, category, name, amount, startDate, endDate, null, null, null, memo, sortOrder);
+        return create(
+                userId,
+                accountId,
+                category,
+                name,
+                amount,
+                startDate,
+                endDate,
+                null,
+                null,
+                null,
+                memo,
+                sortOrder,
+                InputCycle.MONTHLY,
+                null);
+    }
+
+    /** 저축 조건부 필드를 받되 입력 단위는 MONTHLY로 고정 생성(ITEM-01·05/06 — 기존 호출 호환). */
+    public static BudgetItem create(
+            Long userId,
+            Long accountId,
+            Category category,
+            String name,
+            long amount,
+            LocalDate startDate,
+            LocalDate endDate,
+            BigDecimal interestRate,
+            TaxType taxType,
+            Long expectedMaturityAmount,
+            String memo,
+            int sortOrder) {
+        return create(
+                userId,
+                accountId,
+                category,
+                name,
+                amount,
+                startDate,
+                endDate,
+                interestRate,
+                taxType,
+                expectedMaturityAmount,
+                memo,
+                sortOrder,
+                InputCycle.MONTHLY,
+                null);
     }
 
     public Long getId() {
@@ -185,6 +260,15 @@ public class BudgetItem {
 
     public long getAmount() {
         return amount;
+    }
+
+    public InputCycle getInputCycle() {
+        return inputCycle;
+    }
+
+    /** DAILY 항목의 원본 입력(일 금액·빈도) jsonb 맵 — MONTHLY면 null. 폼 프리필용(ITEM-03). */
+    public Map<String, Object> getInputMeta() {
+        return inputMeta;
     }
 
     public LocalDate getStartDate() {
@@ -251,7 +335,9 @@ public class BudgetItem {
             BigDecimal interestRate,
             TaxType taxType,
             Long expectedMaturityAmount,
-            String memo) {
+            String memo,
+            InputCycle inputCycle,
+            Map<String, Object> inputMeta) {
         this.category = category;
         this.name = name;
         this.amount = amount;
@@ -262,9 +348,11 @@ public class BudgetItem {
         this.taxType = taxType;
         this.expectedMaturityAmount = expectedMaturityAmount;
         this.memo = memo;
+        this.inputCycle = inputCycle;
+        this.inputMeta = inputMeta;
     }
 
-    /** 저축 조건부 필드 없이 수정(ITEM-07) — 이율·세금·예상금액 수동값을 NULL로 둔다. */
+    /** 저축 조건부 필드 없이 수정(ITEM-07) — 이율·세금·예상금액 수동값을 NULL, 입력 단위를 MONTHLY로 둔다. */
     public void update(
             Category category,
             String name,
@@ -273,7 +361,34 @@ public class BudgetItem {
             LocalDate startDate,
             LocalDate endDate,
             String memo) {
-        update(category, name, amount, accountId, startDate, endDate, null, null, null, memo);
+        update(category, name, amount, accountId, startDate, endDate, null, null, null, memo, InputCycle.MONTHLY, null);
+    }
+
+    /** 저축 조건부 필드를 받되 입력 단위는 MONTHLY로 고정 수정(ITEM-07 — 기존 호출 호환). */
+    public void update(
+            Category category,
+            String name,
+            long amount,
+            Long accountId,
+            LocalDate startDate,
+            LocalDate endDate,
+            BigDecimal interestRate,
+            TaxType taxType,
+            Long expectedMaturityAmount,
+            String memo) {
+        update(
+                category,
+                name,
+                amount,
+                accountId,
+                startDate,
+                endDate,
+                interestRate,
+                taxType,
+                expectedMaturityAmount,
+                memo,
+                InputCycle.MONTHLY,
+                null);
     }
 
     /**

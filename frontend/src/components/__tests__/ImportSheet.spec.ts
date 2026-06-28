@@ -30,6 +30,8 @@ function fakeItem(name: string): BudgetItem {
     expectedMaturityAmount: null,
     memo: null,
     sortOrder: 0,
+    inputCycle: 'MONTHLY',
+    inputMeta: null,
   }
 }
 

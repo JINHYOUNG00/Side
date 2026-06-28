@@ -18,6 +18,16 @@ export type Category = (typeof CATEGORIES)[number]
 export const TAX_TYPES = ['NORMAL_15_4', 'PREFERENTIAL', 'TAX_FREE'] as const
 export type TaxType = (typeof TAX_TYPES)[number]
 
+// 금액 입력 단위(ITEM-03, 서버 InputCycle enum과 동일). DAILY는 일 금액·빈도로 월 환산(amount)을 서버가 계산한다.
+export const INPUT_CYCLES = ['MONTHLY', 'DAILY'] as const
+export type InputCycle = (typeof INPUT_CYCLES)[number]
+
+// 일 단위 입력 원본(ITEM-03). DAILY 항목의 보존된 일 금액(원)·빈도(매일/영업일) — 수정 시 프리필용. MONTHLY면 null.
+export interface DailyMeta {
+  dailyAmount: number
+  frequency: FxFrequency
+}
+
 // 서버 응답(BudgetItemResponse). 저축 조건부 필드(interestRate·taxType·expectedMaturityAmount)는 비저축
 // 항목이면 null. expectedMaturityAmount는 수동 입력 원본값(폼 프리필용) — 보관함의 표시용 해석값과 구분된다.
 export interface BudgetItem {
@@ -33,19 +43,25 @@ export interface BudgetItem {
   expectedMaturityAmount: number | null
   memo: string | null
   sortOrder: number
+  // 입력 단위(ITEM-03). amount는 두 경우 모두 월 환산 금액. DAILY면 inputMeta에 원본 일 금액·빈도가 실린다.
+  inputCycle: InputCycle
+  inputMeta: DailyMeta | null
 }
 
 // 생성 입력(MOD-01 폼) — 공통 필드 + 저축 조건부 필드(선택). 저축 항목일 때만 채워 보낸다.
+// 일 단위 입력(ITEM-03)이면 amount 대신 inputCycle='DAILY'+inputMeta(일 금액·빈도)를 보내고 서버가 월 환산한다.
 export interface BudgetItemInput {
   category: Category
   name: string
-  amount: number
+  amount?: number
   accountId: number
   startDate: string
   endDate?: string | null
   interestRate?: number | null
   taxType?: TaxType | null
   expectedMaturityAmount?: number | null
+  inputCycle?: InputCycle
+  inputMeta?: DailyMeta
 }
 
 // 수정 입력(ITEM-07 PATCH) — 부분 갱신이 아닌 전체 교체라 endDate/memo도 함께 보낸다.
@@ -123,6 +139,19 @@ export async function previewMaturity(input: MaturityPreviewInput): Promise<Matu
 // 외화 도우미 미리보기(ITEM-04). 저장 없는 순수 계산 — 폼이 권장 월 이체액을 항목 금액에 채우는 데 쓴다.
 export async function previewFx(input: FxPreviewInput): Promise<FxPreview> {
   const { data } = await api.post<FxPreview>('/budget-items/preview-fx', input)
+  return data
+}
+
+// 일 단위 입력 미리보기(ITEM-03). 일 금액(원)·빈도로 월 환산 금액을 받는다 — 폼의 "월 환산 N원" 표시에 쓴다.
+export interface DailyPreviewInput {
+  dailyAmount: number
+  frequency: FxFrequency
+}
+export interface DailyPreview {
+  monthlyAmount: number
+}
+export async function previewDaily(input: DailyPreviewInput): Promise<DailyPreview> {
+  const { data } = await api.post<DailyPreview>('/budget-items/preview-daily', input)
   return data
 }
 

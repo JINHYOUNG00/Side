@@ -8,6 +8,7 @@ import {
   deleteBudgetItem,
   previewMaturity,
   previewFx,
+  previewDaily,
   CATEGORIES,
   TAX_TYPES,
   FX_FREQUENCIES,
@@ -19,6 +20,7 @@ import {
   type MaturityPreview,
   type FxFrequency,
   type FxPreview,
+  type DailyPreview,
 } from '@/api/budgetItems'
 import type { Account } from '@/api/accounts'
 
@@ -42,6 +44,13 @@ const name = ref('')
 const amount = ref('') // 숫자 문자열(천 단위 구분 표시), 제출 시 정수로 파싱
 const accountId = ref<number | null>(null)
 const startDate = ref('')
+
+// 일 단위 입력(ITEM-03). 켜면 일 금액·빈도로 월 환산을 서버가 계산해 저장하고 원본은 input_meta로 보존한다.
+// 빈도 라벨은 외화 도우미(ITEM-04)와 동일한 매일/영업일이라 FX_FREQUENCIES·fxFreq.* 키를 공유한다.
+const dailyInput = ref(false)
+const dailyAmount = ref('') // 일 금액 숫자 문자열(천 단위 표시)
+const dailyFrequency = ref<FxFrequency>('DAILY')
+const dailyPreview = ref<DailyPreview | null>(null)
 const applyToCurrentCycle = ref(false)
 const errorCode = ref<string | null>(null)
 const submitting = ref(false)
@@ -82,6 +91,12 @@ const expectedMaturityDisplay = computed({
     expectedMaturity.value = formatThousands(raw)
   },
 })
+const dailyAmountDisplay = computed({
+  get: () => dailyAmount.value,
+  set: (raw: string) => {
+    dailyAmount.value = formatThousands(raw)
+  },
+})
 
 function formatThousands(raw: string): string {
   const digits = raw.replace(/[^0-9]/g, '')
@@ -106,6 +121,12 @@ watch(
       : ''
     interestRate.value = item?.interestRate != null ? String(item.interestRate) : ''
     taxType.value = item?.taxType ?? 'NORMAL_15_4'
+    // 일 단위 입력(ITEM-03) 프리필 — DAILY 항목이면 토글을 켜고 보존된 일 금액·빈도를 복원한다.
+    dailyInput.value = item?.inputCycle === 'DAILY'
+    dailyAmount.value =
+      item?.inputCycle === 'DAILY' && item.inputMeta ? item.inputMeta.dailyAmount.toLocaleString('ko-KR') : ''
+    dailyFrequency.value = item?.inputCycle === 'DAILY' && item.inputMeta ? item.inputMeta.frequency : 'DAILY'
+    dailyPreview.value = null
     applyToCurrentCycle.value = false
     errorCode.value = null
     confirmingDelete.value = false
@@ -202,6 +223,35 @@ watch(
   },
 )
 
+function parsedDailyAmount(): number {
+  return Number(dailyAmount.value.replace(/[^0-9]/g, ''))
+}
+
+// 일 단위 입력이 켜지고 일 금액이 유효하면 서버로 월 환산액을 미리 계산한다(ITEM-03). 입력이 비거나 범위를
+// 벗어나면 배너를 숨긴다. 마지막 요청만 반영(경합 가드 — 만기·외화 미리보기와 동일).
+let dailySeq = 0
+async function refreshDailyPreview() {
+  const seq = ++dailySeq
+  const d = parsedDailyAmount()
+  if (!dailyInput.value || !dailyAmount.value || !Number.isInteger(d) || d < AMOUNT_MIN || d > AMOUNT_MAX) {
+    dailyPreview.value = null
+    return
+  }
+  try {
+    const result = await previewDaily({ dailyAmount: d, frequency: dailyFrequency.value })
+    if (seq === dailySeq) dailyPreview.value = result
+  } catch {
+    if (seq === dailySeq) dailyPreview.value = null
+  }
+}
+
+watch(
+  () => [dailyInput.value, dailyAmount.value, dailyFrequency.value],
+  () => {
+    void refreshDailyPreview()
+  },
+)
+
 function parsedFxUnitAmount(): number {
   return Number(fxUnitAmount.value)
 }
@@ -262,8 +312,15 @@ function applyFxRecommendation() {
 function validate(): string | null {
   const n = name.value.trim()
   if (n.length === 0 || n.length > NAME_MAX) return 'VALIDATION_FAILED'
-  const amt = parsedAmount()
-  if (!Number.isInteger(amt) || amt < AMOUNT_MIN || amt > AMOUNT_MAX) return 'VALIDATION_FAILED'
+  if (dailyInput.value) {
+    // 일 단위(ITEM-03): 일 금액이 유효하고 월 환산 미리보기가 범위 안일 때만 통과(amount는 서버가 계산).
+    const d = parsedDailyAmount()
+    if (!Number.isInteger(d) || d < AMOUNT_MIN || d > AMOUNT_MAX) return 'VALIDATION_FAILED'
+    if (!dailyPreview.value || dailyPreview.value.monthlyAmount > AMOUNT_MAX) return 'VALIDATION_FAILED'
+  } else {
+    const amt = parsedAmount()
+    if (!Number.isInteger(amt) || amt < AMOUNT_MIN || amt > AMOUNT_MAX) return 'VALIDATION_FAILED'
+  }
   if (accountId.value === null) return 'VALIDATION_FAILED'
   if (!startDate.value) return 'VALIDATION_FAILED'
   if (isSaving.value) {
@@ -308,9 +365,15 @@ async function submit() {
   const payload: BudgetItemInput = {
     category: category.value,
     name: name.value.trim(),
-    amount: parsedAmount(),
     accountId: accountId.value as number,
     startDate: startDate.value,
+  }
+  if (dailyInput.value) {
+    // 일 단위(ITEM-03): amount 대신 원본 일 금액·빈도를 보내고 서버가 월 환산해 저장한다.
+    payload.inputCycle = 'DAILY'
+    payload.inputMeta = { dailyAmount: parsedDailyAmount(), frequency: dailyFrequency.value }
+  } else {
+    payload.amount = parsedAmount()
   }
   applySavingFields(payload)
   try {
@@ -379,19 +442,69 @@ async function remove() {
       autocomplete="off"
     />
 
-    <label class="flabel" for="item-amount">{{ $t('items.form.amount') }}</label>
-    <div class="amount-wrap">
-      <input
-        id="item-amount"
-        v-model="amountDisplay"
-        class="input"
-        type="text"
-        inputmode="numeric"
-        :placeholder="$t('items.form.amountPlaceholder')"
-        autocomplete="off"
-      />
-      <span class="unit">{{ $t('common.won') }}</span>
-    </div>
+    <!-- 일 단위 입력 토글(ITEM-03) — 켜면 금액 대신 일 금액·빈도로 월 환산을 자동 계산해 저장한다. -->
+    <label class="toggle" for="item-daily">
+      <span class="toggle-text">
+        <span class="toggle-title">{{ $t('items.form.dailyInput') }}</span>
+        <span class="toggle-hint">{{ $t('items.form.dailyInputHint') }}</span>
+      </span>
+      <input id="item-daily" v-model="dailyInput" class="switch" type="checkbox" role="switch" />
+    </label>
+
+    <!-- 일 단위 입력: 일 금액 + 빈도(매일/영업일) → 월 환산 미리보기. amount는 서버가 계산한다. -->
+    <template v-if="dailyInput">
+      <label class="flabel" for="item-daily-amount">{{ $t('items.form.dailyAmount') }}</label>
+      <div class="amount-wrap">
+        <input
+          id="item-daily-amount"
+          v-model="dailyAmountDisplay"
+          class="input"
+          type="text"
+          inputmode="numeric"
+          :placeholder="$t('items.form.dailyAmountPlaceholder')"
+          autocomplete="off"
+        />
+        <span class="unit">{{ $t('common.won') }}</span>
+      </div>
+
+      <span class="flabel">{{ $t('items.form.dailyFrequency') }}</span>
+      <div class="chips" role="radiogroup">
+        <button
+          v-for="f in FX_FREQUENCIES"
+          :key="f"
+          type="button"
+          class="chip"
+          :class="{ on: dailyFrequency === f }"
+          :aria-pressed="dailyFrequency === f"
+          @click="dailyFrequency = f"
+        >
+          {{ $t(`items.form.fxFreq.${f}`) }}
+        </button>
+      </div>
+
+      <!-- 월 환산 미리보기 — 파랑(배분/주요 동작 토큰). 서버 환산값과 동일(저장 시 재계산). -->
+      <p v-if="dailyPreview" class="preview blue" data-testid="daily-preview">
+        <span class="preview-label">{{ $t('items.form.dailyConverted') }}</span>
+        <b class="preview-amount"
+          >{{ dailyPreview.monthlyAmount.toLocaleString('ko-KR') }}{{ $t('common.won') }}</b
+        >
+      </p>
+    </template>
+    <template v-else>
+      <label class="flabel" for="item-amount">{{ $t('items.form.amount') }}</label>
+      <div class="amount-wrap">
+        <input
+          id="item-amount"
+          v-model="amountDisplay"
+          class="input"
+          type="text"
+          inputmode="numeric"
+          :placeholder="$t('items.form.amountPlaceholder')"
+          autocomplete="off"
+        />
+        <span class="unit">{{ $t('common.won') }}</span>
+      </div>
+    </template>
 
     <label class="flabel" for="item-account">{{ $t('items.form.account') }}</label>
     <select id="item-account" v-model="accountId" class="input" :disabled="!hasAccounts">
@@ -474,8 +587,8 @@ async function remove() {
       </template>
     </template>
 
-    <!-- 외화 적립 도우미(ITEM-04) — 투자 선택 시. 켜면 일/회 외화 금액·빈도·환율로 권장 월 이체액을 계산해 금액에 채운다. -->
-    <template v-if="isInvestment">
+    <!-- 외화 적립 도우미(ITEM-04) — 투자 선택 시(일 단위 입력 중에는 숨김). 일/회 외화 금액·빈도·환율로 권장 월 이체액을 계산해 금액에 채운다. -->
+    <template v-if="isInvestment && !dailyInput">
       <label class="toggle" for="item-fx">
         <span class="toggle-text">
           <span class="toggle-title">{{ $t('items.form.fxHelper') }}</span>
@@ -682,6 +795,11 @@ async function remove() {
   color: var(--green);
   opacity: 0.8;
   font-size: 12px;
+}
+/* 월 환산 미리보기(ITEM-03) — 파랑(배분/주요 동작 토큰). 만기(초록)와 구분. */
+.preview.blue {
+  background: var(--blue-soft);
+  color: var(--blue-deep);
 }
 /* 외화 권장 월 이체액 배너 — 파랑(배분/주요 동작 토큰). 버퍼 고지 + 적용 버튼. */
 .fx-preview {
