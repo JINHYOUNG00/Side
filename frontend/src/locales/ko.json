@@ -40,6 +40,7 @@
     "remaining": "남는 돈",
     "loading": "불러오는 중이에요",
     "incomeOf": "월급 {income}원의 {percent}%",
+    "planBasis": "평소 월급 기준 · 이번 달만 다르면 월급날 체크리스트에서 수정",
     "emergency": "비상금",
     "living": "생활비",
     "envelope": "봉투 적립",

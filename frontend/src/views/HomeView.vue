@@ -164,6 +164,7 @@ onUnmounted(() => {
         <p v-if="remainingPercent !== null" class="caption">
           {{ $t('home.incomeOf', { income: new Intl.NumberFormat('ko-KR').format(data.income), percent: remainingPercent }) }}
         </p>
+        <p class="basis">{{ $t('home.planBasis') }}</p>
         <p v-if="data.income > 0" class="savings">
           <span class="savings-rate">{{ $t('home.savingsRate', { percent: formatRate(data.savingsRate.value) }) }}</span>
           <span class="savings-note">{{
@@ -271,6 +272,11 @@ onUnmounted(() => {
   font-size: 13px;
   color: var(--hint);
   margin-top: 6px;
+}
+.basis {
+  font-size: 12px;
+  color: var(--hint);
+  margin-top: 4px;
 }
 .savings {
   display: flex;

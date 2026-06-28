@@ -78,6 +78,7 @@ onMounted(load)
         >
           <span class="nm">{{ account.name }}</span>
           <span class="purpose">{{ account.purpose || '—' }}</span>
+          <span class="chev" aria-hidden="true">›</span>
         </button>
       </Card>
 
@@ -127,7 +128,7 @@ onMounted(load)
 .row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 10px;
   width: 100%;
   text-align: left;
   padding: 14px 0;
@@ -140,9 +141,17 @@ onMounted(load)
   font-size: 15px;
   font-weight: 600;
   color: var(--ink);
+  flex: 1;
+  min-width: 0;
 }
 .purpose {
   font-size: 13px;
+  color: var(--hint);
+}
+.chev {
+  flex: none;
+  font-size: 19px;
+  line-height: 1;
   color: var(--hint);
 }
 .btn.add {

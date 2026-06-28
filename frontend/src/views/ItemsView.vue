@@ -89,6 +89,7 @@ onMounted(load)
             <span class="meta">{{ $t(`items.category.${item.category}`) }} · {{ accountName(item.accountId) }}</span>
           </span>
           <MoneyText class="amt" :amount="item.amount" :unit="$t('common.won')" />
+          <span class="chev" aria-hidden="true">›</span>
         </button>
       </Card>
 
@@ -144,7 +145,7 @@ onMounted(load)
 .row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 10px;
   width: 100%;
   text-align: left;
   padding: 14px 0;
@@ -157,6 +158,14 @@ onMounted(load)
   display: flex;
   flex-direction: column;
   gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+.chev {
+  flex: none;
+  font-size: 19px;
+  line-height: 1;
+  color: var(--hint);
 }
 .nm {
   font-size: 15px;
