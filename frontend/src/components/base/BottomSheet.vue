@@ -69,4 +69,33 @@ const emit = defineEmits<{ close: [] }>()
     transform: none;
   }
 }
+/* 데스크톱(≥900px, tokens --bp-wide) — 바텀시트 대신 화면 중앙 모달. 모바일 슬라이드업은 그대로.
+   기본 규칙들 뒤에 와야 같은 specificity에서 덮어쓴다(순서 의존). */
+@media (min-width: 900px) {
+  .dim {
+    justify-content: center;
+    align-items: center;
+  }
+  .sheet {
+    border-radius: var(--r-lg);
+    max-width: 480px;
+    max-height: 85vh;
+    margin: 0;
+    padding: 28px 24px;
+  }
+  .grab {
+    display: none;
+  }
+  /* 등장은 슬라이드업 대신 페이드 + 살짝 스케일. */
+  .sheet-enter-from .sheet,
+  .sheet-leave-to .sheet {
+    transform: scale(0.96);
+  }
+}
+@media (min-width: 900px) and (prefers-reduced-motion: reduce) {
+  .sheet-enter-from .sheet,
+  .sheet-leave-to .sheet {
+    transform: none;
+  }
+}
 </style>

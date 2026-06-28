@@ -1,6 +1,8 @@
 <script setup lang="ts">
-// 하단 탭 — 화면설계.html .nav 토큰. 표시 전용(라우트 연결은 App에서 select 처리).
-// 라우트 실연결은 SCR-07(전체 탭 골격)에서 확장.
+// 좌측 사이드바 — 데스크톱(≥900px) 전용 네비. 모바일에선 숨고 BottomNav가 대신 보인다.
+// BottomNav와 동일 목적지·API(current 표시 / select emit)·아이콘을 그대로 미러한다(표시 전용).
+import BrandLogo from '@/components/base/BrandLogo.vue'
+
 defineProps<{ current: string }>()
 const emit = defineEmits<{ select: [key: string] }>()
 
@@ -8,17 +10,18 @@ const items = ['home', 'envelopes', 'report', 'all'] as const
 </script>
 
 <template>
-  <nav class="nav">
+  <nav class="side-nav">
+    <BrandLogo class="side-brand" />
     <button
       v-for="key in items"
       :key="key"
       type="button"
-      class="nav-item"
+      class="side-item"
       :class="{ on: key === current }"
       @click="emit('select', key)"
     >
-      <span class="ic" aria-hidden="true">
-        <!-- stroke 아이콘 — currentColor로 nav-item 색(off #b0b8c1 / on ink)을 그대로 따른다. -->
+      <span class="side-ic" aria-hidden="true">
+        <!-- BottomNav와 동일 stroke 아이콘 — currentColor로 side-item 색을 따른다. -->
         <svg v-if="key === 'home'" viewBox="0 0 24 24" fill="none">
           <path d="M3.5 11 12 4l8.5 7" />
           <path d="M5.5 9.5V20h13V9.5" />
@@ -44,55 +47,67 @@ const items = ['home', 'envelopes', 'report', 'all'] as const
 </template>
 
 <style scoped>
-.nav {
-  display: flex;
-  background: #fff;
-  border-top: 1px solid var(--line-2);
-  padding: 9px 0 12px;
+/* 기본(모바일)은 숨김 — 데스크톱 분기점(tokens --bp-wide=900px)에서만 노출. */
+.side-nav {
+  display: none;
 }
-/* 데스크톱(≥900px, tokens --bp-wide)에선 좌측 SideNav가 대신하므로 하단 탭은 숨긴다. */
 @media (min-width: 900px) {
-  .nav {
-    display: none;
+  .side-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: var(--side-w);
+    flex-shrink: 0;
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    background: #fff;
+    border-right: 1px solid var(--line-2);
+    padding: 28px 16px;
   }
 }
-.nav-item {
-  flex: 1;
-  text-align: center;
-  font-size: 10.5px;
-  color: #b0b8c1;
-  font-weight: 500;
-  transition: color 0.15s ease;
+.side-brand {
+  padding: 4px 12px 24px;
 }
-.nav-item.on {
-  color: var(--ink);
+.side-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: var(--r);
+  color: var(--sub);
+  font-size: 15px;
+  font-weight: 600;
+  text-align: left;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
-.nav-item:active .ic {
-  transform: scale(0.9);
+.side-item:hover {
+  background: var(--line);
 }
-.ic {
+.side-item.on {
+  background: var(--blue-soft);
+  color: var(--blue-deep);
+}
+.side-ic {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  margin: 0 auto 3px;
-  transition: transform 0.1s ease;
+  width: 22px;
+  height: 22px;
 }
-.ic svg {
-  width: 24px;
-  height: 24px;
+.side-ic svg {
+  width: 22px;
+  height: 22px;
   stroke: currentColor;
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 @media (prefers-reduced-motion: reduce) {
-  .nav-item,
-  .ic,
-  .nav-item:active .ic {
+  .side-item {
     transition: none;
-    transform: none;
   }
 }
 </style>

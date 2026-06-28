@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import Card from '@/components/base/Card.vue'
+import BrandLogo from '@/components/base/BrandLogo.vue'
 import EmptyState from '@/components/base/EmptyState.vue'
 import MoneyText from '@/components/base/MoneyText.vue'
 import ChecklistCard from '@/components/ChecklistCard.vue'
@@ -145,6 +146,12 @@ onUnmounted(() => {
 
 <template>
   <section class="home">
+    <!-- 홈 상단 헤더 — 브랜드 로고. 모바일엔 사이드바가 없어 여기서 브랜드 정체성을 준다
+         (데스크톱은 좌측 사이드바가 로고를 이미 노출하므로 중복 방지로 숨김). -->
+    <header class="home-top">
+      <BrandLogo :size="26" />
+    </header>
+
     <!-- 지급일~D+3 월급날 체크리스트(SCR-03b). 구간 밖·스냅샷 미생성이면 스스로 미노출. -->
     <ChecklistCard />
 
@@ -235,6 +242,17 @@ onUnmounted(() => {
 <style scoped>
 .home {
   flex: 1;
+}
+.home-top {
+  display: flex;
+  align-items: center;
+  padding: 2px 0 16px;
+}
+/* 데스크톱은 좌측 사이드바가 브랜드를 노출하므로 홈 헤더는 숨겨 중복을 피한다. */
+@media (min-width: 900px) {
+  .home-top {
+    display: none;
+  }
 }
 .state {
   font-size: 14px;

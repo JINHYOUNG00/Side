@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ACTIVE_PROVIDERS, authorizeUrl, type ActiveProvider } from '@/api/oauth'
 import { useAuthStore } from '@/stores/auth'
 import { ApiError } from '@/api/client'
+import BrandLogo from '@/components/base/BrandLogo.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -38,7 +39,7 @@ async function startDev() {
 <template>
   <section class="login">
     <div class="brand">
-      <p class="wordmark">{{ $t('app.name') }}</p>
+      <BrandLogo class="logo" :size="42" />
       <p class="tagline">{{ $t('login.tagline') }}</p>
     </div>
 
@@ -77,12 +78,12 @@ async function startDev() {
 }
 .brand {
   margin-bottom: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
-.wordmark {
-  font-size: 26px;
-  font-weight: 800;
-  letter-spacing: -1px;
-  color: var(--blue);
+.logo {
+  margin: 0 auto;
 }
 .tagline {
   font-size: 15px;

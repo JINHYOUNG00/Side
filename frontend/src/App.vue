@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BottomNav from '@/components/base/BottomNav.vue'
+import SideNav from '@/components/base/SideNav.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -38,8 +39,11 @@ function onSelect(key: string) {
 
 <template>
   <div class="app-shell">
+    <SideNav v-if="showChrome" :current="current" @select="onSelect" />
     <main class="app-body">
-      <RouterView />
+      <div class="content">
+        <RouterView />
+      </div>
     </main>
     <BottomNav v-if="showChrome" :current="current" @select="onSelect" />
   </div>
@@ -59,5 +63,29 @@ function onSelect(key: string) {
   padding: 20px 20px 0;
   display: flex;
   flex-direction: column;
+}
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+/* 데스크톱(웹 대응) — 좌측 사이드바 + 가운데 정렬된 본문. 모바일 레이아웃은 위 기본값 그대로.
+   분기점은 tokens --bp-wide(900px)와 동기화. */
+@media (min-width: 900px) {
+  .app-shell {
+    max-width: none;
+    flex-direction: row;
+    align-items: flex-start;
+  }
+  .app-body {
+    height: 100vh;
+    overflow-y: auto;
+    padding: 40px;
+    align-items: center;
+  }
+  .content {
+    width: 100%;
+    max-width: var(--content-w);
+  }
 }
 </style>
