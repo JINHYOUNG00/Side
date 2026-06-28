@@ -523,7 +523,7 @@
       "category": "backend",
       "description": "연간 리포트(RPT-04): 연 단위 결산(저축률·봉투 집행·만기 수령)을 제공한다(요구사항 2.7, 우선순위 C). RPT-02 추이/요약이 쓰는 순수 도메인(SavingsRate·MaturityArchiveStats·SPEND 집계)을 연 단위로 재사용. GET /reports/annual?year=N, 조회 전용·소유권 강제. 비율 BigDecimal(규칙 2)·문장 미생성(규칙 7)",
       "verify": "./gradlew verify 통과(연 집계 저축률/봉투집행/만기수령·연도 범위·소유권·빈 사용자·401 통합, 연 집계 순수 단위) + npm run verify 통과(연간 리포트 표시 뷰 테스트). 골든 무수정",
-      "passes": false
+      "passes": true
     }
   ]
 }
