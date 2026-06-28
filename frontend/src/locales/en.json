@@ -111,7 +111,19 @@
       "body": "Your take-home is {amount} KRW less than usual. Pick something to trim?"
     },
     "apply": "Apply",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "allocate": {
+      "windfallTitle": "Allocate windfall",
+      "shortfallTitle": "Trim spending",
+      "windfallGuide": "Where should the {amount} KRW go?",
+      "shortfallGuide": "Where to trim {amount} KRW?",
+      "loading": "Loading",
+      "empty": "Nothing to adjust",
+      "amountPlaceholder": "e.g. 100,000",
+      "remaining": "Remaining {amount} KRW",
+      "over": "(over)",
+      "submit": "Apply"
+    }
   },
   "checklist": {
     "eyebrow": "Payday · {date}",

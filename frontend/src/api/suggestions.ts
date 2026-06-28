@@ -37,3 +37,16 @@ export async function dismissSuggestion(id: number): Promise<Suggestion> {
   const { data } = await api.post<Suggestion>(`/suggestions/${id}/dismiss`)
   return data
 }
+
+// 배분 한 줄 — 대상 plan_line과 배분(WINDFALL)·축소(SHORTFALL) 금액(원, 양수).
+export interface AllocationInput {
+  planLineId: number
+  amount: number
+}
+
+// 여윳돈/부족 제안 배분 적용(CYCLE-05, 인터랙티브) — 고른 plan_line별 금액으로 이번 사이클 계획을 조정하고
+// 제안을 APPLIED로 닫는다. 합·상한·0 미만 등 위반은 서버가 VALIDATION_FAILED로 막는다.
+export async function allocateSuggestion(id: number, allocations: AllocationInput[]): Promise<Suggestion> {
+  const { data } = await api.post<Suggestion>(`/suggestions/${id}/allocate`, { allocations })
+  return data
+}

@@ -1,12 +1,17 @@
 package com.jinhyoung.salary.suggestion;
 
 import com.jinhyoung.salary.suggestion.infra.Suggestion;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import java.util.Map;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -22,9 +27,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class SuggestionController {
 
     private final SuggestionService suggestionService;
+    private final WindfallAllocationService windfallAllocationService;
 
-    public SuggestionController(SuggestionService suggestionService) {
+    public SuggestionController(
+            SuggestionService suggestionService, WindfallAllocationService windfallAllocationService) {
         this.suggestionService = suggestionService;
+        this.windfallAllocationService = windfallAllocationService;
     }
 
     /** 노출 대상(PENDING) 제안 목록 — 최신순. */
@@ -45,6 +53,32 @@ public class SuggestionController {
     @PostMapping("/{id}/dismiss")
     public SuggestionResponse dismiss(@AuthenticationPrincipal Long userId, @PathVariable long id) {
         return SuggestionResponse.from(suggestionService.dismiss(userId, id));
+    }
+
+    /**
+     * 여윳돈/부족 제안 배분 적용(CYCLE-05, 인터랙티브). 사용자가 고른 plan_line별 배분(WINDFALL)·축소(SHORTFALL)
+     * 금액으로 이번 사이클 계획을 조정하고 제안을 APPLIED로 닫는다. 부재·미소유는 404, 이미 해소면 409, 검증 실패는
+     * 400. WINDFALL/SHORTFALL이 아닌 제안엔 400.
+     */
+    @PostMapping("/{id}/allocate")
+    public SuggestionResponse allocate(
+            @AuthenticationPrincipal Long userId, @PathVariable long id, @Valid @RequestBody AllocateRequest request) {
+        return SuggestionResponse.from(windfallAllocationService.allocate(userId, id, request.toAllocations()));
+    }
+
+    /**
+     * 배분 요청 — plan_line별 금액 목록(최소 1건). 각 금액은 양수(배분/축소 크기). 합·상한·0 미만 등 도메인 불변
+     * 위반은 서비스가 VALIDATION_FAILED로 가린다.
+     */
+    public record AllocateRequest(@NotEmpty List<@Valid Item> allocations) {
+
+        public record Item(@NotNull Long planLineId, @NotNull @Min(1) Long amount) {}
+
+        List<WindfallAllocationService.Allocation> toAllocations() {
+            return allocations.stream()
+                    .map(item -> new WindfallAllocationService.Allocation(item.planLineId(), item.amount()))
+                    .toList();
+        }
     }
 
     /**

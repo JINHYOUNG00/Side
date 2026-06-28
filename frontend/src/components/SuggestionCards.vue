@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import Card from '@/components/base/Card.vue'
+import WindfallAllocateSheet from '@/components/WindfallAllocateSheet.vue'
 import { ApiError } from '@/api/client'
 import {
   listSuggestions,
@@ -41,14 +42,17 @@ interface CardView {
   bodyKey: string
   bodyParams: Params
   extra?: { key: string; params: Params }
+  allocatable: boolean // WINDFALL/SHORTFALL은 '반영하기'가 인터랙티브 배분 시트를 연다(CYCLE-05)
 }
 
 const cards = computed<CardView[]>(() =>
   suggestions.value.map((s): CardView => {
     const p = s.payload
+    const allocatable = s.type === 'WINDFALL' || s.type === 'SHORTFALL'
     if (s.type === 'RAISE_LIVING') {
       return {
         id: s.id,
+        allocatable,
         titleKey: 'suggestion.raiseLiving.title',
         titleParams: {},
         bodyKey: 'suggestion.raiseLiving.body',
@@ -62,6 +66,7 @@ const cards = computed<CardView[]>(() =>
     if (s.type === 'RAISE_SAVING') {
       return {
         id: s.id,
+        allocatable,
         titleKey: 'suggestion.raiseSaving.title',
         titleParams: {},
         bodyKey: 'suggestion.raiseSaving.body',
@@ -75,6 +80,7 @@ const cards = computed<CardView[]>(() =>
     if (s.type === 'WINDFALL') {
       return {
         id: s.id,
+        allocatable,
         titleKey: 'suggestion.windfall.title',
         titleParams: {},
         bodyKey: 'suggestion.windfall.body',
@@ -84,6 +90,7 @@ const cards = computed<CardView[]>(() =>
     if (s.type === 'SHORTFALL') {
       return {
         id: s.id,
+        allocatable,
         titleKey: 'suggestion.shortfall.title',
         titleParams: {},
         bodyKey: 'suggestion.shortfall.body',
@@ -93,6 +100,7 @@ const cards = computed<CardView[]>(() =>
     // REBALANCE_MATURITY
     return {
       id: s.id,
+      allocatable,
       titleKey: 'suggestion.maturity.title',
       titleParams: { name: str(p, 'itemName') },
       bodyKey: 'suggestion.maturity.body',
@@ -119,8 +127,22 @@ function remove(id: number) {
   suggestions.value = suggestions.value.filter((s) => s.id !== id)
 }
 
-async function apply(id: number) {
+// 인터랙티브 배분 시트(CYCLE-05) — WINDFALL/SHORTFALL 카드 전용.
+const allocateOpen = ref(false)
+const activeSuggestion = ref<Suggestion | null>(null)
+
+// '반영하기' — 여윳돈/부족은 배분 시트를 열고, 그 외(RAISE_*/만기)는 상태 전이(APPLIED)만 한다.
+function onApply(card: CardView) {
   if (busyId.value) return
+  if (card.allocatable) {
+    activeSuggestion.value = suggestions.value.find((s) => s.id === card.id) ?? null
+    if (activeSuggestion.value) allocateOpen.value = true
+    return
+  }
+  void applyStatus(card.id)
+}
+
+async function applyStatus(id: number) {
   busyId.value = id
   errorCode.value = null
   try {
@@ -131,6 +153,13 @@ async function apply(id: number) {
   } finally {
     busyId.value = null
   }
+}
+
+// 배분 적용 성공 → 시트 닫고 해당 카드 제거.
+function onAllocated(id: number) {
+  allocateOpen.value = false
+  activeSuggestion.value = null
+  remove(id)
 }
 
 async function dismiss(id: number) {
@@ -170,7 +199,7 @@ defineExpose({ load })
           type="button"
           class="sg-btn apply"
           :disabled="busyId === c.id"
-          @click="apply(c.id)"
+          @click="onApply(c)"
         >
           {{ $t('suggestion.apply') }}
         </button>
@@ -178,6 +207,13 @@ defineExpose({ load })
     </Card>
     <p v-if="errorCode" class="sg-error" role="alert">{{ $t(`errors.${errorCode}`) }}</p>
   </div>
+
+  <WindfallAllocateSheet
+    :open="allocateOpen"
+    :suggestion="activeSuggestion"
+    @close="allocateOpen = false"
+    @applied="onAllocated"
+  />
 </template>
 
 <style scoped>

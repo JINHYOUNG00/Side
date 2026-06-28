@@ -111,7 +111,19 @@
       "body": "실수령액이 평소보다 {amount}원 적어요. 줄일 항목을 골라볼까요?"
     },
     "apply": "반영하기",
-    "dismiss": "닫기"
+    "dismiss": "닫기",
+    "allocate": {
+      "windfallTitle": "여윳돈 배분",
+      "shortfallTitle": "지출 줄이기",
+      "windfallGuide": "{amount}원을 어느 항목에 더 넣을까요?",
+      "shortfallGuide": "{amount}원을 어느 항목에서 줄일까요?",
+      "loading": "불러오는 중이에요",
+      "empty": "조정할 항목이 없어요",
+      "amountPlaceholder": "예: 100,000",
+      "remaining": "남은 금액 {amount}원",
+      "over": "(초과)",
+      "submit": "적용하기"
+    }
   },
   "checklist": {
     "eyebrow": "월급날 · {date}",

@@ -6,10 +6,13 @@ import i18n from '@/i18n'
 import SuggestionCards from '../SuggestionCards.vue'
 import { ApiError } from '@/api/client'
 import * as suggestionsApi from '@/api/suggestions'
+import * as cycleApi from '@/api/cycle'
 import type { Suggestion } from '@/api/suggestions'
 
 // suggestions 모듈은 함수·타입만 export(상수 없음)라 전체 모킹이 안전하다([[vimock-breaks-const-exports]] 비해당).
 vi.mock('@/api/suggestions')
+// 임베드된 WindfallAllocateSheet(CYCLE-05)가 getCurrentCycle을 쓴다 — 닫힌 상태에선 호출 안 하지만 안전하게 모킹.
+vi.mock('@/api/cycle')
 
 const RAISE_LIVING: Suggestion = {
   id: 1,
@@ -66,6 +69,25 @@ describe('SuggestionCards (MOD-06 제안 카드)', () => {
     vi.mocked(suggestionsApi.listSuggestions).mockReset()
     vi.mocked(suggestionsApi.applySuggestion).mockReset()
     vi.mocked(suggestionsApi.dismissSuggestion).mockReset()
+    vi.mocked(suggestionsApi.allocateSuggestion).mockReset()
+    vi.mocked(cycleApi.getCurrentCycle).mockReset()
+    vi.mocked(cycleApi.getCurrentCycle).mockResolvedValue({
+      id: 7,
+      label: '2026-06',
+      cycleStart: '2026-06-25',
+      cycleEnd: '2026-07-24',
+      income: 2100000,
+      incomeConfirmed: true,
+      checklist: [
+        {
+          accountId: 1,
+          accountName: '국민',
+          total: 50000,
+          lines: [{ id: 10, name: '청년도약계좌', plannedAmount: 50000, status: 'PENDING' }],
+        },
+      ],
+      progress: { done: 0, total: 1 },
+    })
   })
 
   it('생활비 증액 제안을 천단위 문구로 보여준다', async () => {
@@ -126,6 +148,20 @@ describe('SuggestionCards (MOD-06 제안 카드)', () => {
 
     expect(wrapper.text()).toContain(i18n.global.t('suggestion.shortfall.title'))
     expect(wrapper.text()).toContain('40,000')
+  })
+
+  it('여윳돈/부족 제안의 반영하기는 상태 전이 대신 배분 시트를 연다', async () => {
+    vi.mocked(suggestionsApi.listSuggestions).mockResolvedValue([WINDFALL])
+    const wrapper = mountCards()
+    await flushPromises()
+
+    await wrapper.get('.sg-card .sg-btn.apply').trigger('click')
+    await flushPromises()
+
+    // 배분 시트가 열려 현재 사이클 라인을 불러온다 — applySuggestion(상태 전이)은 호출하지 않는다.
+    expect(cycleApi.getCurrentCycle).toHaveBeenCalled()
+    expect(suggestionsApi.applySuggestion).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain(i18n.global.t('suggestion.allocate.windfallTitle'))
   })
 
   it('제안이 없으면 아무것도 그리지 않는다', async () => {
