@@ -321,7 +321,7 @@ onUnmounted(() => {
           @keydown.enter="router.push('/envelopes')"
         >
           <p class="aside-title">
-            {{ $t('home.envelope') }}<span class="chev" aria-hidden="true">›</span>
+            {{ $t('home.envelopeProgress') }}<span class="chev" aria-hidden="true">›</span>
           </p>
           <div class="env-nums">
             <span class="env-saved">

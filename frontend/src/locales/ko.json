@@ -58,6 +58,7 @@
     },
     "emptyTitle": "아직 배분 계획이 없어요",
     "emptyBody": "월급과 배분 항목을 설정하면 여기에 폭포가 그려져요",
+    "envelopeProgress": "봉투 적립 현황",
     "envNearest": "가장 가까운 지출 · {name}",
     "ddayFuture": "D-{n}",
     "ddayToday": "오늘",

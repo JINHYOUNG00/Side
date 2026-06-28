@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jinhyoung.salary.account.infra.AccountRepository;
 import com.jinhyoung.salary.auth.JwtProvider;
 import com.jinhyoung.salary.budgetitem.infra.BudgetItemRepository;
+import com.jinhyoung.salary.envelope.infra.EnvelopeRepository;
 import com.jinhyoung.salary.user.infra.User;
 import com.jinhyoung.salary.user.infra.UserRepository;
 import org.hamcrest.Matchers;
@@ -59,6 +60,9 @@ class WaterfallIntegrationTest {
     BudgetItemRepository budgetItemRepository;
 
     @Autowired
+    EnvelopeRepository envelopeRepository;
+
+    @Autowired
     JwtProvider jwtProvider;
 
     private long aliceId;
@@ -67,6 +71,7 @@ class WaterfallIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        envelopeRepository.deleteAll();
         budgetItemRepository.deleteAll();
         accountRepository.deleteAll();
         userRepository.deleteAll();
@@ -109,6 +114,41 @@ class WaterfallIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isCreated());
+    }
+
+    /** 봉투를 만들고 서버가 계산한 이번 사이클 월 적립액(monthlyAmount)을 돌려준다 — 폭포 차감액과 대조용. */
+    private long createEnvelopeReturningMonthly(
+            String token, long accountId, String name, long target, String nextDue, int cycleMonths) throws Exception {
+        String body = "{\"accountId\":" + accountId + ",\"name\":\"" + name + "\",\"targetAmount\":" + target
+                + ",\"nextDueDate\":\"" + nextDue + "\",\"cycleMonths\":" + cycleMonths + ",\"memo\":null}";
+        String response = mockMvc.perform(authed(post("/api/v1/envelopes"), token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return objectMapper.readTree(response).get("monthlyAmount").asLong();
+    }
+
+    @Test
+    void 활성_봉투의_월할_적립이_envelopeContribution으로_남는돈에서_차감된다() throws Exception {
+        long acct = createAccount(aliceToken, "국민");
+        setIncome(aliceToken, 3_000_000);
+        createItem(aliceToken, "FIXED", "월세", 500_000, acct);
+        // 먼 미래 지출일이라 월 적립액은 작지만 0은 아니다 — 차감 검증의 전제.
+        long monthly = createEnvelopeReturningMonthly(aliceToken, acct, "자동차세", 1_200_000, "2030-12-25", 12);
+
+        long expectedRemaining = 3_000_000 - 500_000 - monthly; // 비상금 없음 → living = remaining
+        mockMvc.perform(authed(get("/api/v1/me/waterfall"), aliceToken))
+                .andExpect(status().isOk())
+                // 폭포의 envelopeContribution은 봉투 목록의 월 적립액과 일치한다(같은 ENV-02 계산 재사용)·0이 아니다.
+                .andExpect(jsonPath("$.envelopeContribution", Matchers.greaterThan(0)))
+                .andExpect(jsonPath("$.envelopeContribution").value((int) monthly))
+                .andExpect(jsonPath("$.remaining").value((int) expectedRemaining))
+                .andExpect(jsonPath("$.split.emergency").value(0))
+                .andExpect(jsonPath("$.split.living").value((int) expectedRemaining))
+                .andExpect(jsonPath("$.overAllocated").value(false));
     }
 
     @Test

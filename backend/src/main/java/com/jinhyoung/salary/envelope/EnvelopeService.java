@@ -78,6 +78,22 @@ public class EnvelopeService {
                 .toList();
     }
 
+    /**
+     * 활성 봉투들의 이번 사이클 월할 적립 합계(원). 폭포(FLOW-02)가 이 값을 envelopeContribution으로 받아
+     * 남는 돈에서 차감한다 — 봉투 적립도 매달 월급에서 빠져나가는 고정 성격의 적립이기 때문이다. 합계는
+     * {@link #list}와 동일한 per-봉투 월 적립 계산({@link EnvelopeAccrual}, ENV-02)을 재사용하므로 목록에
+     * 표시되는 봉투별 월 적립액의 단순 합과 일치한다. 활성 봉투가 없으면 0.
+     */
+    @Transactional(readOnly = true)
+    public long monthlyContribution(long userId) {
+        User user = ownerOrThrow(userId);
+        LocalDate today = LocalDate.now(clock);
+        Set<LocalDate> holidaysAroundToday = holidayCalendar.holidaysAround(YearMonth.from(today));
+        return envelopeRepository.findByUserIdAndStatusOrderByIdAsc(userId, EnvelopeStatus.ACTIVE).stream()
+                .mapToLong(envelope -> monthlyAmount(envelope, user, today, holidaysAroundToday))
+                .sum();
+    }
+
     @Transactional(readOnly = true)
     public EnvelopeView get(long userId, long envelopeId) {
         User user = ownerOrThrow(userId);

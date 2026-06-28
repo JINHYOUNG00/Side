@@ -12,6 +12,7 @@ import com.jinhyoung.salary.cycle.domain.WaterfallCalculator;
 import com.jinhyoung.salary.cycle.domain.WaterfallLine;
 import com.jinhyoung.salary.cycle.domain.WaterfallResult;
 import com.jinhyoung.salary.cycle.domain.WaterfallSplit;
+import com.jinhyoung.salary.envelope.EnvelopeService;
 import com.jinhyoung.salary.user.infra.User;
 import com.jinhyoung.salary.user.infra.UserRepository;
 import java.util.List;
@@ -29,14 +30,11 @@ import org.springframework.transaction.annotation.Transactional;
  * 비상금/생활비 분배는 {@link WaterfallSplit}(둘 다 owner의 순수 도메인, FLOW-01/03)에 위임하고, 여기서는
  * 입력 라인 구성 → 도메인 계산 호출 → 항목 메타(이름·통장)를 붙인 응답 조립만 담당한다(FLOW-02 = 조립).
  *
- * <p>봉투 적립(envelopeContribution)은 봉투 도메인(Phase 3)이 아직 없어 0을 주입한다 — 적립이 없으니
- * remaining에서 차감되는 값도 0이다.
+ * <p>봉투 적립(envelopeContribution)은 활성 봉투들의 이번 사이클 월할 적립 합계다 — 봉투 적립도 매달
+ * 월급에서 빠져나가는 적립이라 남는 돈에서 차감해야 한다(ENV-02 계산은 {@link EnvelopeService}에 위임).
  */
 @Service
 public class WaterfallQueryService {
-
-    /** 봉투(Phase 3) 미구현 — 현재 월할 적립 합계는 없음. 봉투 도입 시 envelope 도메인이 계산해 주입한다. */
-    private static final long ENVELOPE_CONTRIBUTION_UNAVAILABLE = 0L;
 
     /** 만기 예상금액(ITEM-05) 미구현 — 현재 항목별로 노출할 값이 없음. */
     private static final Long EXPECTED_MATURITY_UNAVAILABLE = null;
@@ -44,14 +42,17 @@ public class WaterfallQueryService {
     private final UserRepository userRepository;
     private final BudgetItemRepository budgetItemRepository;
     private final AccountRepository accountRepository;
+    private final EnvelopeService envelopeService;
 
     public WaterfallQueryService(
             UserRepository userRepository,
             BudgetItemRepository budgetItemRepository,
-            AccountRepository accountRepository) {
+            AccountRepository accountRepository,
+            EnvelopeService envelopeService) {
         this.userRepository = userRepository;
         this.budgetItemRepository = budgetItemRepository;
         this.accountRepository = accountRepository;
+        this.envelopeService = envelopeService;
     }
 
     @Transactional(readOnly = true)
@@ -67,8 +68,9 @@ public class WaterfallQueryService {
         List<WaterfallLine> lines = items.stream()
                 .map(item -> new WaterfallLine(item.getId(), item.getCategory(), item.getAmount()))
                 .toList();
-        WaterfallResult result =
-                WaterfallCalculator.calculate(user.getBaseIncome(), lines, ENVELOPE_CONTRIBUTION_UNAVAILABLE);
+        // 봉투 월할 적립 합계 — 남는 돈에서 차감(ENV-02 계산은 envelope 도메인에 위임, 활성 봉투 없으면 0).
+        long envelopeContribution = envelopeService.monthlyContribution(userId);
+        WaterfallResult result = WaterfallCalculator.calculate(user.getBaseIncome(), lines, envelopeContribution);
         WaterfallSplit split = WaterfallSplit.from(result);
 
         // 저축률(SET-02) — 투자 포함 토글을 반영해 SavingsRate가 산정. 폭포·리포트가 같은 정의를 공유한다.

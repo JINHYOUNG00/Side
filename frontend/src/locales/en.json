@@ -58,6 +58,7 @@
     },
     "emptyTitle": "No allocation plan yet",
     "emptyBody": "Set your income and budget items to see the waterfall here",
+    "envelopeProgress": "Envelope savings",
     "envNearest": "Next due · {name}",
     "ddayFuture": "D-{n}",
     "ddayToday": "Today",
