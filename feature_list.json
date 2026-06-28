@@ -459,6 +459,15 @@
       "description": "제안 확인·반영(MOD-06): 홈(SCR-03)·리포트(SCR-06)에 PENDING 제안을 보라(제안 색) 카드로 노출하고 반영·닫기를 지원한다. SuggestionCards.vue — listSuggestions로 자체 로드(제안 없으면 미노출), type+payload를 i18n 템플릿으로 문구 조립(규칙 7, RAISE_LIVING/RAISE_SAVING/REBALANCE_MATURITY 각 제목·본문·예상수령), 반영(applySuggestion)·닫기(dismissSuggestion) 시 카드 제거, 실패 시 에러 코드 노출. api/suggestions.ts 배선",
       "verify": "npm run verify 통과(SuggestionCards: 3종 카드 문구·예상금액 생략·빈 제안 미노출·조회 실패 숨김·반영/닫기 호출·카드 제거·실패 에러 뷰 테스트). 골든 무수정",
       "passes": true
+    },
+    {
+      "id": "CYCLE-05",
+      "phase": 6,
+      "category": "backend",
+      "owner_only": true,
+      "description": "여윳돈 배분(CYCLE-05): 실수령액이 평소(base_income)보다 windfall-threshold(30,000) 이상 크면 WINDFALL, 그만큼 작으면 SHORTFALL 제안을 실수령액 확인(CYCLE-04, PATCH /cycles/{id}/income) 시 생성한다. 순수 SuggestionRule.windfall(사이클당 dedup)+CycleIncomeService 훅+SuggestionType WINDFALL/SHORTFALL+프론트 제안 카드(MOD-06). **감지·제안(advisory)까지 구현 완료**이나, 차액의 배분처 선택·실제 폭포 반영(배분/축소 적용)은 owner WaterfallService 도메인 후속이라 미완(passes=false).",
+      "verify": "./gradlew verify(windfall 감지 단위: 초과/부족/임계미만/경계/dedup + 통합: 실수령액 확인→WINDFALL 적재·임계미만 무생성·cycleId dedup) + npm run verify(WINDFALL/SHORTFALL 카드). 배분처 선택·폭포 반영 플로우는 owner 후속이라 미완.",
+      "passes": false
     }
   ]
 }
