@@ -57,7 +57,15 @@
       "2": "Fixed"
     },
     "emptyTitle": "No allocation plan yet",
-    "emptyBody": "Set your income and budget items to see the waterfall here"
+    "emptyBody": "Set your income and budget items to see the waterfall here",
+    "envNearest": "Next due · {name}",
+    "ddayFuture": "D-{n}",
+    "ddayToday": "Today",
+    "ddayPast": "D+{n}",
+    "cycleTitle": "This cycle",
+    "cyclePeriod": "{start} ~ {end}",
+    "nextPayday": "{n} days to next payday",
+    "transfers": "Transfers {done}/{total}"
   },
   "report": {
     "title": "Report",

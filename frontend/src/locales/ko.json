@@ -57,7 +57,15 @@
       "2": "고정"
     },
     "emptyTitle": "아직 배분 계획이 없어요",
-    "emptyBody": "월급과 배분 항목을 설정하면 여기에 폭포가 그려져요"
+    "emptyBody": "월급과 배분 항목을 설정하면 여기에 폭포가 그려져요",
+    "envNearest": "가장 가까운 지출 · {name}",
+    "ddayFuture": "D-{n}",
+    "ddayToday": "오늘",
+    "ddayPast": "D+{n}",
+    "cycleTitle": "이번 사이클",
+    "cyclePeriod": "{start} ~ {end}",
+    "nextPayday": "다음 월급일까지 {n}일",
+    "transfers": "이체 {done}/{total}"
   },
   "report": {
     "title": "리포트",

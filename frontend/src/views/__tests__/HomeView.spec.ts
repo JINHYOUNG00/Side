@@ -7,14 +7,18 @@ import HomeView from '../HomeView.vue'
 import { ApiError } from '@/api/client'
 import * as waterfallApi from '@/api/waterfall'
 import * as suggestionsApi from '@/api/suggestions'
+import * as envelopesApi from '@/api/envelopes'
+import * as cycleApi from '@/api/cycle'
 import type { Waterfall } from '@/api/waterfall'
 
 vi.mock('@/api/waterfall')
-// 체크리스트 카드(SCR-03b)는 자체적으로 GET /cycles/current를 호출한다. 폭포 테스트에선 미노출이면
-// 충분하므로 자동 모킹으로 조회가 빈 응답(undefined)을 주게 막아둔다(카드 숨김). 동작은 ChecklistCard.spec.ts.
+// 체크리스트 카드(SCR-03b)·홈 사이클 요약 위젯이 GET /cycles/current를 호출한다. 폭포 테스트에선
+// 자동 모킹으로 빈 응답을 줘 둘 다 미노출(동작은 ChecklistCard.spec.ts / 아래 사이클 위젯 테스트).
 vi.mock('@/api/cycle')
 // 제안 카드(MOD-06)도 자체적으로 GET /suggestions를 호출한다 — 폭포 테스트에선 빈 제안으로 막아 미노출.
 vi.mock('@/api/suggestions')
+// 봉투 요약 위젯이 GET /envelopes를 호출한다 — 기본은 빈 목록으로 막아 미노출(아래 봉투 위젯 테스트에서 주입).
+vi.mock('@/api/envelopes')
 
 // 평상시 폭포(과배분 아님) — API명세 3장 예시에 맞춘 일관 fixture.
 // remaining = income − Σ소계 − envelope = 2,500,000 − 1,780,000 − 0 = 720,000.
@@ -82,6 +86,10 @@ describe('HomeView (SCR-03 홈 폭포)', () => {
     vi.mocked(waterfallApi.getWaterfall).mockReset()
     vi.mocked(suggestionsApi.listSuggestions).mockReset()
     vi.mocked(suggestionsApi.listSuggestions).mockResolvedValue([])
+    // 보조 위젯은 기본 빈 값 — 폭포 테스트에선 미노출. 각 위젯 테스트에서만 데이터 주입.
+    vi.mocked(envelopesApi.listEnvelopes).mockReset()
+    vi.mocked(envelopesApi.listEnvelopes).mockResolvedValue([])
+    vi.mocked(cycleApi.getCurrentCycle).mockReset()
   })
 
   it('폭포를 불러와 남는 돈·비상금·생활비 분배를 표시한다', async () => {
@@ -185,6 +193,45 @@ describe('HomeView (SCR-03 홈 폭포)', () => {
     const savings = wrapper.find('.savings')
     expect(savings.text()).toContain(i18n.global.t('home.savingsRate', { percent: '28.3' }))
     expect(savings.text()).toContain(i18n.global.t('home.savingsWithoutInvestment'))
+  })
+
+  it('봉투가 있으면 봉투 요약 위젯(총 적립/목표·가장 가까운 지출)을 보여준다', async () => {
+    vi.mocked(waterfallApi.getWaterfall).mockResolvedValue(NORMAL)
+    vi.mocked(envelopesApi.listEnvelopes).mockResolvedValue([
+      { id: 1, accountId: 1, name: '자동차세', targetAmount: 600000, savedAmount: 200000, nextDueDate: '2026-09-01', cycleMonths: 12, memo: null, status: 'ACTIVE', progressPercent: 33, dDay: 65, monthlyAmount: 50000 },
+      { id: 2, accountId: 1, name: '명절비', targetAmount: 400000, savedAmount: 100000, nextDueDate: '2026-07-10', cycleMonths: 6, memo: null, status: 'ACTIVE', progressPercent: 25, dDay: 12, monthlyAmount: 50000 },
+    ])
+    const wrapper = mountView()
+    await flushPromises()
+
+    const env = wrapper.find('.env-summary')
+    expect(env.exists()).toBe(true)
+    expect(env.text()).toContain('300,000') // 총 적립 = 200,000 + 100,000
+    expect(env.text()).toContain('1,000,000') // 총 목표 = 600,000 + 400,000
+    // 가장 가까운 지출 = dDay 최소(명절비, D-12).
+    expect(env.text()).toContain('명절비')
+    expect(env.text()).toContain(i18n.global.t('home.ddayFuture', { n: 12 }))
+  })
+
+  it('이번 사이클이 있으면 사이클 요약 위젯(기간·이체 진행)을 보여준다', async () => {
+    vi.mocked(waterfallApi.getWaterfall).mockResolvedValue(NORMAL)
+    vi.mocked(cycleApi.getCurrentCycle).mockResolvedValue({
+      id: 1,
+      label: '2026-06',
+      cycleStart: '2026-06-05',
+      cycleEnd: '2026-07-02',
+      income: 2500000,
+      incomeConfirmed: true,
+      checklist: [],
+      progress: { done: 2, total: 7 },
+    })
+    const wrapper = mountView()
+    await flushPromises()
+
+    const cyc = wrapper.find('.cycle-summary')
+    expect(cyc.exists()).toBe(true)
+    expect(cyc.text()).toContain(i18n.global.t('home.transfers', { done: 2, total: 7 }))
+    expect(cyc.text()).toContain('2026-06-05')
   })
 
   it('조회 실패 시 에러 코드를 표시한다', async () => {

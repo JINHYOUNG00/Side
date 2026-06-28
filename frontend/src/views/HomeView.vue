@@ -1,14 +1,22 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import Card from '@/components/base/Card.vue'
 import BrandLogo from '@/components/base/BrandLogo.vue'
 import EmptyState from '@/components/base/EmptyState.vue'
 import MoneyText from '@/components/base/MoneyText.vue'
+import ProgressBar from '@/components/base/ProgressBar.vue'
 import ChecklistCard from '@/components/ChecklistCard.vue'
 import SuggestionCards from '@/components/SuggestionCards.vue'
 import { ApiError } from '@/api/client'
 import { getWaterfall, type Waterfall } from '@/api/waterfall'
+import { listEnvelopes, type Envelope } from '@/api/envelopes'
+import { getCurrentCycle, type CurrentCycle } from '@/api/cycle'
 import type { Category } from '@/api/budgetItems'
+
+const router = useRouter()
+const { t } = useI18n()
 
 // SCR-03 홈 — 남는 돈 헤더 + 폭포 리스트 + 카운트업. 데이터원은 GET /me/waterfall(FLOW-02).
 // overAllocated면 경고 배너 + 유연성 순 조정 후보(정렬은 프론트가 수행 — API명세 3장).
@@ -18,6 +26,42 @@ import type { Category } from '@/api/budgetItems'
 const data = ref<Waterfall | null>(null)
 const loading = ref(true)
 const errorCode = ref<string | null>(null)
+
+// 보조 요약 위젯(데스크톱 우측 단·모바일 하단) — 홈을 채우는 기존 데이터 대시보드. 비범위(지출 추적) 없음.
+// 폭포 조회와 독립으로 읽어 실패해도 홈 본문을 막지 않는다.
+const envelopes = ref<Envelope[]>([])
+const cycle = ref<CurrentCycle | null>(null)
+
+const hasEnvelopes = computed(() => envelopes.value.length > 0)
+const envTotalSaved = computed(() => envelopes.value.reduce((s, e) => s + e.savedAmount, 0))
+const envTotalTarget = computed(() => envelopes.value.reduce((s, e) => s + e.targetAmount, 0))
+const envProgress = computed(() =>
+  envTotalTarget.value > 0 ? Math.floor((envTotalSaved.value / envTotalTarget.value) * 100) : 0,
+)
+// 가장 가까운 지출 예정 봉투(서버가 KST로 계산한 dDay 최소값). 표시 전용.
+const nearestEnvelope = computed(() =>
+  hasEnvelopes.value ? [...envelopes.value].sort((a, b) => a.dDay - b.dDay)[0] : null,
+)
+// 보조 위젯이 하나라도 있을 때만 우측 단을 펼친다(없으면 본문 단일 폭 유지).
+const hasAside = computed(() => hasEnvelopes.value || cycle.value !== null)
+
+// 다음 월급일까지 일수 — 사이클 종료(다음 지급일 전날) 다음 날이 다음 월급일. 표시용 클라 계산이라
+// 날짜 문자열을 UTC 자정 기준 정수 일수로 비교해 TZ 드리프트를 피한다(ChecklistCard 윈도 계산과 동류).
+function daysUntil(dateStr: string): number {
+  const parts = dateStr.split('-')
+  const target = Date.UTC(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]))
+  const now = new Date()
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
+  return Math.round((target - today) / 86_400_000)
+}
+const daysToPayday = computed(() => (cycle.value ? daysUntil(cycle.value.cycleEnd) + 1 : null))
+
+// D-day 배지 라벨(i18n — 규칙 7). 양수 D-n / 0 오늘 / 음수 D+n.
+function ddayLabel(d: number): string {
+  if (d > 0) return t('home.ddayFuture', { n: d })
+  if (d === 0) return t('home.ddayToday')
+  return t('home.ddayPast', { n: -d })
+}
 
 // 카운트업으로 그릴 "남는 돈" 표시값(애니메이션 중에는 target까지 증가).
 const displayRemaining = ref(0)
@@ -136,6 +180,22 @@ async function load() {
   } finally {
     loading.value = false
   }
+  loadAside()
+}
+
+// 보조 위젯 데이터 — 봉투 요약·이번 사이클. 각각 독립으로 읽고 실패(미설정·404 등)는 조용히 빈 값으로
+// 흡수해 홈 본문(폭포)에 영향을 주지 않는다. 위젯은 데이터가 있을 때만 렌더(hasEnvelopes/cycle).
+async function loadAside() {
+  try {
+    envelopes.value = (await listEnvelopes()) ?? []
+  } catch {
+    envelopes.value = []
+  }
+  try {
+    cycle.value = (await getCurrentCycle()) ?? null
+  } catch {
+    cycle.value = null
+  }
 }
 
 onMounted(load)
@@ -161,7 +221,8 @@ onUnmounted(() => {
     <p v-if="loading" class="state">{{ $t('home.loading') }}</p>
     <p v-else-if="errorCode" class="state error" role="alert">{{ $t(`errors.${errorCode}`) }}</p>
 
-    <template v-else-if="data">
+    <div v-else-if="data" class="home-grid" :class="{ 'has-aside': hasAside }">
+      <div class="home-main">
       <!-- 남는 돈 헤더 + 비상금/생활비 분배 -->
       <Card class="head-card">
         <p class="eyebrow">{{ $t('home.remaining') }}</p>
@@ -235,7 +296,50 @@ onUnmounted(() => {
 
       <!-- 배분 항목이 없을 때(RPT-03 공통 빈 상태) -->
       <EmptyState v-else :title="$t('home.emptyTitle')" :body="$t('home.emptyBody')" />
-    </template>
+      </div>
+
+      <!-- 보조 요약 위젯 — 데스크톱 우측 단·모바일 하단. 기존 데이터(봉투·사이클)로 홈을 채운다. -->
+      <aside v-if="hasAside" class="home-aside">
+        <Card
+          v-if="hasEnvelopes"
+          class="aside-card env-summary"
+          role="button"
+          tabindex="0"
+          @click="router.push('/envelopes')"
+          @keydown.enter="router.push('/envelopes')"
+        >
+          <p class="aside-title">
+            {{ $t('home.envelope') }}<span class="chev" aria-hidden="true">›</span>
+          </p>
+          <div class="env-nums">
+            <span class="env-saved">
+              <MoneyText :amount="envTotalSaved" />
+              <span class="slash">/</span>
+              <MoneyText :amount="envTotalTarget" :unit="$t('common.won')" />
+            </span>
+            <span class="env-pct">{{ envProgress }}%</span>
+          </div>
+          <ProgressBar :value="envProgress" />
+          <p v-if="nearestEnvelope" class="env-near">
+            <span class="env-near-name">{{ $t('home.envNearest', { name: nearestEnvelope.name }) }}</span>
+            <span class="dday">{{ ddayLabel(nearestEnvelope.dDay) }}</span>
+          </p>
+        </Card>
+
+        <Card v-if="cycle" class="aside-card cycle-summary">
+          <p class="aside-title">{{ $t('home.cycleTitle') }}</p>
+          <p class="cycle-period">
+            {{ $t('home.cyclePeriod', { start: cycle.cycleStart, end: cycle.cycleEnd }) }}
+          </p>
+          <p v-if="daysToPayday !== null" class="cycle-payday">
+            {{ $t('home.nextPayday', { n: daysToPayday }) }}
+          </p>
+          <p class="cycle-transfers">
+            {{ $t('home.transfers', { done: cycle.progress.done, total: cycle.progress.total }) }}
+          </p>
+        </Card>
+      </aside>
+    </div>
   </section>
 </template>
 
@@ -262,6 +366,90 @@ onUnmounted(() => {
 }
 .state.error {
   color: var(--red);
+}
+/* 데스크톱(웹 대응) — 본문(폭포)은 넓게, 보조 요약 위젯은 우측 단으로. 모바일은 단일 컬럼
+   (보조 위젯이 본문 아래로 자연 스택). 위젯이 하나도 없으면 has-aside가 빠져 본문 단일 폭 유지. */
+@media (min-width: 900px) {
+  .home-grid.has-aside {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 14px;
+    align-items: start;
+  }
+}
+.aside-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 12px;
+}
+.aside-title .chev {
+  font-size: 18px;
+  color: var(--hint);
+}
+.env-summary {
+  cursor: pointer;
+}
+.env-nums {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.env-saved {
+  font-size: 14px;
+  color: var(--ink);
+}
+.env-saved .slash {
+  color: var(--hint);
+  margin: 0 2px;
+}
+.env-pct {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--purple);
+}
+.env-near {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--sub);
+  margin-top: 12px;
+}
+.env-near-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.env-near .dday {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--purple);
+  background: var(--purple-soft);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+.cycle-period {
+  font-size: 13px;
+  color: var(--sub);
+  margin-top: 2px;
+}
+.cycle-payday {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--blue);
+  margin-top: 10px;
+}
+.cycle-transfers {
+  font-size: 13px;
+  color: var(--sub);
+  margin-top: 6px;
 }
 .head-card {
   margin-bottom: 14px;
