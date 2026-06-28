@@ -39,3 +39,8 @@ export async function updateMe(input: MeUpdate): Promise<Me> {
   const { data } = await api.patch<Me>('/me', input)
   return data
 }
+
+// DELETE /me 회원 탈퇴(AUTH-04). 전체 데이터를 서버에서 영구 삭제(cascade)한다 — 204 No Content.
+export async function deleteMe(): Promise<void> {
+  await api.delete('/me')
+}

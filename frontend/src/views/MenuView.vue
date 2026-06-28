@@ -4,15 +4,16 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import Card from '@/components/base/Card.vue'
 import ImportSheet from '@/components/ImportSheet.vue'
+import BottomSheet from '@/components/base/BottomSheet.vue'
 import { ApiError } from '@/api/client'
 import { listAccounts, type Account } from '@/api/accounts'
-import { getMe, updateMe, type Me } from '@/api/me'
+import { getMe, updateMe, deleteMe, type Me } from '@/api/me'
 import { setLocale, LOCALES, type Locale } from '@/i18n'
 import { useAuthStore } from '@/stores/auth'
 
 // SCR-07 전체 — 허브 화면. 통장·항목·봉투·보관함(SCR-08) 진입 + 노션 임포트(MOD-07/DATA-01) +
-// 저축률 투자 포함 토글(SET-02) + 언어 설정(SET-03) + 로그아웃. 내보내기(DATA-02·P7)·탈퇴는 후속 Phase
-// 의존이라 미연결(고아 링크 금지). 라우트가 생기면 links에 추가만 하면 된다.
+// 저축률 투자 포함 토글(SET-02) + 언어 설정(SET-03) + 로그아웃 + 회원 탈퇴(AUTH-04). 내보내기(DATA-02·P7)는
+// 후속 Phase 의존이라 미연결(고아 링크 금지). 라우트가 생기면 links에 추가만 하면 된다.
 const router = useRouter()
 const auth = useAuthStore()
 const { locale } = useI18n()
@@ -131,6 +132,38 @@ function logout() {
   router.push('/login')
 }
 
+// 회원 탈퇴(AUTH-04). 되돌릴 수 없는 전체 삭제라 확인 시트를 한 단계 거친다.
+const withdrawOpen = ref(false)
+const withdrawing = ref(false)
+const withdrawError = ref(false)
+
+function openWithdraw() {
+  withdrawError.value = false
+  withdrawOpen.value = true
+}
+
+function closeWithdraw() {
+  if (withdrawing.value) return
+  withdrawOpen.value = false
+}
+
+// 확인 시 서버에서 전체 데이터를 영구 삭제하고, 세션을 비운 뒤 로그인으로 보낸다. 실패하면 시트를 유지한 채 에러 노출.
+async function confirmWithdraw() {
+  if (withdrawing.value) return
+  withdrawError.value = false
+  withdrawing.value = true
+  try {
+    await deleteMe()
+    auth.logout()
+    router.push('/login')
+  } catch (e) {
+    if (!(e instanceof ApiError)) throw e
+    withdrawError.value = true
+  } finally {
+    withdrawing.value = false
+  }
+}
+
 onMounted(() => {
   loadAccounts()
   loadMe()
@@ -206,8 +239,23 @@ onMounted(() => {
     </Card>
 
     <button class="logout" type="button" @click="logout">{{ $t('menu.logout') }}</button>
+    <button class="withdraw" type="button" @click="openWithdraw">{{ $t('menu.withdraw') }}</button>
 
     <ImportSheet :open="importOpen" :accounts="accounts" @close="closeImport" @imported="onImported" />
+
+    <BottomSheet :open="withdrawOpen" @close="closeWithdraw">
+      <h2 class="wd-title">{{ $t('menu.withdrawConfirmTitle') }}</h2>
+      <p class="wd-body">{{ $t('menu.withdrawConfirmBody') }}</p>
+      <p v-if="withdrawError" class="lang-err" role="alert">{{ $t('menu.withdrawError') }}</p>
+      <div class="wd-actions">
+        <button type="button" class="wd-cancel" :disabled="withdrawing" @click="closeWithdraw">
+          {{ $t('menu.withdrawCancel') }}
+        </button>
+        <button type="button" class="wd-confirm" :disabled="withdrawing" @click="confirmWithdraw">
+          {{ $t('menu.withdrawConfirm') }}
+        </button>
+      </div>
+    </BottomSheet>
   </section>
 </template>
 
@@ -298,5 +346,49 @@ onMounted(() => {
   font-size: 13px;
   color: var(--hint);
   padding: 16px 0;
+}
+.withdraw {
+  display: block;
+  width: 100%;
+  text-align: center;
+  font-size: 13px;
+  color: var(--red);
+  padding: 4px 0 16px;
+}
+.wd-title {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  margin-bottom: 10px;
+}
+.wd-body {
+  font-size: 14px;
+  color: var(--sub);
+  line-height: 1.6;
+  margin-bottom: 18px;
+}
+.wd-actions {
+  display: flex;
+  gap: 10px;
+}
+.wd-cancel,
+.wd-confirm {
+  flex: 1;
+  padding: 15px 0;
+  border-radius: var(--r);
+  font-size: 15px;
+  font-weight: 600;
+}
+.wd-cancel {
+  background: var(--bg);
+  color: var(--sub);
+}
+.wd-confirm {
+  background: var(--red);
+  color: #fff;
+}
+.wd-cancel:disabled,
+.wd-confirm:disabled {
+  opacity: 0.5;
 }
 </style>

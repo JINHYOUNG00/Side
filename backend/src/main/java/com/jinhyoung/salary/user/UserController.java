@@ -7,11 +7,14 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -58,6 +61,16 @@ public class UserController {
                 request.locale(),
                 request.includeInvestmentInSavingsRate());
         return MeResponse.from(user);
+    }
+
+    /**
+     * 회원 탈퇴(AUTH-04, API명세: DELETE /me). 인증된 본인만 호출 가능(principal=userId)하므로 타인 데이터는
+     * 구조적으로 침범할 수 없다. 전체 데이터를 영구 삭제하고 본문 없이 204를 반환한다. 멱등 — 이미 삭제된 경우에도 204.
+     */
+    @DeleteMapping
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@AuthenticationPrincipal Long userId) {
+        userService.delete(userId);
     }
 
     public record UpdateRequest(

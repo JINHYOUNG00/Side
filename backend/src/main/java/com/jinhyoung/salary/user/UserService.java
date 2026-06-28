@@ -66,6 +66,19 @@ public class UserService {
         return user;
     }
 
+    /**
+     * 회원 탈퇴(AUTH-04): 인증된 본인 데이터를 전부 물리 삭제한다. soft delete가 아닌 유일한 물리 삭제 경로(규칙 5).
+     * users 행 삭제만 수행하면 하위 도메인(accounts·budget_items·envelopes·envelope_transactions·cycles·
+     * plan_lines·check_ins·suggestions·notification_logs·reminders)은 FK {@code ON DELETE CASCADE}로 함께
+     * 제거된다(ERD 1·3장, V1/V2 마이그레이션). 멱등 — 이미 삭제된 사용자(토큰만 유효)면 아무것도 하지 않고 정상 종료한다.
+     */
+    @Transactional
+    public void delete(long userId) {
+        if (userRepository.existsById(userId)) {
+            userRepository.deleteById(userId);
+        }
+    }
+
     private User existingUser(long userId) {
         return userRepository
                 .findById(userId)

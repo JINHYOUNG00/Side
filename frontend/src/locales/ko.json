@@ -177,7 +177,13 @@
     "savingsExclude": "제외",
     "savingsInvestmentHint": "저축률을 계산할 때 투자 항목을 저축에 넣을지 정해요. 홈·리포트에 함께 적용돼요.",
     "savingsInvestmentError": "설정을 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.",
-    "logout": "로그아웃"
+    "logout": "로그아웃",
+    "withdraw": "회원 탈퇴",
+    "withdrawConfirmTitle": "정말 탈퇴할까요?",
+    "withdrawConfirmBody": "탈퇴하면 통장·항목·봉투·사이클 기록 등 모든 데이터가 즉시 영구 삭제되고 되돌릴 수 없어요.",
+    "withdrawCancel": "취소",
+    "withdrawConfirm": "탈퇴하기",
+    "withdrawError": "탈퇴하지 못했어요. 잠시 후 다시 시도해 주세요."
   },
   "reminders": {
     "title": "점검 리마인더",

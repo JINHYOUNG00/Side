@@ -177,7 +177,13 @@
     "savingsExclude": "Exclude",
     "savingsInvestmentHint": "Choose whether investment items count toward your savings rate. Applies to home and reports.",
     "savingsInvestmentError": "Couldn't change the setting. Please try again.",
-    "logout": "Sign out"
+    "logout": "Sign out",
+    "withdraw": "Delete account",
+    "withdrawConfirmTitle": "Delete your account?",
+    "withdrawConfirmBody": "This permanently deletes all your data — accounts, items, envelopes, cycle history — right away. It can't be undone.",
+    "withdrawCancel": "Cancel",
+    "withdrawConfirm": "Delete account",
+    "withdrawError": "Couldn't delete your account. Please try again."
   },
   "reminders": {
     "title": "Reminders",

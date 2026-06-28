@@ -507,7 +507,7 @@
       "category": "backend",
       "description": "회원 탈퇴(AUTH-04): 탈퇴 시 모든 사용자 데이터를 즉시 영구 삭제한다(요구사항 2.1). soft delete가 아닌 유일한 물리 삭제 경로(절대 규칙 5) — users 기준 cascade로 accounts·budget_items·envelopes·cycles·plan_lines·check_ins·suggestions·notification_logs 전부 제거. DELETE /me + 소유권·인증 게이트. 멱등(이미 삭제 시 안전)",
       "verify": "./gradlew verify 통과(탈퇴 시 전 도메인 cascade 물리 삭제·잔존 0건·타인 차단·401 통합 테스트) + npm run verify 통과(탈퇴 확인 동선 뷰 테스트)",
-      "passes": false
+      "passes": true
     },
     {
       "id": "DATA-02",

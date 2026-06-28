@@ -25,8 +25,9 @@ const BASE_ME: meApi.Me = {
   livingAccountId: null,
 }
 
+// Teleport를 인라인 렌더해 탈퇴 확인 시트(BottomSheet) 내부 버튼을 wrapper.find로 찾을 수 있게 한다.
 function mountView() {
-  return mount(MenuView, { global: { plugins: [router, i18n] } })
+  return mount(MenuView, { global: { plugins: [router, i18n], stubs: { teleport: true } } })
 }
 
 // 행 버튼은 라벨 + 셰브론(›)을 함께 담으므로 부분 일치로 집는다.
@@ -47,6 +48,8 @@ describe('MenuView (SCR-07 전체 허브)', () => {
     // 언어 토글(SET-03)용 현재 설정 — getMe로 읽고 updateMe로 전체 설정을 되돌려 보낸다.
     vi.mocked(meApi.getMe).mockResolvedValue({ ...BASE_ME })
     vi.mocked(meApi.updateMe).mockImplementation(async (input) => ({ ...BASE_ME, ...input }) as meApi.Me)
+    // 회원 탈퇴(AUTH-04) — 기본은 성공(204). 실패 케이스는 개별 테스트에서 재정의.
+    vi.mocked(meApi.deleteMe).mockResolvedValue(undefined)
   })
 
   afterEach(() => {
@@ -181,5 +184,63 @@ describe('MenuView (SCR-07 전체 허브)', () => {
 
     expect(auth.isAuthenticated).toBe(false)
     expect(router.push).toHaveBeenCalledWith('/login')
+  })
+
+  it('회원 탈퇴를 누르면 확인 시트를 연다(즉시 삭제하지 않는다)', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain(i18n.global.t('menu.withdrawConfirmTitle'))
+
+    await buttonByText(wrapper, i18n.global.t('menu.withdraw'))!.trigger('click')
+
+    expect(wrapper.text()).toContain(i18n.global.t('menu.withdrawConfirmTitle'))
+    // 확인 전에는 삭제 API를 부르지 않는다.
+    expect(meApi.deleteMe).not.toHaveBeenCalled()
+  })
+
+  it('확인 시트에서 취소하면 삭제하지 않고 시트를 닫는다', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    await buttonByText(wrapper, i18n.global.t('menu.withdraw'))!.trigger('click')
+    await buttonByText(wrapper, i18n.global.t('menu.withdrawCancel'))!.trigger('click')
+
+    expect(meApi.deleteMe).not.toHaveBeenCalled()
+    expect(wrapper.text()).not.toContain(i18n.global.t('menu.withdrawConfirmTitle'))
+  })
+
+  it('탈퇴를 확정하면 전체 삭제 후 세션을 비우고 로그인으로 보낸다', async () => {
+    const auth = useAuthStore()
+    auth.setSession({ accessToken: 't', isNewUser: false })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    await buttonByText(wrapper, i18n.global.t('menu.withdraw'))!.trigger('click')
+    await buttonByText(wrapper, i18n.global.t('menu.withdrawConfirm'))!.trigger('click')
+    await flushPromises()
+
+    expect(meApi.deleteMe).toHaveBeenCalledOnce()
+    expect(auth.isAuthenticated).toBe(false)
+    expect(router.push).toHaveBeenCalledWith('/login')
+  })
+
+  it('탈퇴에 실패하면 에러를 보이고 세션을 유지한다', async () => {
+    vi.mocked(meApi.deleteMe).mockRejectedValue(new ApiError('INTERNAL_ERROR', {}, 500))
+    const auth = useAuthStore()
+    auth.setSession({ accessToken: 't', isNewUser: false })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    await buttonByText(wrapper, i18n.global.t('menu.withdraw'))!.trigger('click')
+    await buttonByText(wrapper, i18n.global.t('menu.withdrawConfirm'))!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain(i18n.global.t('menu.withdrawError'))
+    // 삭제 실패 — 세션 유지, 로그인으로 보내지 않는다.
+    expect(auth.isAuthenticated).toBe(true)
+    expect(router.push).not.toHaveBeenCalledWith('/login')
   })
 })
