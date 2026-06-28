@@ -4,7 +4,7 @@
   },
   "nav": {
     "home": "Home",
-    "checklist": "Checklist",
+    "envelopes": "Envelopes",
     "report": "Report",
     "all": "All"
   },
@@ -166,7 +166,6 @@
     "title": "All",
     "accounts": "Manage accounts",
     "items": "Manage budget items",
-    "envelopes": "Manage envelopes",
     "archive": "Archive",
     "reminders": "Reminders",
     "import": "Import from Notion",

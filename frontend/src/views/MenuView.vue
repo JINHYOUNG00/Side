@@ -13,7 +13,8 @@ import { downloadTextFile } from '@/lib/download'
 import { setLocale, LOCALES, type Locale } from '@/i18n'
 import { useAuthStore } from '@/stores/auth'
 
-// SCR-07 전체 — 허브 화면. 통장·항목·봉투·보관함(SCR-08) 진입 + 노션 임포트(MOD-07/DATA-01) +
+// SCR-07 전체 — 허브 화면. 통장·항목·보관함(SCR-08) 진입 + 노션 임포트(MOD-07/DATA-01) +
+// (봉투는 하단 탭으로 승격돼 허브에서 제외 — 정본 SCR-07 봉투 미포함) +
 // 데이터 내보내기(DATA-02) + 저축률 투자 포함 토글(SET-02) + 언어 설정(SET-03) + 로그아웃 + 회원 탈퇴(AUTH-04).
 const router = useRouter()
 const auth = useAuthStore()
@@ -22,7 +23,6 @@ const { locale } = useI18n()
 const links = [
   { key: 'accounts', to: '/accounts' },
   { key: 'items', to: '/items' },
-  { key: 'envelopes', to: '/envelopes' },
   { key: 'archive', to: '/archive' },
   { key: 'reminders', to: '/reminders' },
 ] as const

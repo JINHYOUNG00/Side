@@ -10,10 +10,10 @@ const router = useRouter()
 const TAB_BY_ROUTE: Record<string, string> = {
   home: 'home',
   reports: 'report',
+  envelopes: 'envelopes',
   menu: 'all',
   accounts: 'all',
   items: 'all',
-  envelopes: 'all',
   archive: 'all',
 }
 const current = computed(() => {
@@ -26,12 +26,13 @@ const showChrome = computed(() => route.meta.chrome !== false)
 function onSelect(key: string) {
   if (key === 'home') {
     router.push('/')
+  } else if (key === 'envelopes') {
+    router.push('/envelopes')
   } else if (key === 'report') {
     router.push('/reports')
   } else if (key === 'all') {
     router.push('/menu')
   }
-  // checklist(봉투·SCR-04) 탭은 해당 화면 도입(Phase 3) 시 연결
 }
 </script>
 

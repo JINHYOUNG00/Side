@@ -4,7 +4,7 @@
 defineProps<{ current: string }>()
 const emit = defineEmits<{ select: [key: string] }>()
 
-const items = ['home', 'checklist', 'report', 'all'] as const
+const items = ['home', 'envelopes', 'report', 'all'] as const
 </script>
 
 <template>
@@ -23,9 +23,9 @@ const items = ['home', 'checklist', 'report', 'all'] as const
           <path d="M3.5 11 12 4l8.5 7" />
           <path d="M5.5 9.5V20h13V9.5" />
         </svg>
-        <svg v-else-if="key === 'checklist'" viewBox="0 0 24 24" fill="none">
-          <path d="M10 7h10M10 12h10M10 17h7" />
-          <path d="M4 7l1.3 1.3L7.5 6M4 12.5l1.3 1.3L7.5 11.5" />
+        <svg v-else-if="key === 'envelopes'" viewBox="0 0 24 24" fill="none">
+          <rect x="3" y="5" width="18" height="14" rx="2.5" />
+          <path d="M3.5 7.5 12 13l8.5-5.5" />
         </svg>
         <svg v-else-if="key === 'report'" viewBox="0 0 24 24" fill="none">
           <path d="M4 20h16" />
