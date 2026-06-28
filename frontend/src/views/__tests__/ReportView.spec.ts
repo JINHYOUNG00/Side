@@ -9,7 +9,7 @@ import * as reportsApi from '@/api/reports'
 import * as checkinApi from '@/api/checkin'
 import * as cycleApi from '@/api/cycle'
 import * as suggestionsApi from '@/api/suggestions'
-import type { ReportSummary, TrendPoint } from '@/api/reports'
+import type { ReportSummary, TrendPoint, AnnualReport } from '@/api/reports'
 import type { CurrentCycle } from '@/api/cycle'
 
 // reports·checkin·cycle·suggestions 모듈은 함수·타입만 export(상수 없음)라 전체 모킹이 안전하다([[vimock-breaks-const-exports]] 비해당).
@@ -32,6 +32,14 @@ const TREND: TrendPoint[] = [
   { label: '2026-05', planned: 375000, actual: 387000, checkedIn: true },
   { label: '2026-06', planned: 375000, actual: null, checkedIn: false },
 ]
+
+// 연간 결산(RPT-04) — 저축률 42.0%(투자 포함)·만기 수령 2,000,000(3건 중 1건)·봉투 집행 120,000.
+const ANNUAL: AnnualReport = {
+  year: 2025,
+  savingsRate: { value: 42.0, includesInvestment: true },
+  maturity: { archivedCount: 3, recordedCount: 1, totalReceivedAmount: 2000000 },
+  envelopeSpentTotal: 120000,
+}
 
 const CYCLE: CurrentCycle = {
   id: 12,
@@ -60,6 +68,8 @@ describe('ReportView (SCR-06 리포트)', () => {
     i18n.global.locale.value = 'ko'
     vi.mocked(reportsApi.getSummary).mockReset()
     vi.mocked(reportsApi.getTrend).mockReset()
+    vi.mocked(reportsApi.getAnnual).mockReset()
+    vi.mocked(reportsApi.getAnnual).mockResolvedValue(ANNUAL)
     vi.mocked(checkinApi.recordCheckIn).mockReset()
     vi.mocked(cycleApi.getCurrentCycle).mockReset()
     vi.mocked(suggestionsApi.listSuggestions).mockReset()
@@ -206,5 +216,39 @@ describe('ReportView (SCR-06 리포트)', () => {
     await flushPromises()
 
     expect(wrapper.find('[role="alert"]').text()).toBe(i18n.global.t('errors.INTERNAL_ERROR'))
+  })
+
+  // ── 연간 결산(RPT-04) ──────────────────────────────────────────────────────
+
+  it('마운트 시 올해 연간 결산을 불러와 카드로 표시한다', async () => {
+    vi.mocked(reportsApi.getSummary).mockResolvedValue(SUMMARY)
+    vi.mocked(reportsApi.getTrend).mockResolvedValue(TREND)
+    vi.mocked(cycleApi.getCurrentCycle).mockResolvedValue(CYCLE)
+    const wrapper = mountView()
+    await flushPromises()
+
+    // 마운트 시 올해로 조회.
+    expect(reportsApi.getAnnual).toHaveBeenCalledWith(new Date().getFullYear())
+    // 결산 연도 제목 + 그 해 메트릭(저축률·만기 수령·봉투 집행).
+    expect(wrapper.text()).toContain(i18n.global.t('report.annualTitle', { year: 2025 }))
+    expect(wrapper.find('.annual').text()).toContain('42.0%')
+    expect(wrapper.find('.annual').text()).toContain('2,000,000')
+    expect(wrapper.find('.annual').text()).toContain('120,000')
+  })
+
+  it('이전 해 버튼을 누르면 그 해 결산을 다시 조회한다', async () => {
+    vi.mocked(reportsApi.getSummary).mockResolvedValue(SUMMARY)
+    vi.mocked(reportsApi.getTrend).mockResolvedValue(TREND)
+    vi.mocked(cycleApi.getCurrentCycle).mockResolvedValue(CYCLE)
+    const wrapper = mountView()
+    await flushPromises()
+
+    const prev = wrapper.find('button[aria-label="' + i18n.global.t('report.annualPrev') + '"]')
+    await prev.trigger('click')
+    await flushPromises()
+
+    // 마운트(올해) + 이전 해 클릭 = 2회, 마지막은 올해−1.
+    expect(reportsApi.getAnnual).toHaveBeenCalledTimes(2)
+    expect(reportsApi.getAnnual).toHaveBeenLastCalledWith(new Date().getFullYear() - 1)
   })
 })

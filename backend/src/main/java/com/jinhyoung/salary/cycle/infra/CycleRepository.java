@@ -33,6 +33,12 @@ public interface CycleRepository extends JpaRepository<Cycle, Long> {
     List<Cycle> findByUserIdOrderByCycleStartDesc(Long userId, Pageable pageable);
 
     /**
+     * 한 해에 시작한 사이클들(RPT-04 연간 리포트) — {@code cycle_start}가 그 해 범위 안인 사이클을 모아 연 단위
+     * 저축률(그 해 카테고리별 계획액 ÷ 사이클 income 합)을 산정할 때 쓴다. 소유권은 user_id로 건다.
+     */
+    List<Cycle> findByUserIdAndCycleStartBetween(Long userId, LocalDate from, LocalDate to);
+
+    /**
      * 최근 <b>닫힌</b> 사이클 N건(SUG-02 보정 제안) — {@code cycle_end < today}인 사이클만 최신순으로. 진행 중
      * 사이클은 아직 체크인 전이라 결측으로 오인되어 streak을 단절시키므로 제외한다(구현규칙 7장). 소유권은 user_id로
      * 건다. 호출자는 가져온 만큼으로 연속 초과/잉여 패턴을 판정한다.

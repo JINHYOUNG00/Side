@@ -6,7 +6,14 @@ import MoneyText from '@/components/base/MoneyText.vue'
 import CheckInSheet from '@/components/CheckInSheet.vue'
 import SuggestionCards from '@/components/SuggestionCards.vue'
 import { ApiError } from '@/api/client'
-import { getTrend, getSummary, type TrendPoint, type ReportSummary } from '@/api/reports'
+import {
+  getTrend,
+  getSummary,
+  getAnnual,
+  type TrendPoint,
+  type ReportSummary,
+  type AnnualReport,
+} from '@/api/reports'
 import { getCurrentCycle, type CurrentCycle } from '@/api/cycle'
 
 // SCR-06 리포트(RPT-02/03). 저축률·만기·봉투 집행 요약 메트릭 + 사이클별 계획 vs 실제 추이 차트(결측 구분) +
@@ -22,6 +29,14 @@ const errorCode = ref<string | null>(null)
 const sheetOpen = ref(false)
 
 const hasTrend = computed(() => trend.value.length > 0)
+
+// 연간 결산(RPT-04). 기본은 올해, 이전/다음 해로 이동(서버 상한 = 올해+1, 하한 2000). 연도 이동 시 그 해만 재조회.
+const MIN_YEAR = 2000
+const thisYear = new Date().getFullYear()
+const annual = ref<AnnualReport | null>(null)
+const annualYear = ref(thisYear)
+const canPrevYear = computed(() => annualYear.value > MIN_YEAR)
+const canNextYear = computed(() => annualYear.value < thisYear + 1)
 
 // 저축률 표시 — 서버가 소수 첫째 자리로 반올림한 값을 그대로 1자리로 포맷(홈과 동일 관용구).
 function formatRate(value: number): string {
@@ -46,11 +61,25 @@ function shortLabel(label: string): string {
   return label.split('-')[1] ?? label
 }
 
+// 선택 연도의 결산만 다시 읽는다(연도 이동). 실패는 전체 리포트 에러로 올린다.
+async function loadAnnual() {
+  annual.value = await getAnnual(annualYear.value)
+}
+
+function changeYear(delta: number) {
+  const next = annualYear.value + delta
+  if (next < MIN_YEAR || next > thisYear + 1) return
+  annualYear.value = next
+  loadAnnual().catch((e) => {
+    errorCode.value = e instanceof ApiError ? e.code : 'INTERNAL_ERROR'
+  })
+}
+
 async function load() {
   loading.value = true
   errorCode.value = null
   try {
-    const [summaryData, trendData] = await Promise.all([getSummary(), getTrend()])
+    const [summaryData, trendData] = await Promise.all([getSummary(), getTrend(), loadAnnual()])
     summary.value = summaryData
     trend.value = trendData
     // 현재 사이클은 스냅샷 미생성 시 404 — 체크인 진입을 숨길 뿐 리포트 조회 실패는 아니다.
@@ -120,6 +149,53 @@ onMounted(load)
         </div>
       </Card>
 
+      <!-- 연간 결산(RPT-04): 그 해 저축률·만기 수령·봉투 집행 + 이전/다음 해 이동 -->
+      <Card v-if="annual" class="annual">
+        <div class="a-head">
+          <button
+            type="button"
+            class="a-nav"
+            :disabled="!canPrevYear"
+            :aria-label="$t('report.annualPrev')"
+            @click="changeYear(-1)"
+          >
+            ‹
+          </button>
+          <p class="a-title">{{ $t('report.annualTitle', { year: annual.year }) }}</p>
+          <button
+            type="button"
+            class="a-nav"
+            :disabled="!canNextYear"
+            :aria-label="$t('report.annualNext')"
+            @click="changeYear(1)"
+          >
+            ›
+          </button>
+        </div>
+        <div class="metric">
+          <p class="m-label">{{ $t('report.savingsRate') }}</p>
+          <p class="m-rate">{{ formatRate(annual.savingsRate.value) }}%</p>
+          <p class="m-note">
+            {{
+              $t(annual.savingsRate.includesInvestment ? 'report.withInvestment' : 'report.withoutInvestment')
+            }}
+          </p>
+        </div>
+        <div class="metric-row">
+          <div class="metric half">
+            <p class="m-label">{{ $t('report.maturityReceived') }}</p>
+            <MoneyText class="m-amt received" :amount="annual.maturity.totalReceivedAmount" :unit="$t('common.won')" />
+            <p class="m-note">
+              {{ $t('report.maturityCounts', { archived: annual.maturity.archivedCount, recorded: annual.maturity.recordedCount }) }}
+            </p>
+          </div>
+          <div class="metric half">
+            <p class="m-label">{{ $t('report.envelopeSpent') }}</p>
+            <MoneyText class="m-amt" :amount="annual.envelopeSpentTotal" :unit="$t('common.won')" />
+          </div>
+        </div>
+      </Card>
+
       <!-- 계획 vs 실제 추이 차트 (RPT-02) -->
       <Card v-if="hasTrend" class="trend">
         <p class="t-title">{{ $t('report.trendTitle') }}</p>
@@ -181,6 +257,33 @@ onMounted(load)
 .metrics {
   padding: 20px;
   margin-bottom: 14px;
+}
+.annual {
+  padding: 20px;
+  margin-bottom: 14px;
+}
+.a-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.a-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.a-nav {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--sub);
+  background: var(--bg-soft, var(--line));
+}
+.a-nav:disabled {
+  opacity: 0.4;
 }
 .metric-row {
   display: flex;

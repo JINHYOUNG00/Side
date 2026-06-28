@@ -1,5 +1,6 @@
 package com.jinhyoung.salary.envelope.infra;
 
+import java.time.LocalDate;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -23,4 +24,14 @@ public interface EnvelopeTransactionRepository extends JpaRepository<EnvelopeTra
             + " where t.envelopeId = e.id and e.userId = :userId"
             + " and t.type = com.jinhyoung.salary.envelope.infra.TransactionType.SPEND")
     long sumSpentActualByUserId(Long userId);
+
+    /**
+     * 한 해의 봉투 집행(지출) 합계(RPT-04 연간 리포트) — 사용자가 소유한 봉투의 SPEND 중 {@code occurred_on}이 그 해
+     * 범위([from, to]) 안인 실제 지출액(actual_amount) 총합. 소유권은 envelope를 거쳐 user_id로 건다. 없으면 0.
+     */
+    @Query("select coalesce(sum(t.actualAmount), 0) from EnvelopeTransaction t, Envelope e"
+            + " where t.envelopeId = e.id and e.userId = :userId"
+            + " and t.type = com.jinhyoung.salary.envelope.infra.TransactionType.SPEND"
+            + " and t.occurredOn between :from and :to")
+    long sumSpentActualByUserIdAndOccurredOnBetween(Long userId, LocalDate from, LocalDate to);
 }

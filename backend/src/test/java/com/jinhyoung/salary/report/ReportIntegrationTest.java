@@ -134,6 +134,36 @@ class ReportIntegrationTest {
         return mockMvc.perform(get("/api/v1/reports/summary").header(HttpHeaders.AUTHORIZATION, token(userId)));
     }
 
+    private ResultActions getAnnual(long userId, int year) throws Exception {
+        return mockMvc.perform(
+                get("/api/v1/reports/annual?year=" + year).header(HttpHeaders.AUTHORIZATION, token(userId)));
+    }
+
+    /** 지정 실수령액(income)으로 그 해 사이클 1건을 박는다(LIVING 라인 없음 — 연간 저축률은 ITEM 라인으로 산정). */
+    private long newCycle(long userId, String label, LocalDate start, long income) {
+        return cycleRepository
+                .save(Cycle.create(userId, new CycleDefinition(start, start.plusDays(29), label), income))
+                .getId();
+    }
+
+    /** 사이클에 ITEM 라인 1건을 박는다(category 스냅샷 = 카테고리 이름). 연간 저축률 집계 대상. */
+    private void itemLine(long cycleId, long accountId, Category category, long planned) {
+        planLineRepository.save(
+                PlanLine.item(cycleId, null, accountId, category.name(), category.name(), "통장", planned));
+    }
+
+    /** 만기일(endDate) 보유 보관 항목을 박는다 — actual이 있으면 실수령액 기록, null이면 미기록 보관. */
+    private void archivedItem(long userId, long accountId, LocalDate endDate, Long actual, int order) {
+        BudgetItem item = budgetItemRepository.save(BudgetItem.create(
+                userId, accountId, Category.SAVING, "적금", 100_000, LocalDate.of(2020, 1, 1), endDate, null, order));
+        if (actual != null) {
+            item.recordMaturityActual(actual); // ACTIVE → ARCHIVED + 실수령액
+        } else {
+            item.markArchived();
+        }
+        budgetItemRepository.save(item);
+    }
+
     // ── 추이(trend) ───────────────────────────────────────────────────────────
 
     @Test
@@ -292,5 +322,113 @@ class ReportIntegrationTest {
     @Test
     void 토큰이_없으면_요약은_401이다() throws Exception {
         mockMvc.perform(get("/api/v1/reports/summary")).andExpect(status().isUnauthorized());
+    }
+
+    // ── 연간 결산(annual, RPT-04) ─────────────────────────────────────────────
+
+    @Test
+    void 연간_결산은_그해_저축률_만기수령_봉투집행을_집계하고_다른해는_제외한다() throws Exception {
+        long userId = newUser("annual");
+        long account = newAccount(userId, "통장");
+
+        // 저축률: 2025 사이클 income 2,000,000 + SAVING 500,000 + INVESTMENT 300,000 → 투자 포함 기본 true → 40.0%.
+        long cycle2025 = newCycle(userId, "2025-03", LocalDate.of(2025, 3, 25), 2_000_000);
+        itemLine(cycle2025, account, Category.SAVING, 500_000);
+        itemLine(cycle2025, account, Category.INVESTMENT, 300_000);
+        // 다른 해(2024) 사이클·저축은 2025 결산에 섞이지 않는다.
+        long cycle2024 = newCycle(userId, "2024-03", LocalDate.of(2024, 3, 25), 9_000_000);
+        itemLine(cycle2024, account, Category.SAVING, 9_000_000);
+
+        // 만기 수령: 만기일 2025 보관 2건(1건만 실수령 3,000,000 기록) + 만기일 2024 보관 1건(제외).
+        archivedItem(userId, account, LocalDate.of(2025, 3, 1), 3_000_000L, 0);
+        archivedItem(userId, account, LocalDate.of(2025, 9, 1), null, 1);
+        archivedItem(userId, account, LocalDate.of(2024, 6, 1), 9_999_999L, 2);
+
+        // 봉투 집행: 2025 SPEND 50,000 + 30,000 = 80,000. 2024 SPEND·DEPOSIT은 제외.
+        long envelopeId = envelopeRepository
+                .save(Envelope.create(userId, account, "여행", 1_000_000, LocalDate.of(2026, 12, 1), (short) 12, null))
+                .getId();
+        envelopeTransactionRepository.save(
+                EnvelopeTransaction.spend(envelopeId, 50_000, 50_000, null, null, null, LocalDate.of(2025, 5, 1)));
+        envelopeTransactionRepository.save(
+                EnvelopeTransaction.spend(envelopeId, 30_000, 30_000, null, null, null, LocalDate.of(2025, 8, 1)));
+        envelopeTransactionRepository.save(
+                EnvelopeTransaction.spend(envelopeId, 70_000, 70_000, null, null, null, LocalDate.of(2024, 12, 1)));
+        envelopeTransactionRepository.save(
+                EnvelopeTransaction.deposit(envelopeId, 999_999, null, LocalDate.of(2025, 6, 3)));
+
+        // 타인의 2025 데이터는 합산에서 제외돼야 한다.
+        long otherId = newUser("annual-noise");
+        long otherAccount = newAccount(otherId, "통장");
+        long otherCycle = newCycle(otherId, "2025-03", LocalDate.of(2025, 3, 25), 5_000_000);
+        itemLine(otherCycle, otherAccount, Category.SAVING, 5_000_000);
+        archivedItem(otherId, otherAccount, LocalDate.of(2025, 4, 1), 7_777_777L, 0);
+        long otherEnvelope = envelopeRepository
+                .save(Envelope.create(
+                        otherId, otherAccount, "남의여행", 1_000_000, LocalDate.of(2026, 12, 1), (short) 12, null))
+                .getId();
+        envelopeTransactionRepository.save(
+                EnvelopeTransaction.spend(otherEnvelope, 444_444, 444_444, null, null, null, LocalDate.of(2025, 7, 1)));
+
+        getAnnual(userId, 2025)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.year").value(2025))
+                .andExpect(jsonPath("$.savingsRate.value").value(40.0))
+                .andExpect(jsonPath("$.savingsRate.includesInvestment").value(true))
+                .andExpect(jsonPath("$.maturity.archivedCount").value(2))
+                .andExpect(jsonPath("$.maturity.recordedCount").value(1))
+                .andExpect(jsonPath("$.maturity.totalReceivedAmount").value(3_000_000))
+                .andExpect(jsonPath("$.envelopeSpentTotal").value(80_000));
+    }
+
+    @Test
+    void 투자_제외_토글이면_연간_저축률에서_투자를_뺀다() throws Exception {
+        long userId = newUser("annual-noinv");
+        long account = newAccount(userId, "통장");
+        User user = userRepository.findById(userId).orElseThrow();
+        user.updateInvestmentInclusion(false);
+        userRepository.save(user);
+
+        // income 2,000,000 + SAVING 500,000 + INVESTMENT 300,000 → 투자 제외 → 500,000/2,000,000 = 25.0%.
+        long cycle = newCycle(userId, "2025-03", LocalDate.of(2025, 3, 25), 2_000_000);
+        itemLine(cycle, account, Category.SAVING, 500_000);
+        itemLine(cycle, account, Category.INVESTMENT, 300_000);
+
+        getAnnual(userId, 2025)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.savingsRate.value").value(25.0))
+                .andExpect(jsonPath("$.savingsRate.includesInvestment").value(false));
+    }
+
+    @Test
+    void 데이터_없는_해는_0과_기본_저축률이다() throws Exception {
+        long userId = newUser("annual-blank");
+
+        getAnnual(userId, 2025)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.year").value(2025))
+                .andExpect(jsonPath("$.savingsRate.value").value(0.0))
+                .andExpect(jsonPath("$.savingsRate.includesInvestment").value(true))
+                .andExpect(jsonPath("$.maturity.archivedCount").value(0))
+                .andExpect(jsonPath("$.maturity.recordedCount").value(0))
+                .andExpect(jsonPath("$.maturity.totalReceivedAmount").value(0))
+                .andExpect(jsonPath("$.envelopeSpentTotal").value(0));
+    }
+
+    @Test
+    void year가_범위를_벗어나면_400이다() throws Exception {
+        long userId = newUser("annual-range");
+
+        getAnnual(userId, 1999) // 하한(2000) 미만
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        getAnnual(userId, 9999) // 현재 연도+1 초과
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+
+    @Test
+    void 토큰이_없으면_연간_결산은_401이다() throws Exception {
+        mockMvc.perform(get("/api/v1/reports/annual?year=2025")).andExpect(status().isUnauthorized());
     }
 }

@@ -72,7 +72,10 @@
     "missing": "No check-in",
     "emptyTitle": "No trend yet",
     "emptyBody": "Your first check-in starts building planned vs actual here",
-    "checkInCta": "Check in for this month"
+    "checkInCta": "Check in for this month",
+    "annualTitle": "{year} annual report",
+    "annualPrev": "Previous year",
+    "annualNext": "Next year"
   },
   "checkin": {
     "title": "How much living budget is left?",

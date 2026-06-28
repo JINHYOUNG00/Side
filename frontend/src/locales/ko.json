@@ -72,7 +72,10 @@
     "missing": "미체크인",
     "emptyTitle": "아직 추이가 없어요",
     "emptyBody": "첫 체크인을 하면 계획 대비 실제가 여기에 쌓여요",
-    "checkInCta": "이번 달 체크인하기"
+    "checkInCta": "이번 달 체크인하기",
+    "annualTitle": "{year}년 결산",
+    "annualPrev": "이전 해",
+    "annualNext": "다음 해"
   },
   "checkin": {
     "title": "이번 달, 생활비 얼마 남았나요?",

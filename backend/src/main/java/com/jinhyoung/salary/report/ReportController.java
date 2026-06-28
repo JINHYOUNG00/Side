@@ -40,4 +40,13 @@ public class ReportController {
     public ReportSummary summary(@AuthenticationPrincipal Long userId) {
         return reportService.summary(userId);
     }
+
+    /**
+     * 연 단위 결산(RPT-04) — 그 해의 저축률·만기 수령 누적·봉투 집행을 집계한다. {@code year}는 필수이며
+     * 범위(2000~현재 연도+1) 밖이면 400 VALIDATION_FAILED. 조회 전용·본인 데이터만.
+     */
+    @GetMapping("/annual")
+    public AnnualReport annual(@AuthenticationPrincipal Long userId, @RequestParam int year) {
+        return reportService.annual(userId, year);
+    }
 }
