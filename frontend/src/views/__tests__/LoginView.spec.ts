@@ -16,12 +16,14 @@ describe('LoginView', () => {
     setActivePinia(createPinia())
   })
 
-  it('활성 공급자 버튼(카카오·구글)을 노출한다', async () => {
+  it('활성 공급자 버튼(카카오·구글·네이버)을 노출한다', async () => {
     const w = await mountAt('/login')
     expect(w.find('.btn.kakao').exists()).toBe(true)
     expect(w.find('.btn.google').exists()).toBe(true)
+    expect(w.find('.btn.naver').exists()).toBe(true)
     expect(w.text()).toContain('카카오로 시작하기')
     expect(w.text()).toContain('Google로 시작하기')
+    expect(w.text()).toContain('네이버로 시작하기')
   })
 
   it('?error 쿼리가 있으면 코드에 매핑된 오류 문구를 표시한다', async () => {

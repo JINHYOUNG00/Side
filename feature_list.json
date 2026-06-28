@@ -499,7 +499,7 @@
       "category": "backend",
       "description": "네이버 로그인(AUTH-02): 네이버 OAuth2 로그인을 지원한다(검수 후 활성화, 요구사항 2.1). NaverOAuthAttributesMapper·OAuthProvider.NAVER 어댑터는 이미 작성돼 있으나 비활성 상태 — 검수 통과 시 enabled 전환 + 코드 교환 클라이언트·프론트 로그인 버튼 활성화. AUTH-03 공급자 분리 규칙 그대로 적용",
       "verify": "./gradlew verify 통과(네이버 로그인 흐름·신규/재로그인·공급자 분리 통합 테스트) + npm run verify 통과(네이버 로그인 버튼·콜백 동선 E2E)",
-      "passes": false
+      "passes": true
     },
     {
       "id": "AUTH-04",

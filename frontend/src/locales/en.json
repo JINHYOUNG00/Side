@@ -15,7 +15,8 @@
     "tagline": "Payday, as planned.\nA salary allocation system to replace Notion",
     "continue": {
       "kakao": "Continue with Kakao",
-      "google": "Continue with Google"
+      "google": "Continue with Google",
+      "naver": "Continue with Naver"
     },
     "privacyNote": "We never ask for or store account numbers or passwords",
     "signingIn": "Signing in",

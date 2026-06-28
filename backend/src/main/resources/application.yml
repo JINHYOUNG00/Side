@@ -47,6 +47,12 @@ app:
       client-id: ${GOOGLE_CLIENT_ID:}
       client-secret: ${GOOGLE_CLIENT_SECRET:}
       redirect-uri: ${GOOGLE_REDIRECT_URI:}
+    naver: # AUTH-02 검수 통과로 활성화(Phase 7). 시크릿은 운영 환경변수로만 주입.
+      token-uri: ${NAVER_TOKEN_URI:https://nid.naver.com/oauth2.0/token}
+      user-info-uri: ${NAVER_USER_INFO_URI:https://openapi.naver.com/v1/nid/me}
+      client-id: ${NAVER_CLIENT_ID:}
+      client-secret: ${NAVER_CLIENT_SECRET:}
+      redirect-uri: ${NAVER_REDIRECT_URI:}
   # 운영 조정 파라미터(구현규칙 6장 app.policy.*). 코드 수정 없이 환경값으로 바꾼다.
   policy:
     fx-buffer-rate: ${FX_BUFFER_RATE:0.05} # 외화 권장 월 이체액 버퍼(ITEM-04)

@@ -66,8 +66,17 @@ describe('AuthCallbackView (로그인 → 대시보드 라우팅)', () => {
     expect(replaceSpy).toHaveBeenCalledWith({ name: 'login', query: { error: 'OAUTH_EXCHANGE_FAILED' } })
   })
 
-  it('미지원 공급자면 PROVIDER_NOT_SUPPORTED로 복귀한다', async () => {
+  it('네이버 code 교환 성공 시 세션을 세우고 홈으로 이동한다(AUTH-02)', async () => {
+    vi.mocked(authApi.login).mockResolvedValue({ accessToken: 'jwt', isNewUser: false })
     await mountAt('/login/callback/naver?code=xyz')
+
+    expect(authApi.login).toHaveBeenCalledWith('naver', 'xyz')
+    expect(useAuthStore(pinia).token).toBe('jwt')
+    expect(replaceSpy).toHaveBeenCalledWith({ name: 'home' })
+  })
+
+  it('미지원 공급자면 PROVIDER_NOT_SUPPORTED로 복귀한다', async () => {
+    await mountAt('/login/callback/twitter?code=xyz')
 
     expect(authApi.login).not.toHaveBeenCalled()
     expect(replaceSpy).toHaveBeenCalledWith({ name: 'login', query: { error: 'PROVIDER_NOT_SUPPORTED' } })

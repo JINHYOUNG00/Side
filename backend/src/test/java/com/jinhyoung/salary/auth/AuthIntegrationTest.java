@@ -1,11 +1,8 @@
 package com.jinhyoung.salary.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -132,13 +129,32 @@ class AuthIntegrationTest {
     }
 
     @Test
-    void 비활성_공급자_네이버는_400이고_OAuth교환을_시도하지_않는다() throws Exception {
-        MvcResult result = login("naver", "code-1");
+    void AUTH_02_신규_네이버_로그인은_사용자를_생성하고_유효한_JWT를_발급한다() throws Exception {
+        stub(OAuthProvider.NAVER, "code-n", new OAuthUserInfo(OAuthProvider.NAVER, "naver-1", "n@naver.com", "네이버"));
 
-        assertThat(result.getResponse().getStatus()).isEqualTo(400);
+        MvcResult result = login("naver", "code-n");
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(200);
         JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
-        assertThat(body.get("code").asText()).isEqualTo("PROVIDER_NOT_SUPPORTED");
-        verify(oauthClient, never()).fetchUserInfo(eq(OAuthProvider.NAVER), anyString());
+        assertThat(body.get("isNewUser").asBoolean()).isTrue();
+        assertThat(body.get("accessToken").asText()).isNotBlank();
+
+        var saved =
+                userRepository.findByProviderAndProviderId("NAVER", "naver-1").orElseThrow();
+        assertThat(saved.getNickname()).isEqualTo("네이버");
+    }
+
+    @Test
+    void AUTH_02_03_네이버는_같은_providerId라도_카카오와_별개_계정이다() throws Exception {
+        stub(OAuthProvider.KAKAO, "code-k", new OAuthUserInfo(OAuthProvider.KAKAO, "dup-1", "k@x.com", "카카오"));
+        stub(OAuthProvider.NAVER, "code-n", new OAuthUserInfo(OAuthProvider.NAVER, "dup-1", "n@x.com", "네이버"));
+
+        login("kakao", "code-k");
+        login("naver", "code-n");
+
+        assertThat(userRepository.count()).isEqualTo(2);
+        assertThat(userRepository.findByProviderAndProviderId("KAKAO", "dup-1")).isPresent();
+        assertThat(userRepository.findByProviderAndProviderId("NAVER", "dup-1")).isPresent();
     }
 
     @Test

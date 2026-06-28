@@ -66,10 +66,12 @@ class OAuthAttributesMapperTest {
     }
 
     @Test
-    void provider_경로변수를_대소문자_무시로_파싱하고_네이버는_비활성이다() {
+    void provider_경로변수를_대소문자_무시로_파싱하고_세_공급자_모두_활성이다() {
         assertThat(OAuthProvider.from("kakao")).isEqualTo(OAuthProvider.KAKAO);
         assertThat(OAuthProvider.from("GOOGLE")).isEqualTo(OAuthProvider.GOOGLE);
+        assertThat(OAuthProvider.from("naver")).isEqualTo(OAuthProvider.NAVER);
         assertThat(OAuthProvider.KAKAO.isEnabled()).isTrue();
-        assertThat(OAuthProvider.NAVER.isEnabled()).isFalse();
+        assertThat(OAuthProvider.GOOGLE.isEnabled()).isTrue();
+        assertThat(OAuthProvider.NAVER.isEnabled()).isTrue();
     }
 }

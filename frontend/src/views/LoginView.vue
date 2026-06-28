@@ -122,6 +122,10 @@ async function startDev() {
   color: var(--ink);
   border: 1px solid var(--line-2);
 }
+.btn.naver {
+  background: #03c75a;
+  color: #fff;
+}
 /* 로컬 전용 dev 로그인 — 운영 빌드엔 렌더되지 않음. 점선 테두리로 임시 도구임을 시각 구분. */
 .btn.dev {
   background: transparent;

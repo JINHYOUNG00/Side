@@ -3,13 +3,13 @@ package com.jinhyoung.salary.auth;
 import java.util.Locale;
 
 /**
- * 소셜 로그인 공급자. 네이버는 검수 후 활성화(AUTH-02, Phase 7)라 enabled=false.
+ * 소셜 로그인 공급자. 네이버는 검수 통과로 활성화(AUTH-02, Phase 7).
  * users.provider 컬럼에 이름 그대로 저장된다.
  */
 public enum OAuthProvider {
     KAKAO(true),
     GOOGLE(true),
-    NAVER(false);
+    NAVER(true);
 
     private final boolean enabled;
 
