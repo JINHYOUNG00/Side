@@ -5,10 +5,14 @@ import com.jinhyoung.salary.account.infra.AccountRepository;
 import com.jinhyoung.salary.budgetitem.domain.Category;
 import com.jinhyoung.salary.budgetitem.infra.BudgetItem;
 import com.jinhyoung.salary.budgetitem.infra.BudgetItemRepository;
+import com.jinhyoung.salary.suggestion.domain.SuggestionType;
+import com.jinhyoung.salary.suggestion.infra.Suggestion;
+import com.jinhyoung.salary.suggestion.infra.SuggestionRepository;
 import com.jinhyoung.salary.user.domain.PaydayAdjustment;
 import com.jinhyoung.salary.user.infra.User;
 import com.jinhyoung.salary.user.infra.UserRepository;
 import java.time.LocalDate;
+import java.util.Map;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,14 +37,17 @@ public class DevSeedService {
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
     private final BudgetItemRepository budgetItemRepository;
+    private final SuggestionRepository suggestionRepository;
 
     public DevSeedService(
             UserRepository userRepository,
             AccountRepository accountRepository,
-            BudgetItemRepository budgetItemRepository) {
+            BudgetItemRepository budgetItemRepository,
+            SuggestionRepository suggestionRepository) {
         this.userRepository = userRepository;
         this.accountRepository = accountRepository;
         this.budgetItemRepository = budgetItemRepository;
+        this.suggestionRepository = suggestionRepository;
     }
 
     /** 노션 시드 사용자를 보장하고 그 id를 반환한다. 이미 있으면 그대로 둔다(멱등 — 규칙 8). */
@@ -67,8 +74,9 @@ public class DevSeedService {
                 .getId();
 
         LocalDate start = LocalDate.of(2026, 6, 1);
-        budgetItemRepository.save(
-                BudgetItem.create(userId, kookmin, Category.SAVING, "청년도약계좌", 700_000, start, null, null, 0));
+        long jeokgeum = budgetItemRepository
+                .save(BudgetItem.create(userId, kookmin, Category.SAVING, "청년도약계좌", 700_000, start, null, null, 0))
+                .getId();
         budgetItemRepository.save(
                 BudgetItem.create(userId, etc, Category.INVESTMENT, "ETF", 800_000, start, null, null, 1));
         budgetItemRepository.save(BudgetItem.create(userId, etc, Category.FIXED, "월세", 310_600, start, null, null, 2));
@@ -81,6 +89,34 @@ public class DevSeedService {
 
         user.updateSettings(2_473_110, (short) 25, PaydayAdjustment.NONE, living);
         userRepository.save(user);
+
+        seedSuggestions(userId, jeokgeum);
         return userId;
+    }
+
+    /**
+     * 제안 카드(MOD-06, SUG-01~03) 데모용 PENDING 제안 2건을 심는다 — dev에서 dev-login 즉시 홈·리포트에서 카드를
+     * 눈으로 확인할 수 있게 한다(브라우저 라이브 대조). 실제 발동 룰·생성은 SuggestionRule/Service가 담당하며,
+     * 여기서는 표시·반영·닫기 동선 확인용 고정 payload만 직접 적재한다(seed() 1회뿐이라 멱등).
+     */
+    private void seedSuggestions(long userId, long maturityItemId) {
+        suggestionRepository.save(Suggestion.create(
+                userId,
+                SuggestionType.RAISE_LIVING,
+                Map.of("suggestedIncrease", 20_000L, "avgOverspend", 15_000L, "streak", 3)));
+        suggestionRepository.save(Suggestion.create(
+                userId,
+                SuggestionType.REBALANCE_MATURITY,
+                Map.of(
+                        "itemId",
+                        maturityItemId,
+                        "itemName",
+                        "청년도약계좌",
+                        "monthlyAmount",
+                        700_000L,
+                        "maturityDate",
+                        "2026-07-20",
+                        "expectedMaturityAmount",
+                        3_731_976L)));
     }
 }
