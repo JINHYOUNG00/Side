@@ -142,7 +142,9 @@
     "markPending": "Move back to pending",
     "hint": "Check off each transfer once done, or skip the ones you'll pass on this month",
     "editTitle": "Edit take-home pay",
-    "save": "Save"
+    "save": "Save",
+    "wrongPayday": "Wrong payday? Rebuild this cycle",
+    "recalLocked": "You've already started transfers, so this cycle can't be rebuilt. The new payday applies from the next cycle."
   },
   "onboarding": {
     "loading": "Loading",
@@ -165,6 +167,11 @@
   },
   "menu": {
     "title": "All",
+    "profile": "Edit salary & payday",
+    "profileTitle": "Edit salary & payday",
+    "profileIncome": "Take-home pay",
+    "profileHint": "Based on your usual salary. Adjust just this month in the payday checklist.",
+    "profileSave": "Save",
     "accounts": "Manage accounts",
     "items": "Manage budget items",
     "archive": "Archive",

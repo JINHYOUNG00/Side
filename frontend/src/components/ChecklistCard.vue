@@ -5,11 +5,14 @@ import Card from '@/components/base/Card.vue'
 import MoneyText from '@/components/base/MoneyText.vue'
 import ProgressBar from '@/components/base/ProgressBar.vue'
 import BottomSheet from '@/components/base/BottomSheet.vue'
+import ProfileEditSheet from '@/components/ProfileEditSheet.vue'
 import { ApiError } from '@/api/client'
+import { getMe, type Me } from '@/api/me'
 import {
   getCurrentCycle,
   confirmIncome,
   changeLineStatus,
+  recalibrateCurrentCycle,
   type CurrentCycle,
   type ChecklistLine,
   type PlanLineStatus,
@@ -30,6 +33,10 @@ const INCOME_MAX = 1_000_000_000
 
 const cycle = ref<CurrentCycle | null>(null)
 const errorCode = ref<string | null>(null)
+// 월급일 보정(SET-01 후속) — 현재 설정을 읽어 시트를 채우고, 저장 후 현재 사이클을 재보정한다.
+const me = ref<Me | null>(null)
+const profileOpen = ref(false)
+const recalError = ref<string | null>(null)
 const editingIncome = ref(false)
 const incomeInput = ref('') // 천 단위 구분 표시 문자열, 제출 시 정수로 파싱
 const incomeError = ref<string | null>(null)
@@ -108,6 +115,37 @@ async function load() {
   }
 }
 
+// 월급일 수정 시트를 채울 현재 설정을 읽는다. 실패하면 시트 진입만 막고(버튼은 me 있을 때만), 카드 본체는 그대로.
+async function loadMe() {
+  try {
+    me.value = await getMe()
+  } catch (e) {
+    if (!(e instanceof ApiError)) throw e
+    me.value = null
+  }
+}
+
+function openProfile() {
+  if (me.value === null) return
+  recalError.value = null
+  profileOpen.value = true
+}
+
+// 월급일 저장 후, 현재 사이클을 바뀐 월급일로 재보정한다. 이미 이체(DONE)를 시작했으면 409 — 보정 못 하고
+// 다음 사이클부터 적용된다는 안내를 띄운다. 보정 성공 시 체크리스트를 다시 받아 새 경계를 반영한다.
+async function onPaydaySaved(updated: Me) {
+  me.value = updated
+  profileOpen.value = false
+  recalError.value = null
+  try {
+    await recalibrateCurrentCycle()
+  } catch (e) {
+    if (!(e instanceof ApiError)) throw e
+    recalError.value = e.code === 'CYCLE_LOCKED' ? 'CYCLE_LOCKED' : 'INTERNAL_ERROR'
+  }
+  await load()
+}
+
 function openIncomeEditor() {
   if (!cycle.value) return
   incomeInput.value = cycle.value.income.toLocaleString('ko-KR')
@@ -158,7 +196,10 @@ function toggleDone(line: ChecklistLine) {
   setStatus(line, line.status === 'DONE' ? 'PENDING' : 'DONE')
 }
 
-onMounted(load)
+onMounted(() => {
+  load()
+  loadMe()
+})
 
 defineExpose({ load })
 </script>
@@ -225,6 +266,17 @@ defineExpose({ load })
     </div>
 
     <p class="hint">{{ $t('checklist.hint') }}</p>
+
+    <!-- 월급일 보정 동선: 표시된 월급날이 틀렸을 때 월급일을 고쳐 이번 사이클을 다시 만든다(SET-01 후속) -->
+    <button v-if="me" class="wrong-payday" type="button" @click="openProfile">
+      {{ $t('checklist.wrongPayday') }}
+    </button>
+    <p v-if="recalError" class="error" role="alert">
+      {{ recalError === 'CYCLE_LOCKED' ? $t('checklist.recalLocked') : $t(`errors.${recalError}`) }}
+    </p>
+
+    <!-- 월급일 수정 시트(저장 시 현재 사이클 재보정) -->
+    <ProfileEditSheet :open="profileOpen" :me="me" @close="profileOpen = false" @saved="onPaydaySaved" />
 
     <!-- 실수령액 수정 시트 -->
     <BottomSheet :open="editingIncome" @close="editingIncome = false">
@@ -387,6 +439,13 @@ defineExpose({ load })
   color: var(--hint);
   margin-top: 12px;
   line-height: 1.5;
+}
+.wrong-payday {
+  display: block;
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--blue);
 }
 .sheet-title {
   font-size: 18px;

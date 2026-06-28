@@ -63,6 +63,14 @@ export async function confirmIncome(cycleId: number, income: number): Promise<Co
   return data
 }
 
+// 현재 사이클 지급일 재보정(SET-01 후속). 이미 만들어진 사이클의 경계가 틀린 월급일로 박혀 있을 때, 바뀐
+// 설정(payday)으로 경계를 다시 도출해 이번 사이클을 다시 만든다. 이체(DONE) 시작 전 사이클만 — 시작했으면
+// 409 CYCLE_LOCKED. 현재 사이클 없으면 404. 확인된 실수령액은 보존된다.
+export async function recalibrateCurrentCycle(): Promise<ConfirmedCycle> {
+  const { data } = await api.post<ConfirmedCycle>('/cycles/current/recalibrate')
+  return data
+}
+
 // 라인 상태 전이 PENDING ↔ DONE/SKIPPED(CYCLE-06). 갱신된 라인 단건을 반환한다.
 export async function changeLineStatus(lineId: number, status: PlanLineStatus): Promise<ChecklistLine> {
   const { data } = await api.patch<ChecklistLine>(`/plan-lines/${lineId}`, { status })

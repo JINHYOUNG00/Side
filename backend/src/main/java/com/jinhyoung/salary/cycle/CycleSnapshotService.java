@@ -17,6 +17,7 @@ import com.jinhyoung.salary.cycle.infra.CycleRepository;
 import com.jinhyoung.salary.cycle.infra.PlanLine;
 import com.jinhyoung.salary.cycle.infra.PlanLineRepository;
 import com.jinhyoung.salary.cycle.infra.PlanLineStatus;
+import com.jinhyoung.salary.user.domain.PaydayAdjustment;
 import com.jinhyoung.salary.user.infra.User;
 import com.jinhyoung.salary.user.infra.UserRepository;
 import java.time.Clock;
@@ -102,6 +103,16 @@ public class CycleSnapshotService {
     }
 
     private Cycle persist(User user, CycleDefinition definition) {
+        // 정상 생성(CYCLE-03): income 기본값=평소 실수령액, income_confirmed=false(CYCLE-04에서 확인).
+        return persist(user, definition, user.getBaseIncome(), false);
+    }
+
+    /**
+     * 주어진 income·확인 여부로 사이클 헤더 + plan_lines를 영속화한다. {@link #createSnapshot}은 평소
+     * 실수령액·미확인으로, 지급일 재보정({@link #recalibrateCurrentCycle})은 보존한 확인 실수령액으로 호출한다 —
+     * 라인 금액(LIVING 포함)이 income 기준으로 산출되므로 income은 빌더와 헤더에 일관되게 같은 값을 쓴다.
+     */
+    private Cycle persist(User user, CycleDefinition definition, long income, boolean confirmed) {
         // 활성 항목(EMERGENCY 포함)을 sort_order 순으로 — WaterfallQueryService와 동일 변환.
         List<BudgetItem> items =
                 budgetItemRepository.findByUserIdAndStatusOrderBySortOrderAsc(user.getId(), ItemStatus.ACTIVE);
@@ -110,11 +121,15 @@ public class CycleSnapshotService {
                 .toList();
 
         // plan_line 구성은 owner 순수 도메인에 위임(계산 0줄). LIVING 생성 조건도 빌더가 판단한다.
-        List<PlanLineDraft> drafts = CycleSnapshotBuilder.build(
-                user.getBaseIncome(), lines, ENVELOPE_CONTRIBUTION_UNAVAILABLE, user.getLivingAccountId());
+        List<PlanLineDraft> drafts =
+                CycleSnapshotBuilder.build(income, lines, ENVELOPE_CONTRIBUTION_UNAVAILABLE, user.getLivingAccountId());
 
-        // 사이클 헤더 먼저(plan_lines.cycle_id FK). income 기본값=평소 실수령액, income_confirmed=false(CYCLE-04).
-        Cycle cycle = cycleRepository.save(Cycle.create(user.getId(), definition, user.getBaseIncome()));
+        // 사이클 헤더 먼저(plan_lines.cycle_id FK). 확인된 실수령액 보존 시 income_confirmed=true로 박는다.
+        Cycle header = Cycle.create(user.getId(), definition, income);
+        if (confirmed) {
+            header.confirmIncome(income);
+        }
+        Cycle cycle = cycleRepository.save(header);
 
         Map<Long, BudgetItem> itemsById =
                 items.stream().collect(Collectors.toMap(BudgetItem::getId, Function.identity()));
@@ -160,6 +175,80 @@ public class CycleSnapshotService {
                 .findById(userId)
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, Map.of("resource", "user", "id", userId)));
         regenerate(user, current.get());
+    }
+
+    /**
+     * 현재 사이클 지급일 재보정. 이미 생성된 사이클의 경계 날짜(cycle_start/cycle_end)가 틀린 월급일로 박혀
+     * 있을 때, 바뀐 설정(users.payday·payday_adjustment)으로 경계를 다시 도출해 이번 사이클을 다시 만든다.
+     *
+     * <p>{@link #regenerateCurrentCycle}(ITEM-07)은 같은 사이클 row의 plan_lines만 다시 박고 <b>경계는 그대로</b>
+     * 두지만, 이 메서드는 <b>경계 자체를 교체</b>한다 — cycle_start가 바뀌므로 같은 row를 수정하는 대신 옛 사이클을
+     * 삭제하고 새 경계로 다시 박는다(스냅샷은 생성 후 불변, 변경은 재생성으로만 — 규칙 4).
+     *
+     * <p><b>안전 게이트</b>: 현재 사이클에 DONE 라인이 하나라도 있으면 {@link ErrorCode#CYCLE_LOCKED}(409)로 막는다.
+     * DONE은 이미 일어난 이체이며, 봉투 DONE 라인은 적립(DEPOSIT)·saved_amount 증가까지 동반하므로(CYCLE-07)
+     * 삭제 시 부수효과가 남는다. "이미 DONE이면 재생성하지 않는다"는 구현규칙 4장 정신을 사이클 단위로 적용한 것 —
+     * 이체를 시작하지 않은(부수효과 0건) 사이클만 안전하게 다시 만든다. 확인된 실수령액(CYCLE-04)은 날짜 라벨이
+     * 틀렸을 뿐 금액은 그대로라 보존한다(미확인이면 평소 실수령액으로 새로 박는다).
+     *
+     * <p>현재 사이클 스냅샷이 없으면(지급일 구간 밖·미생성) {@link ErrorCode#NOT_FOUND} — 바꾼 월급일은 다음 사이클
+     * 생성 시 자연히 반영되므로 보정할 대상이 없다. 보정 후 경계가 과거 지급일이면 체크리스트 카드 노출창을 벗어나
+     * 카드가 자연히 숨는데, 이는 "지금은 지급일이 아니다"라는 옳은 동작이다.
+     *
+     * @param userId 인증 주체 — 본인의 현재 사이클만 보정한다
+     * @return 보정된(또는 이미 올바른) 현재 사이클 헤더
+     */
+    @Transactional
+    public Cycle recalibrateCurrentCycle(long userId) {
+        LocalDate today = LocalDate.now(clock);
+        Cycle current = cycleRepository
+                .findByUserIdAndCycleStartLessThanEqualAndCycleEndGreaterThanEqual(userId, today, today)
+                .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, Map.of("resource", "cycle")));
+        User user = userRepository
+                .findById(userId)
+                .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, Map.of("resource", "user", "id", userId)));
+
+        YearMonth startMonth = startMonthContaining(today, user.getPayday(), user.getPaydayAdjustment());
+        CycleDefinition corrected = cycleService.resolveCycle(startMonth, user.getPayday(), user.getPaydayAdjustment());
+
+        // 이미 올바른 경계면 멱등 — 손대지 않고 그대로 돌려준다(중복 호출·설정 무변경 안전).
+        if (corrected.cycleStart().equals(current.getCycleStart())) {
+            return current;
+        }
+
+        // 게이트: 이체(DONE)가 시작된 사이클은 불변. DONE 봉투 라인은 DEPOSIT·saved_amount까지 동반하므로 보호.
+        List<PlanLine> lines = planLineRepository.findByCycleIdOrderByIdAsc(current.getId());
+        boolean anyDone = lines.stream().anyMatch(line -> line.getStatus() == PlanLineStatus.DONE);
+        if (anyDone) {
+            throw new ApiException(ErrorCode.CYCLE_LOCKED, Map.of("cycleId", current.getId()));
+        }
+
+        // 확인된 실수령액은 보존(날짜만 틀렸을 뿐 금액 동일). 미확인이면 평소 실수령액으로 새로 박는다.
+        long income = current.getIncome();
+        boolean confirmed = current.isIncomeConfirmed();
+
+        // 옛 사이클(PENDING·SKIPPED 라인 포함) 제거 후 새 경계로 다시 박는다. 삭제를 flush해 인서트와 분리한다.
+        planLineRepository.deleteAll(lines);
+        cycleRepository.delete(current);
+        cycleRepository.flush();
+
+        return confirmed ? persist(user, corrected, income, true) : persist(user, corrected);
+    }
+
+    /**
+     * 오늘이 속하는 사이클의 시작 월을 찾는다. 영업일 조정이 월 경계를 넘을 수 있어 오늘 기준 전월·당월·익월 세 후보
+     * 명목 월의 경계를 보고, 오늘을 포함하는([cycle_start, cycle_end]) 달을 돌려준다. 사이클은 맞닿게 연속이라
+     * 정확히 하나가 포함한다({@link PaydayService#resolvePaydayMonth}의 후보 탐색과 동형).
+     */
+    private YearMonth startMonthContaining(LocalDate today, int payday, PaydayAdjustment adjustment) {
+        YearMonth thisMonth = YearMonth.from(today);
+        for (YearMonth month : List.of(thisMonth.minusMonths(1), thisMonth, thisMonth.plusMonths(1))) {
+            CycleDefinition definition = cycleService.resolveCycle(month, payday, adjustment);
+            if (!today.isBefore(definition.cycleStart()) && !today.isAfter(definition.cycleEnd())) {
+                return month;
+            }
+        }
+        throw new IllegalStateException("연속 사이클이라 오늘을 포함하는 사이클이 반드시 있어야 한다: " + today);
     }
 
     private void regenerate(User user, Cycle cycle) {

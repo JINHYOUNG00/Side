@@ -5,6 +5,7 @@ import router from '@/router'
 import i18n from '@/i18n'
 import MenuView from '../MenuView.vue'
 import ImportSheet from '@/components/ImportSheet.vue'
+import ProfileEditSheet from '@/components/ProfileEditSheet.vue'
 import * as accountsApi from '@/api/accounts'
 import * as meApi from '@/api/me'
 import * as exportApi from '@/api/export'
@@ -97,6 +98,55 @@ describe('MenuView (SCR-07 전체 허브)', () => {
 
     await buttonByText(wrapper, i18n.global.t('menu.import'))!.trigger('click')
     expect(sheet.props('open')).toBe(true)
+  })
+
+  it('월급·월급일 수정 행을 누르면 수정 시트를 연다', async () => {
+    const wrapper = mountView()
+    await flushPromises() // onMounted me 로드(시트는 me가 있어야 열린다)
+
+    const sheet = wrapper.findComponent(ProfileEditSheet)
+    expect(sheet.props('open')).toBe(false)
+
+    await buttonByText(wrapper, i18n.global.t('menu.profile'))!.trigger('click')
+    expect(sheet.props('open')).toBe(true)
+    // 현재 설정을 시트로 내려 폼을 채운다.
+    expect(sheet.props('me')).toMatchObject({ baseIncome: 2_500_000, payday: 25 })
+  })
+
+  it('수정 시트에서 저장하면 전체 설정을 보존한 채 변경값으로 PATCH하고 시트를 닫는다', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    await buttonByText(wrapper, i18n.global.t('menu.profile'))!.trigger('click')
+
+    // 실수령액을 바꾼다 — incomeDisplay setter가 숫자만 남겨 천 단위로 표시.
+    await wrapper.find('#profile-income').setValue('3000000')
+    await buttonByText(wrapper, i18n.global.t('menu.profileSave'))!.trigger('click')
+    await flushPromises()
+
+    // 이 시트가 다루지 않는 locale·투자 토글·생활비 통장은 현재값 그대로 되돌린다.
+    expect(meApi.updateMe).toHaveBeenCalledWith({
+      baseIncome: 3_000_000,
+      payday: 25,
+      paydayAdjustment: 'PREV_BUSINESS_DAY',
+      livingAccountId: null,
+      locale: 'ko',
+      includeInvestmentInSavingsRate: true,
+    })
+    expect(wrapper.findComponent(ProfileEditSheet).props('open')).toBe(false)
+  })
+
+  it('수정 저장에 실패하면 에러를 보이고 시트를 유지한다', async () => {
+    vi.mocked(meApi.updateMe).mockRejectedValue(new ApiError('INTERNAL_ERROR', {}, 500))
+    const wrapper = mountView()
+    await flushPromises()
+
+    await buttonByText(wrapper, i18n.global.t('menu.profile'))!.trigger('click')
+    await buttonByText(wrapper, i18n.global.t('menu.profileSave'))!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain(i18n.global.t('errors.INTERNAL_ERROR'))
+    expect(wrapper.findComponent(ProfileEditSheet).props('open')).toBe(true)
   })
 
   it('현재 언어(ko)를 선택 상태로 표시한다', async () => {

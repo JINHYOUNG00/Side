@@ -6,8 +6,32 @@ import ChecklistCard from '../ChecklistCard.vue'
 import { ApiError } from '@/api/client'
 import * as cycleApi from '@/api/cycle'
 import type { CurrentCycle, PlanLineStatus } from '@/api/cycle'
+import * as meApi from '@/api/me'
 
 vi.mock('@/api/cycle')
+// @/api/me는 상수(PAYDAY_ADJUSTMENTS)+함수 혼합 모듈 — ProfileEditSheet가 상수를 v-for로 쓰므로
+// 전체 모킹하면 깨진다. importOriginal로 상수는 살리고 getMe/updateMe만 모킹한다.
+vi.mock('@/api/me', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/api/me')>()
+  return {
+    ...actual,
+    getMe: vi.fn<() => Promise<meApi.Me>>(),
+    updateMe: vi.fn<(input: meApi.MeUpdate) => Promise<meApi.Me>>(),
+  }
+})
+
+// 현재 설정 — 월급일 수정 시트(ProfileEditSheet)를 채운다.
+const ME: meApi.Me = {
+  id: 1,
+  email: null,
+  nickname: 'me',
+  baseIncome: 2500000,
+  payday: 25,
+  paydayAdjustment: 'PREV_BUSINESS_DAY',
+  includeInvestmentInSavingsRate: true,
+  locale: 'ko',
+  livingAccountId: 7,
+}
 
 // 노션류 실데이터 — 지급일 2026-06-25, 통장 3그룹(국민 700,000 / 케이뱅크 300,000[월세 DONE·통신 PENDING] /
 // 생활비통장 LIVING 356,107). 처리됨(PENDING 아님) 라인 = 월세 1건 → 진행도 1/4.
@@ -55,6 +79,12 @@ describe('ChecklistCard (SCR-03b 월급날 체크리스트)', () => {
     vi.mocked(cycleApi.getCurrentCycle).mockReset()
     vi.mocked(cycleApi.confirmIncome).mockReset()
     vi.mocked(cycleApi.changeLineStatus).mockReset()
+    vi.mocked(cycleApi.recalibrateCurrentCycle).mockReset()
+    vi.mocked(meApi.getMe).mockReset()
+    vi.mocked(meApi.updateMe).mockReset()
+    // 기본: 현재 설정 로드 성공(월급일 보정 버튼 노출 조건). 개별 테스트에서 필요 시 재정의.
+    vi.mocked(meApi.getMe).mockResolvedValue({ ...ME })
+    vi.mocked(meApi.updateMe).mockImplementation(async (input) => ({ ...ME, ...input }) as meApi.Me)
   })
   afterEach(() => {
     vi.useRealTimers()
@@ -165,6 +195,57 @@ describe('ChecklistCard (SCR-03b 월급날 체크리스트)', () => {
     expect(cycleApi.confirmIncome).toHaveBeenCalledWith(12, 3000000)
     // 재조회(마운트 1회 + 확인 후 1회).
     expect(cycleApi.getCurrentCycle).toHaveBeenCalledTimes(2)
+
+    wrapper.unmount()
+  })
+
+  it('월급일을 수정하면 현재 사이클을 재보정하고 체크리스트를 다시 받는다', async () => {
+    vi.setSystemTime(new Date('2026-06-25T10:00:00+09:00'))
+    vi.mocked(cycleApi.getCurrentCycle).mockResolvedValue(fixture())
+    vi.mocked(cycleApi.recalibrateCurrentCycle).mockResolvedValue({
+      id: 12,
+      label: '2026-06',
+      cycleStart: '2026-06-05',
+      cycleEnd: '2026-07-04',
+      income: 2500000,
+      incomeConfirmed: false,
+    })
+    const wrapper = mountCard()
+    await flushPromises()
+
+    // '월급날이 틀렸나요? 다시 만들기' → 월급일 수정 시트(ProfileEditSheet, teleport)에서 저장.
+    await wrapper.find('.wrong-payday').trigger('click')
+    const saveBtn = Array.from(document.body.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === i18n.global.t('menu.profileSave'),
+    ) as HTMLButtonElement
+    expect(saveBtn).not.toBeUndefined()
+    saveBtn.click()
+    await flushPromises()
+
+    expect(meApi.updateMe).toHaveBeenCalled()
+    expect(cycleApi.recalibrateCurrentCycle).toHaveBeenCalledOnce()
+    // 재보정 후 체크리스트 재조회(마운트 1회 + 재보정 후 1회).
+    expect(cycleApi.getCurrentCycle).toHaveBeenCalledTimes(2)
+
+    wrapper.unmount()
+  })
+
+  it('이미 이체를 시작했으면(409) 재보정 잠금 안내를 노출한다', async () => {
+    vi.setSystemTime(new Date('2026-06-25T10:00:00+09:00'))
+    vi.mocked(cycleApi.getCurrentCycle).mockResolvedValue(fixture())
+    vi.mocked(cycleApi.recalibrateCurrentCycle).mockRejectedValue(new ApiError('CYCLE_LOCKED', {}, 409))
+    const wrapper = mountCard()
+    await flushPromises()
+
+    await wrapper.find('.wrong-payday').trigger('click')
+    const saveBtn = Array.from(document.body.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === i18n.global.t('menu.profileSave'),
+    ) as HTMLButtonElement
+    saveBtn.click()
+    await flushPromises()
+
+    expect(cycleApi.recalibrateCurrentCycle).toHaveBeenCalledOnce()
+    expect(wrapper.text()).toContain(i18n.global.t('checklist.recalLocked'))
 
     wrapper.unmount()
   })

@@ -91,6 +91,9 @@ res: {
   "progress": { "done": 1, "total": 4 }
 }
 PATCH /cycles/{id}/income             { "income": 3300000 } → 차액 기준 초과 시 res에 windfall 제안 포함(CYCLE-05)
+POST  /cycles/current/recalibrate     현재 사이클 지급일 재보정(SET-01 후속). 바뀐 월급일로 경계 재도출 → 이번 사이클 재생성.
+                                      이체(DONE) 시작 전만 — 시작 시 409 CYCLE_LOCKED. 현재 사이클 없으면 404. 확인 실수령액 보존.
+                                      res: CycleResponse(= PATCH income 응답 형태). 메뉴의 월급일 수정(미래용)과 달리 이번 사이클 즉시 반영.
 PATCH /plan-lines/{id}                { "status": "DONE" | "SKIPPED" | "PENDING" }  (CYCLE-06~07)
 GET   /cycles?from=&to=               과거 사이클 목록(리포트용)
 ```

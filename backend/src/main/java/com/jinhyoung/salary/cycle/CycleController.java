@@ -10,6 +10,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -30,16 +31,32 @@ public class CycleController {
 
     private final CycleIncomeService cycleIncomeService;
     private final CycleChecklistService cycleChecklistService;
+    private final CycleSnapshotService cycleSnapshotService;
 
-    public CycleController(CycleIncomeService cycleIncomeService, CycleChecklistService cycleChecklistService) {
+    public CycleController(
+            CycleIncomeService cycleIncomeService,
+            CycleChecklistService cycleChecklistService,
+            CycleSnapshotService cycleSnapshotService) {
         this.cycleIncomeService = cycleIncomeService;
         this.cycleChecklistService = cycleChecklistService;
+        this.cycleSnapshotService = cycleSnapshotService;
     }
 
     /** 오늘이 속한 사이클 + 통장별 체크리스트(CYCLE-06). 미생성이면 404 NOT_FOUND(스냅샷 생성 동선). */
     @GetMapping("/current")
     public ChecklistResponse current(@AuthenticationPrincipal Long userId) {
         return cycleChecklistService.getCurrentChecklist(userId);
+    }
+
+    /**
+     * 현재 사이클 지급일 재보정. 이미 만들어진 사이클의 경계가 틀린 월급일로 박혀 있을 때, 바뀐 설정으로 경계를
+     * 다시 도출해 이번 사이클을 다시 만든다(이체 시작 전 사이클만 — DONE 라인 있으면 409 CYCLE_LOCKED).
+     * 현재 사이클 없으면 404. 메뉴의 월급일 수정(미래용)과 달리, 이건 "이번 사이클에 즉시 반영"하는 동선이다.
+     */
+    @PostMapping("/current/recalibrate")
+    public CycleResponse recalibrateCurrent(@AuthenticationPrincipal Long userId) {
+        Cycle cycle = cycleSnapshotService.recalibrateCurrentCycle(userId);
+        return CycleResponse.from(cycle);
     }
 
     /**

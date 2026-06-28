@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import Card from '@/components/base/Card.vue'
 import ImportSheet from '@/components/ImportSheet.vue'
+import ProfileEditSheet from '@/components/ProfileEditSheet.vue'
 import BottomSheet from '@/components/base/BottomSheet.vue'
 import { ApiError } from '@/api/client'
 import { listAccounts, type Account } from '@/api/accounts'
@@ -13,8 +14,8 @@ import { downloadTextFile } from '@/lib/download'
 import { setLocale, LOCALES, type Locale } from '@/i18n'
 import { useAuthStore } from '@/stores/auth'
 
-// SCR-07 전체 — 허브 화면. 통장·항목·보관함(SCR-08) 진입 + 노션 임포트(MOD-07/DATA-01) +
-// (봉투는 하단 탭으로 승격돼 허브에서 제외 — 정본 SCR-07 봉투 미포함) +
+// SCR-07 전체 — 허브 화면. 월급·월급일 수정(SET-01) + 통장·항목·보관함(SCR-08) 진입 +
+// 노션 임포트(MOD-07/DATA-01) + (봉투는 하단 탭으로 승격돼 허브에서 제외 — 정본 SCR-07 봉투 미포함) +
 // 데이터 내보내기(DATA-02) + 저축률 투자 포함 토글(SET-02) + 언어 설정(SET-03) + 로그아웃 + 회원 탈퇴(AUTH-04).
 const router = useRouter()
 const auth = useAuthStore()
@@ -142,6 +143,23 @@ function closeImport() {
   importOpen.value = false
 }
 
+// 월급·월급일 수정(SET-01). 허브 진입 시 읽어 둔 me로 시트를 채우고, 저장하면 갱신된 me로 동기화한다.
+const profileOpen = ref(false)
+
+function openProfile() {
+  if (me.value === null) return
+  profileOpen.value = true
+}
+
+function closeProfile() {
+  profileOpen.value = false
+}
+
+function onProfileSaved(updated: Me) {
+  me.value = updated
+  profileOpen.value = false
+}
+
 // 일괄 등록이 끝나면 시트를 닫고 항목 목록으로 이동해 결과를 바로 보여준다.
 function onImported() {
   importOpen.value = false
@@ -198,6 +216,10 @@ onMounted(() => {
     </header>
 
     <Card class="list">
+      <button type="button" class="row" :disabled="me === null" @click="openProfile">
+        <span class="nm">{{ $t('menu.profile') }}</span>
+        <span class="chev">›</span>
+      </button>
       <button v-for="link in links" :key="link.key" type="button" class="row" @click="go(link.to)">
         <span class="nm">{{ $t(`menu.${link.key}`) }}</span>
         <span class="chev">›</span>
@@ -278,6 +300,8 @@ onMounted(() => {
     <button class="logout" type="button" @click="logout">{{ $t('menu.logout') }}</button>
     <button class="withdraw" type="button" @click="openWithdraw">{{ $t('menu.withdraw') }}</button>
 
+    <ProfileEditSheet :open="profileOpen" :me="me" @close="closeProfile" @saved="onProfileSaved" />
+
     <ImportSheet :open="importOpen" :accounts="accounts" @close="closeImport" @imported="onImported" />
 
     <BottomSheet :open="withdrawOpen" @close="closeWithdraw">
@@ -322,6 +346,9 @@ onMounted(() => {
 }
 .row:last-child {
   border-bottom: 0;
+}
+.row:disabled {
+  opacity: 0.5;
 }
 .nm {
   font-size: 15px;
