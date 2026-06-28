@@ -40,7 +40,7 @@ function onSelect(key: string) {
 <template>
   <div class="app-shell">
     <SideNav v-if="showChrome" :current="current" @select="onSelect" />
-    <main class="app-body">
+    <main class="app-body" :class="{ 'with-nav': showChrome }">
       <div class="content">
         <RouterView />
       </div>
@@ -68,6 +68,13 @@ function onSelect(key: string) {
   flex: 1;
   display: flex;
   flex-direction: column;
+}
+/* 모바일에서 하단 탭은 fixed라 흐름에서 빠진다 — 콘텐츠가 탭바 뒤로 가려지지 않게
+   탭바 높이(+안전영역)만큼 하단 여백을 둔다. 탭바 없는 라우트(로그인 등)·데스크톱은 제외. */
+@media (max-width: 899px) {
+  .app-body.with-nav {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  }
 }
 /* 데스크톱(웹 대응) — 좌측 사이드바 + 가운데 정렬된 본문. 모바일 레이아웃은 위 기본값 그대로.
    분기점은 tokens --bp-wide(900px)와 동기화. */

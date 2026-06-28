@@ -45,10 +45,19 @@ const items = ['home', 'envelopes', 'report', 'all'] as const
 
 <style scoped>
 .nav {
+  /* 모바일 앱 탭바 — 스크롤과 무관하게 뷰포트 하단 고정. 셸(max-width 430px)에 맞춰 중앙 정렬.
+     iOS 홈 인디케이터 안전영역(env)만큼 하단 패딩을 더한다(노치 없는 기기는 0). */
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 430px;
+  z-index: 50;
   display: flex;
   background: #fff;
   border-top: 1px solid var(--line-2);
-  padding: 9px 0 12px;
+  padding: 9px 0 calc(12px + env(safe-area-inset-bottom, 0px));
 }
 /* 데스크톱(≥900px, tokens --bp-wide)에선 좌측 SideNav가 대신하므로 하단 탭은 숨긴다. */
 @media (min-width: 900px) {
