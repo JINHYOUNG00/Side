@@ -44,12 +44,29 @@ const emit = defineEmits<{ close: [] }>()
   background: var(--line-2);
   margin: 0 auto 16px;
 }
+/* 딤은 페이드, 시트는 아래에서 슬라이드업(정본 구현 노트: 바텀시트 슬라이드업 240ms). */
 .sheet-enter-active,
 .sheet-leave-active {
-  transition: opacity 0.2s ease;
+  transition: opacity 0.24s ease;
 }
 .sheet-enter-from,
 .sheet-leave-to {
   opacity: 0;
+}
+.sheet {
+  transition: transform 0.24s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.sheet-enter-from .sheet,
+.sheet-leave-to .sheet {
+  transform: translateY(100%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sheet {
+    transition: none;
+  }
+  .sheet-enter-from .sheet,
+  .sheet-leave-to .sheet {
+    transform: none;
+  }
 }
 </style>

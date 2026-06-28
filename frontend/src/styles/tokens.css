@@ -22,6 +22,8 @@
   --red-soft: #fdeff0;
   --r: 14px;
   --r-lg: 20px;
+  /* 콘텐츠 카드의 아주 옅은 입체감(토스류 절제) — 색 hero 카드는 색으로 구분되므로 플랫 유지. */
+  --shadow-card: 0 1px 3px rgba(25, 31, 40, 0.04), 0 5px 14px rgba(25, 31, 40, 0.04);
 }
 
 * {
@@ -49,4 +51,34 @@ button {
   border: 0;
   background: none;
   color: inherit;
+}
+
+/* 미세 인터랙션 — 정본 구현 노트(체크 시 스프링 0.96→1, 터치 피드백). 클래스가 전역이라
+   여기서 한 번만 선언해 앱 전역에 적용한다. prefers-reduced-motion이면 전부 비활성. */
+.btn {
+  transition: transform 0.1s ease;
+}
+.btn:active {
+  transform: scale(0.97);
+}
+.check.on {
+  animation: check-pop 0.18s ease-out;
+}
+@keyframes check-pop {
+  from {
+    transform: scale(0.96);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .btn:active {
+    transition: none;
+    transform: none;
+  }
+  .check.on {
+    animation: none;
+  }
 }

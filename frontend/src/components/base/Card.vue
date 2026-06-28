@@ -14,5 +14,6 @@
   border-radius: var(--r-lg);
   padding: 20px;
   margin-bottom: 14px;
+  box-shadow: var(--shadow-card);
 }
 </style>
