@@ -515,7 +515,7 @@
       "category": "backend",
       "description": "내보내기(DATA-02): 전체 데이터를 마크다운 표/CSV로 내보낸다(요구사항 2.10). DATA-01 임포트와 포맷 스펙을 공유하며 라운드트립(내보내기→임포트 동일성)을 보장한다. 조회 전용·소유권 user_id 강제. 금융 식별정보 미포함(규칙 6), 문장 미생성 구조화 출력",
       "verify": "./gradlew verify 통과(내보내기 포맷·소유권·라운드트립 동일성 통합 + 포맷 직렬화 순수 단위) + npm run verify 통과(내보내기 진입·다운로드 동선 뷰 테스트)",
-      "passes": false
+      "passes": true
     },
     {
       "id": "RPT-04",

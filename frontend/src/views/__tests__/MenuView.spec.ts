@@ -7,11 +7,15 @@ import MenuView from '../MenuView.vue'
 import ImportSheet from '@/components/ImportSheet.vue'
 import * as accountsApi from '@/api/accounts'
 import * as meApi from '@/api/me'
+import * as exportApi from '@/api/export'
+import * as downloadLib from '@/lib/download'
 import { ApiError } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 
 vi.mock('@/api/accounts')
 vi.mock('@/api/me')
+vi.mock('@/api/export')
+vi.mock('@/lib/download')
 
 const BASE_ME: meApi.Me = {
   id: 1,
@@ -50,6 +54,9 @@ describe('MenuView (SCR-07 전체 허브)', () => {
     vi.mocked(meApi.updateMe).mockImplementation(async (input) => ({ ...BASE_ME, ...input }) as meApi.Me)
     // 회원 탈퇴(AUTH-04) — 기본은 성공(204). 실패 케이스는 개별 테스트에서 재정의.
     vi.mocked(meApi.deleteMe).mockResolvedValue(undefined)
+    // 데이터 내보내기(DATA-02) — 기본은 성공. 다운로드 부수효과는 모킹해 동선만 본다.
+    vi.mocked(exportApi.fetchExport).mockResolvedValue('| name | category | amount |\n')
+    vi.mocked(downloadLib.downloadTextFile).mockReturnValue(undefined)
   })
 
   afterEach(() => {
@@ -242,5 +249,49 @@ describe('MenuView (SCR-07 전체 허브)', () => {
     // 삭제 실패 — 세션 유지, 로그인으로 보내지 않는다.
     expect(auth.isAuthenticated).toBe(true)
     expect(router.push).not.toHaveBeenCalledWith('/login')
+  })
+
+  it('마크다운 내보내기를 누르면 md 텍스트를 받아 .md 파일로 내려받는다', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    await buttonByText(wrapper, i18n.global.t('menu.exportMarkdown'))!.trigger('click')
+    await flushPromises()
+
+    expect(exportApi.fetchExport).toHaveBeenCalledWith('md')
+    expect(downloadLib.downloadTextFile).toHaveBeenCalledWith(
+      'salary-export.md',
+      'text/markdown;charset=utf-8',
+      '| name | category | amount |\n',
+    )
+  })
+
+  it('CSV 내보내기를 누르면 csv 텍스트를 받아 .csv 파일로 내려받는다', async () => {
+    vi.mocked(exportApi.fetchExport).mockResolvedValue('name,category,amount\n')
+    const wrapper = mountView()
+    await flushPromises()
+
+    await buttonByText(wrapper, i18n.global.t('menu.exportCsv'))!.trigger('click')
+    await flushPromises()
+
+    expect(exportApi.fetchExport).toHaveBeenCalledWith('csv')
+    expect(downloadLib.downloadTextFile).toHaveBeenCalledWith(
+      'salary-export.csv',
+      'text/csv;charset=utf-8',
+      'name,category,amount\n',
+    )
+  })
+
+  it('내보내기에 실패하면 에러를 보이고 다운로드하지 않는다', async () => {
+    vi.mocked(exportApi.fetchExport).mockRejectedValue(new ApiError('INTERNAL_ERROR', {}, 500))
+    vi.mocked(downloadLib.downloadTextFile).mockClear() // 이전 성공 테스트의 호출 이력 제거
+    const wrapper = mountView()
+    await flushPromises()
+
+    await buttonByText(wrapper, i18n.global.t('menu.exportMarkdown'))!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain(i18n.global.t('menu.exportError'))
+    expect(downloadLib.downloadTextFile).not.toHaveBeenCalled()
   })
 })

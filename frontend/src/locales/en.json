@@ -166,6 +166,11 @@
     "archive": "Archive",
     "reminders": "Reminders",
     "import": "Import from Notion",
+    "export": "Export data",
+    "exportMarkdown": "Markdown",
+    "exportCsv": "CSV",
+    "exportHint": "Download your budget items as a table. You can re-import it later.",
+    "exportError": "Couldn't export your data. Please try again.",
     "language": "Language",
     "languageError": "Couldn't change the language. Please try again.",
     "lang": {

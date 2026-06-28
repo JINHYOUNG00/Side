@@ -166,6 +166,11 @@
     "archive": "보관함",
     "reminders": "점검 리마인더",
     "import": "노션 표 가져오기",
+    "export": "데이터 내보내기",
+    "exportMarkdown": "마크다운",
+    "exportCsv": "CSV",
+    "exportHint": "배분 항목을 표로 내려받아요. 가져오기로 다시 불러올 수 있어요.",
+    "exportError": "내보내지 못했어요. 잠시 후 다시 시도해 주세요.",
     "language": "언어",
     "languageError": "언어를 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.",
     "lang": {

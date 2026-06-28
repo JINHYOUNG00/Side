@@ -8,12 +8,13 @@ import BottomSheet from '@/components/base/BottomSheet.vue'
 import { ApiError } from '@/api/client'
 import { listAccounts, type Account } from '@/api/accounts'
 import { getMe, updateMe, deleteMe, type Me } from '@/api/me'
+import { fetchExport, type ExportFormat } from '@/api/export'
+import { downloadTextFile } from '@/lib/download'
 import { setLocale, LOCALES, type Locale } from '@/i18n'
 import { useAuthStore } from '@/stores/auth'
 
 // SCR-07 전체 — 허브 화면. 통장·항목·봉투·보관함(SCR-08) 진입 + 노션 임포트(MOD-07/DATA-01) +
-// 저축률 투자 포함 토글(SET-02) + 언어 설정(SET-03) + 로그아웃 + 회원 탈퇴(AUTH-04). 내보내기(DATA-02·P7)는
-// 후속 Phase 의존이라 미연결(고아 링크 금지). 라우트가 생기면 links에 추가만 하면 된다.
+// 데이터 내보내기(DATA-02) + 저축률 투자 포함 토글(SET-02) + 언어 설정(SET-03) + 로그아웃 + 회원 탈퇴(AUTH-04).
 const router = useRouter()
 const auth = useAuthStore()
 const { locale } = useI18n()
@@ -109,6 +110,26 @@ async function toggleInvestment(next: boolean) {
   }
 }
 
+// 데이터 내보내기(DATA-02). 서버에서 활성 항목 표 텍스트(md/csv)를 받아 파일로 내려받는다. 실패하면 에러 노출.
+const exporting = ref(false)
+const exportError = ref(false)
+
+async function exportData(format: ExportFormat) {
+  if (exporting.value) return
+  exportError.value = false
+  exporting.value = true
+  try {
+    const text = await fetchExport(format)
+    const mime = format === 'csv' ? 'text/csv;charset=utf-8' : 'text/markdown;charset=utf-8'
+    downloadTextFile(`salary-export.${format}`, mime, text)
+  } catch (e) {
+    if (!(e instanceof ApiError)) throw e
+    exportError.value = true
+  } finally {
+    exporting.value = false
+  }
+}
+
 function go(to: string) {
   router.push(to)
 }
@@ -185,6 +206,22 @@ onMounted(() => {
         <span class="nm">{{ $t('menu.import') }}</span>
         <span class="chev">›</span>
       </button>
+    </Card>
+
+    <Card class="lang">
+      <div class="lang-row">
+        <span class="nm">{{ $t('menu.export') }}</span>
+        <div class="seg">
+          <button type="button" class="seg-btn" :disabled="exporting" @click="exportData('md')">
+            {{ $t('menu.exportMarkdown') }}
+          </button>
+          <button type="button" class="seg-btn" :disabled="exporting" @click="exportData('csv')">
+            {{ $t('menu.exportCsv') }}
+          </button>
+        </div>
+      </div>
+      <p class="lang-hint">{{ $t('menu.exportHint') }}</p>
+      <p v-if="exportError" class="lang-err" role="alert">{{ $t('menu.exportError') }}</p>
     </Card>
 
     <Card class="lang">
