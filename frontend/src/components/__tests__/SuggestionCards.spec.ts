@@ -36,6 +36,19 @@ const MATURITY: Suggestion = {
   },
 }
 
+const WINDFALL: Suggestion = {
+  id: 4,
+  type: 'WINDFALL',
+  status: 'PENDING',
+  payload: { cycleId: 7, difference: 50000, baseIncome: 2000000, confirmedIncome: 2050000 },
+}
+const SHORTFALL: Suggestion = {
+  id: 5,
+  type: 'SHORTFALL',
+  status: 'PENDING',
+  payload: { cycleId: 7, difference: 40000, baseIncome: 2000000, confirmedIncome: 1960000 },
+}
+
 function mountCards() {
   return mount(SuggestionCards, {
     global: { plugins: [router, i18n], stubs: { teleport: true } },
@@ -95,6 +108,24 @@ describe('SuggestionCards (MOD-06 제안 카드)', () => {
 
     expect(wrapper.find('.sg-extra').exists()).toBe(false)
     expect(wrapper.text()).toContain('300,000')
+  })
+
+  it('여윳돈(WINDFALL) 제안을 차액과 함께 보여준다', async () => {
+    vi.mocked(suggestionsApi.listSuggestions).mockResolvedValue([WINDFALL])
+    const wrapper = mountCards()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain(i18n.global.t('suggestion.windfall.title'))
+    expect(wrapper.text()).toContain('50,000')
+  })
+
+  it('부족(SHORTFALL) 제안을 차액과 함께 보여준다', async () => {
+    vi.mocked(suggestionsApi.listSuggestions).mockResolvedValue([SHORTFALL])
+    const wrapper = mountCards()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain(i18n.global.t('suggestion.shortfall.title'))
+    expect(wrapper.text()).toContain('40,000')
   })
 
   it('제안이 없으면 아무것도 그리지 않는다', async () => {

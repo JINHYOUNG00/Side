@@ -184,6 +184,57 @@ class SuggestionRuleTest {
     }
 
     @Nested
+    class Windfall {
+
+        private static final long THRESHOLD = 30_000L;
+        private static final long CYCLE_ID = 7L;
+        private static final long BASE = 2_000_000L;
+
+        @Test
+        void 평소보다_기준_이상_많으면_WINDFALL을_제안한다() {
+            Optional<SuggestionDraft> draft = SuggestionRule.windfall(CYCLE_ID, BASE, 2_050_000L, THRESHOLD, Set.of());
+
+            assertThat(draft).isPresent();
+            assertThat(draft.get().type()).isEqualTo(SuggestionType.WINDFALL);
+            assertThat(draft.get().dedupKey()).isEqualTo("WINDFALL:7");
+            assertThat(draft.get().payload())
+                    .containsEntry("difference", 50_000L)
+                    .containsEntry("cycleId", CYCLE_ID);
+        }
+
+        @Test
+        void 평소보다_기준_이상_적으면_SHORTFALL을_제안한다() {
+            Optional<SuggestionDraft> draft = SuggestionRule.windfall(CYCLE_ID, BASE, 1_960_000L, THRESHOLD, Set.of());
+
+            assertThat(draft).isPresent();
+            assertThat(draft.get().type()).isEqualTo(SuggestionType.SHORTFALL);
+            assertThat(draft.get().dedupKey()).isEqualTo("SHORTFALL:7");
+            assertThat(draft.get().payload()).containsEntry("difference", 40_000L);
+        }
+
+        @Test
+        void 차이가_기준_미만이면_제안하지_않는다() {
+            assertThat(SuggestionRule.windfall(CYCLE_ID, BASE, 2_020_000L, THRESHOLD, Set.of()))
+                    .isEmpty();
+            assertThat(SuggestionRule.windfall(CYCLE_ID, BASE, 1_980_000L, THRESHOLD, Set.of()))
+                    .isEmpty();
+        }
+
+        @Test
+        void 차이가_기준_경계면_발동한다() {
+            // +30,000 = 기준 경계(≥).
+            assertThat(SuggestionRule.windfall(CYCLE_ID, BASE, 2_030_000L, THRESHOLD, Set.of()))
+                    .isPresent();
+        }
+
+        @Test
+        void 같은_사이클_제안이_있으면_중복_생성하지_않는다() {
+            assertThat(SuggestionRule.windfall(CYCLE_ID, BASE, 2_050_000L, THRESHOLD, Set.of("WINDFALL:7")))
+                    .isEmpty();
+        }
+    }
+
+    @Nested
     class RebalanceMaturity {
 
         private static final LocalDate MATURITY = LocalDate.of(2026, 7, 31);

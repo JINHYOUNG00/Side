@@ -8,6 +8,9 @@ import com.jinhyoung.salary.cycle.infra.CycleRepository;
 import com.jinhyoung.salary.cycle.infra.PlanLine;
 import com.jinhyoung.salary.cycle.infra.PlanLineRepository;
 import com.jinhyoung.salary.cycle.infra.PlanLineStatus;
+import com.jinhyoung.salary.suggestion.SuggestionService;
+import com.jinhyoung.salary.user.infra.User;
+import com.jinhyoung.salary.user.infra.UserRepository;
 import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Service;
@@ -36,10 +39,18 @@ public class CycleIncomeService {
 
     private final CycleRepository cycleRepository;
     private final PlanLineRepository planLineRepository;
+    private final UserRepository userRepository;
+    private final SuggestionService suggestionService;
 
-    public CycleIncomeService(CycleRepository cycleRepository, PlanLineRepository planLineRepository) {
+    public CycleIncomeService(
+            CycleRepository cycleRepository,
+            PlanLineRepository planLineRepository,
+            UserRepository userRepository,
+            SuggestionService suggestionService) {
         this.cycleRepository = cycleRepository;
         this.planLineRepository = planLineRepository;
+        this.userRepository = userRepository;
+        this.suggestionService = suggestionService;
     }
 
     /**
@@ -58,6 +69,13 @@ public class CycleIncomeService {
 
         cycle.confirmIncome(income);
         recalculateLivingLine(cycleId, income);
+
+        // CYCLE-05: 확인 실수령액이 평소보다 기준 이상 크거나 작으면 여윳돈/부족 배분 제안을 만든다(advisory). 실제
+        // 배분/축소 적용은 폭포 도메인(소유자) 후속이라 여기서는 제안 생성까지만 한다. 사이클당 dedup이라 재확인에 멱등.
+        User user = userRepository
+                .findById(userId)
+                .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, Map.of("resource", "user", "id", userId)));
+        suggestionService.generateWindfall(userId, cycleId, user.getBaseIncome(), income);
         return cycle;
     }
 

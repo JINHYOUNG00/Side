@@ -15,6 +15,9 @@ import com.jinhyoung.salary.cycle.infra.Cycle;
 import com.jinhyoung.salary.cycle.infra.CycleRepository;
 import com.jinhyoung.salary.cycle.infra.PlanLine;
 import com.jinhyoung.salary.cycle.infra.PlanLineRepository;
+import com.jinhyoung.salary.suggestion.domain.SuggestionType;
+import com.jinhyoung.salary.suggestion.infra.Suggestion;
+import com.jinhyoung.salary.suggestion.infra.SuggestionRepository;
 import com.jinhyoung.salary.user.domain.PaydayAdjustment;
 import com.jinhyoung.salary.user.infra.User;
 import com.jinhyoung.salary.user.infra.UserRepository;
@@ -75,8 +78,12 @@ class CycleIncomeIntegrationTest {
     @Autowired
     PlanLineRepository planLineRepository;
 
+    @Autowired
+    SuggestionRepository suggestionRepository;
+
     @BeforeEach
     void clear() {
+        suggestionRepository.deleteAll();
         planLineRepository.deleteAll();
         cycleRepository.deleteAll();
         budgetItemRepository.deleteAll();
@@ -212,6 +219,34 @@ class CycleIncomeIntegrationTest {
         // LIVING 라인이 애초에 없으니 재계산 대상 없음 — ITEM 6건 그대로(없던 라인을 새로 만들지 않는다).
         assertThat(livingLine(cycleId)).isNull();
         assertThat(planLineRepository.findByCycleIdOrderByIdAsc(cycleId)).hasSize(6);
+    }
+
+    @Test
+    void 평소보다_큰_실수령액을_확인하면_여윳돈_제안이_생성된다() throws Exception {
+        long userId = newUser("windfall");
+        seedNotion(userId, true); // base_income 2,473,110
+        long cycleId = snapshot(userId);
+
+        // +126,890(≥ 기준 30,000) → CYCLE-05 WINDFALL 제안 적재(응답엔 없고 제안 테이블에).
+        patchIncome(userId, cycleId, 2_600_000).andExpect(status().isOk());
+
+        List<Suggestion> suggestions = suggestionRepository.findAll();
+        assertThat(suggestions).hasSize(1);
+        assertThat(suggestions.get(0).getType()).isEqualTo(SuggestionType.WINDFALL);
+        assertThat(((Number) suggestions.get(0).getPayload().get("difference")).longValue())
+                .isEqualTo(126_890L);
+    }
+
+    @Test
+    void 평소와_비슷한_실수령액이면_제안이_생기지_않는다() throws Exception {
+        long userId = newUser("samewise");
+        seedNotion(userId, true);
+        long cycleId = snapshot(userId);
+
+        // +6,890(< 기준 30,000) → 제안 없음.
+        patchIncome(userId, cycleId, 2_480_000).andExpect(status().isOk());
+
+        assertThat(suggestionRepository.count()).isZero();
     }
 
     @Test

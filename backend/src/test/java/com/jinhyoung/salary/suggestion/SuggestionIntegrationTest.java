@@ -275,6 +275,46 @@ class SuggestionIntegrationTest {
         assertThat(suggestionRepository.count()).isEqualTo(1);
     }
 
+    @Test
+    void 평소보다_실수령액이_많으면_WINDFALL_제안을_생성한다() {
+        long userId = newUser("wf");
+        // 평소 2,000,000 → 이번 2,050,000(+50,000 ≥ 기준 30,000).
+        assertThat(suggestionService.generateWindfall(userId, 100L, 2_000_000L, 2_050_000L))
+                .isTrue();
+
+        Suggestion saved = suggestionRepository.findAll().get(0);
+        assertThat(saved.getType()).isEqualTo(SuggestionType.WINDFALL);
+        assertThat(((Number) saved.getPayload().get("difference")).longValue()).isEqualTo(50_000L);
+        assertThat(((Number) saved.getPayload().get("cycleId")).longValue()).isEqualTo(100L);
+    }
+
+    @Test
+    void 평소보다_실수령액이_적으면_SHORTFALL_제안을_생성한다() {
+        long userId = newUser("sf");
+        assertThat(suggestionService.generateWindfall(userId, 100L, 2_000_000L, 1_950_000L))
+                .isTrue();
+        assertThat(suggestionRepository.findAll().get(0).getType()).isEqualTo(SuggestionType.SHORTFALL);
+    }
+
+    @Test
+    void 차이가_기준_미만이면_제안을_만들지_않는다() {
+        long userId = newUser("near");
+        assertThat(suggestionService.generateWindfall(userId, 100L, 2_000_000L, 2_020_000L))
+                .isFalse();
+        assertThat(suggestionRepository.count()).isZero();
+    }
+
+    @Test
+    void 같은_사이클_실수령액을_다시_확인해도_WINDFALL은_중복_생성하지_않는다() {
+        long userId = newUser("wfdup");
+        // 두 번째 호출은 영속된 제안의 payload.cycleId(jsonb 왕복)로 dedup 키를 재구성해 막는다.
+        assertThat(suggestionService.generateWindfall(userId, 100L, 2_000_000L, 2_050_000L))
+                .isTrue();
+        assertThat(suggestionService.generateWindfall(userId, 100L, 2_000_000L, 2_060_000L))
+                .isFalse();
+        assertThat(suggestionRepository.count()).isEqualTo(1);
+    }
+
     // ── 조회·반영·닫기 엔드포인트 ────────────────────────────────────
 
     @Test

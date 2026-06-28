@@ -3,7 +3,12 @@ import api from './client'
 // 보정/리밸런싱 제안(SUG-01~03, API명세 6장). 서버는 문장이 아닌 구조화 데이터(type+payload)만 준다(규칙 7) —
 // 문구 조립은 클라이언트 i18n 템플릿이 한다. 제안 생성은 서버 일일 배치 소관이고, 여기선 조회·반영·닫기만 한다.
 
-export type SuggestionType = 'RAISE_LIVING' | 'RAISE_SAVING' | 'REBALANCE_MATURITY'
+export type SuggestionType =
+  | 'RAISE_LIVING'
+  | 'RAISE_SAVING'
+  | 'REBALANCE_MATURITY'
+  | 'WINDFALL'
+  | 'SHORTFALL'
 export type SuggestionStatus = 'PENDING' | 'APPLIED' | 'DISMISSED'
 
 // 제안 한 건. payload는 type별 구조화 파라미터(예: RAISE_*는 suggestedIncrease·avgOverspend/avgSurplus·streak,

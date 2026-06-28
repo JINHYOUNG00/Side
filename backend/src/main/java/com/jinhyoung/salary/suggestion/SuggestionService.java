@@ -13,7 +13,6 @@ import com.jinhyoung.salary.suggestion.domain.CheckInOutcome;
 import com.jinhyoung.salary.suggestion.domain.MaturingItem;
 import com.jinhyoung.salary.suggestion.domain.SuggestionDraft;
 import com.jinhyoung.salary.suggestion.domain.SuggestionRule;
-import com.jinhyoung.salary.suggestion.domain.SuggestionType;
 import com.jinhyoung.salary.suggestion.infra.Suggestion;
 import com.jinhyoung.salary.suggestion.infra.SuggestionRepository;
 import com.jinhyoung.salary.suggestion.infra.SuggestionStatus;
@@ -25,6 +24,7 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.PageRequest;
@@ -109,6 +109,19 @@ public class SuggestionService {
         return drafts.size();
     }
 
+    /**
+     * 실수령액 확인 시 여윳돈/부족 배분 제안을 생성한다(CYCLE-05). 확인 실수령액이 평소 금액보다 기준 이상 많거나
+     * 적으면 WINDFALL/SHORTFALL 제안을 1건 만든다(사이클당 dedup). 임계 미만이거나 같은 사이클 제안이 이미 있으면
+     * 아무것도 만들지 않는다. 생성 여부를 반환한다. 호출 측(CycleIncomeService)이 실수령액 확인 흐름에서 부른다.
+     */
+    @Transactional
+    public boolean generateWindfall(long userId, long cycleId, long baseIncome, long confirmedIncome) {
+        Optional<SuggestionDraft> draft = SuggestionRule.windfall(
+                cycleId, baseIncome, confirmedIncome, policy.windfallThreshold(), pendingDedupKeys(userId));
+        draft.ifPresent(d -> suggestionRepository.save(Suggestion.create(userId, d.type(), d.payload())));
+        return draft.isPresent();
+    }
+
     /** 사용자에게 노출할 PENDING 제안 목록(GET /suggestions) — 최신순. */
     @Transactional(readOnly = true)
     public List<Suggestion> listPending(long userId) {
@@ -151,13 +164,19 @@ public class SuggestionService {
                 .collect(Collectors.toSet());
     }
 
-    /** 기존 제안의 dedup 키 — RAISE_*는 type 이름, REBALANCE_MATURITY는 type+payload.itemId. 룰과 동일 규칙. */
+    /**
+     * 기존 제안의 dedup 키 — 룰이 만드는 키와 동일 규칙이어야 중복 방지가 동작한다. RAISE_*는 type 이름(사용자당
+     * 하나), REBALANCE_MATURITY는 type+payload.itemId(항목별), WINDFALL/SHORTFALL은 type+payload.cycleId
+     * (사이클별). jsonb 숫자는 Integer/Long으로 와도 문자열 연결 시 같은 표현이라 매칭된다.
+     */
     private static String dedupKey(Suggestion suggestion) {
-        if (suggestion.getType() == SuggestionType.REBALANCE_MATURITY) {
-            return SuggestionType.REBALANCE_MATURITY.name() + ":"
+        return switch (suggestion.getType()) {
+            case REBALANCE_MATURITY -> suggestion.getType().name() + ":"
                     + suggestion.getPayload().get("itemId");
-        }
-        return suggestion.getType().name();
+            case WINDFALL, SHORTFALL -> suggestion.getType().name() + ":"
+                    + suggestion.getPayload().get("cycleId");
+            default -> suggestion.getType().name();
+        };
     }
 
     /** 최근 닫힌 사이클 {@code streak}개를 최신→과거 순 {@link CheckInOutcome}으로(결측은 overspend=null). */

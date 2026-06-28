@@ -12,9 +12,11 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param fxBufferRate 외화 권장 월 이체액 버퍼율(ITEM-04). 기본 0.05(구현규칙 6장)
  * @param overspendStreak 보정 제안 발동 연속 사이클 수(SUG-02). 기본 3(구현규칙 6장)
  * @param surplusThreshold 잉여 저축 증액 제안 기준액(원, SUG-02). 기본 30,000(구현규칙 6장)
+ * @param windfallThreshold 여윳돈/부족 배분 제안 발동 기준액(원, CYCLE-05). 기본 30,000(구현규칙 6장)
  */
 @ConfigurationProperties("app.policy")
 public record PolicyProperties(
         @DefaultValue("0.05") BigDecimal fxBufferRate,
         @DefaultValue("3") int overspendStreak,
-        @DefaultValue("30000") long surplusThreshold) {}
+        @DefaultValue("30000") long surplusThreshold,
+        @DefaultValue("30000") long windfallThreshold) {}

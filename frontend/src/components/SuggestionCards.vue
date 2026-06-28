@@ -72,6 +72,24 @@ const cards = computed<CardView[]>(() =>
         },
       }
     }
+    if (s.type === 'WINDFALL') {
+      return {
+        id: s.id,
+        titleKey: 'suggestion.windfall.title',
+        titleParams: {},
+        bodyKey: 'suggestion.windfall.body',
+        bodyParams: { amount: fmt(num(p, 'difference')) },
+      }
+    }
+    if (s.type === 'SHORTFALL') {
+      return {
+        id: s.id,
+        titleKey: 'suggestion.shortfall.title',
+        titleParams: {},
+        bodyKey: 'suggestion.shortfall.body',
+        bodyParams: { amount: fmt(num(p, 'difference')) },
+      }
+    }
     // REBALANCE_MATURITY
     return {
       id: s.id,

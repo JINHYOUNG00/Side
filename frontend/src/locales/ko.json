@@ -102,6 +102,14 @@
       "body": "{date}에 만기예요. 매달 넣던 {monthly}원을 다른 곳에 다시 배치해 보세요",
       "expected": "예상 수령 {amount}원"
     },
+    "windfall": {
+      "title": "여윳돈이 생겼어요",
+      "body": "이번 달 실수령액이 평소보다 {amount}원 많아요. 어디에 배분할지 정해볼까요?"
+    },
+    "shortfall": {
+      "title": "이번 달은 조금 빠듯해요",
+      "body": "실수령액이 평소보다 {amount}원 적어요. 줄일 항목을 골라볼까요?"
+    },
     "apply": "반영하기",
     "dismiss": "닫기"
   },

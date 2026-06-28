@@ -44,7 +44,8 @@ public class CycleController {
 
     /**
      * 실수령액 확인·수정(CYCLE-04). 확정 시 income_confirmed=true로 바뀌고 LIVING 라인이 재계산된다.
-     * 평소보다 큰 차액의 여윳돈 배분 제안(CYCLE-05)은 Phase 6 소관이라 응답에 포함하지 않는다.
+     * 평소보다 기준 이상 큰/작은 차액이면 여윳돈/부족 배분 제안(CYCLE-05)을 함께 적재한다 — 응답엔 싣지 않고
+     * PENDING 제안으로 만들어 홈·리포트 제안 카드(MOD-06)에서 노출한다. 실제 배분/축소 적용은 소유자 후속.
      */
     @PatchMapping("/{id}/income")
     public CycleResponse confirmIncome(

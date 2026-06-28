@@ -148,6 +148,45 @@ public final class SuggestionRule {
         return drafts;
     }
 
+    /**
+     * 여윳돈/부족 배분 제안(CYCLE-05). 확인된 실수령액이 평소 금액(baseIncome)보다 {@code windfallThreshold} 이상
+     * 많으면 {@link SuggestionType#WINDFALL}(여윳돈 배분 검토), 그만큼 적으면 {@link SuggestionType#SHORTFALL}
+     * (축소 대상 검토)을 제안한다. 차이가 임계 미만이면 제안하지 않는다. 제안은 사이클당 1건으로 dedup
+     * (type+":"+cycleId) — 같은 사이클 실수령액을 다시 확인해도 중복 생성하지 않는다.
+     *
+     * <p>실제 배분/축소 적용(차액을 어느 항목에 넣고 뺄지)은 폭포 도메인(소유자 영역)에 닿는 후속 작업이며, 이 제안은
+     * 차액 크기를 알리고 배분처 검토로 안내하는 advisory다(SUG 반영과 동일 경계).
+     *
+     * @param cycleId 대상 사이클(dedup·payload 키)
+     * @param baseIncome 평소 실수령액(users.base_income)
+     * @param confirmedIncome 이번 사이클 확인 실수령액(CYCLE-04)
+     * @param windfallThreshold 발동 기준액(app.policy windfall-threshold, 보통 30,000원)
+     * @param existingPendingKeys 이미 PENDING인 dedup 키 집합(중복 방지)
+     * @return 여윳돈/부족 발동 시 제안 1건, 임계 미만/중복이면 {@link Optional#empty()}
+     */
+    public static Optional<SuggestionDraft> windfall(
+            long cycleId,
+            long baseIncome,
+            long confirmedIncome,
+            long windfallThreshold,
+            Set<String> existingPendingKeys) {
+        long difference = confirmedIncome - baseIncome;
+        if (Math.abs(difference) < windfallThreshold) {
+            return Optional.empty(); // 평소와 비슷 — 배분/축소 검토 불요
+        }
+        SuggestionType type = difference > 0 ? SuggestionType.WINDFALL : SuggestionType.SHORTFALL;
+        String key = type.name() + ":" + cycleId;
+        if (existingPendingKeys.contains(key)) {
+            return Optional.empty();
+        }
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("cycleId", cycleId);
+        payload.put("difference", Math.abs(difference)); // 크기(원) — 방향은 type이 구분
+        payload.put("baseIncome", baseIncome);
+        payload.put("confirmedIncome", confirmedIncome);
+        return Optional.of(new SuggestionDraft(type, key, payload));
+    }
+
     /** {@code value}를 {@code unit} 단위로 올림(value ≤ 0이면 0). 양의 평균 초과액 가정. */
     private static long ceilTo(long value, long unit) {
         if (value <= 0) {

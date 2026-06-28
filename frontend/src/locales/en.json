@@ -102,6 +102,14 @@
       "body": "It matures on {date}. Consider reallocating the {monthly} KRW you put in each month",
       "expected": "Expected payout {amount} KRW"
     },
+    "windfall": {
+      "title": "Some extra cash this month",
+      "body": "Your take-home is {amount} KRW more than usual. Want to decide where it goes?"
+    },
+    "shortfall": {
+      "title": "A bit tight this month",
+      "body": "Your take-home is {amount} KRW less than usual. Pick something to trim?"
+    },
     "apply": "Apply",
     "dismiss": "Dismiss"
   },
