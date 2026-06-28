@@ -225,8 +225,12 @@ defineExpose({ load })
 }
 .sg-card {
   padding: 18px;
-  border-left: 3px solid var(--purple);
   background: var(--purple-soft);
+  /* 보라 좌측 악센트 — border-left는 border-radius 코너 밖으로 삐져나오므로 inset 그림자로 그린다
+     (둥근 모서리를 따라 클립됨). 베이스 카드 드롭 그림자(--shadow-card)도 함께 유지. */
+  box-shadow:
+    inset 3px 0 0 var(--purple),
+    var(--shadow-card);
 }
 .sg-title {
   font-size: 15px;
