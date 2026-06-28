@@ -1,5 +1,6 @@
 package com.jinhyoung.salary.budgetitem.infra;
 
+import com.jinhyoung.salary.budgetitem.domain.Category;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -38,6 +39,13 @@ public interface BudgetItemRepository extends JpaRepository<BudgetItem, Long> {
 
     /** 개수 상한(활성 항목 100, 구현규칙 6장) 판정용 활성 항목 수. */
     long countByUserIdAndStatus(Long userId, ItemStatus status);
+
+    /**
+     * 분기 외화 점검 대상 사용자(NOTI-06) — 특정 카테고리(INVESTMENT=외화 적립식)의 활성 항목을 가진 사용자
+     * id를 중복 없이 조회한다. 전 사용자 횡단 조회(배치)라 user_id를 걸지 않는다(알림은 항목 소유자 본인에게만).
+     */
+    @Query("select distinct b.userId from BudgetItem b where b.status = :status and b.category = :category")
+    List<Long> findDistinctUserIdsByStatusAndCategory(ItemStatus status, Category category);
 
     /** 신규 항목의 sortOrder를 끝자리로 부여하기 위한 현재 최댓값(없으면 -1 → 신규는 0). */
     @Query("select coalesce(max(b.sortOrder), -1) from BudgetItem b"

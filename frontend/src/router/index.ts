@@ -67,6 +67,12 @@ const router = createRouter({
       name: 'reports',
       component: () => import('@/views/ReportView.vue'),
     },
+    {
+      // NOTI-06 점검 리마인더 설정(사용자 정의 리마인더 목록·폼). 전체 허브에서 진입.
+      path: '/reminders',
+      name: 'reminders',
+      component: () => import('@/views/RemindersView.vue'),
+    },
   ],
 })
 

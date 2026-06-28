@@ -30,6 +30,7 @@
     "ACCOUNT_LIMIT_EXCEEDED": "통장은 최대 20개까지 만들 수 있어요",
     "ITEM_LIMIT_EXCEEDED": "항목은 최대 100개까지 만들 수 있어요",
     "ENVELOPE_LIMIT_EXCEEDED": "봉투는 최대 50개까지 만들 수 있어요",
+    "REMINDER_LIMIT_EXCEEDED": "리마인더는 최대 50개까지 만들 수 있어요",
     "CHECK_IN_ALREADY_EXISTS": "이번 사이클은 이미 체크인했어요",
     "SUGGESTION_ALREADY_RESOLVED": "이미 처리한 제안이에요",
     "INTERNAL_ERROR": "잠시 후 다시 시도해 주세요"
@@ -163,6 +164,7 @@
     "items": "배분 항목 관리",
     "envelopes": "봉투 관리",
     "archive": "보관함",
+    "reminders": "점검 리마인더",
     "import": "노션 표 가져오기",
     "language": "언어",
     "languageError": "언어를 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.",
@@ -176,6 +178,29 @@
     "savingsInvestmentHint": "저축률을 계산할 때 투자 항목을 저축에 넣을지 정해요. 홈·리포트에 함께 적용돼요.",
     "savingsInvestmentError": "설정을 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.",
     "logout": "로그아웃"
+  },
+  "reminders": {
+    "title": "점검 리마인더",
+    "back": "뒤로",
+    "loading": "불러오는 중이에요",
+    "add": "리마인더 추가",
+    "fxNote": "외화 적립식이 있으면 분기마다 예수금 점검 알림을 자동으로 보내드려요. 아래에서 직접 챙길 일도 리마인더로 추가할 수 있어요.",
+    "every": "{months}개월마다",
+    "emptyTitle": "아직 추가한 리마인더가 없어요",
+    "emptyBody": "잊지 않고 챙길 일을 리마인더로 추가해 보세요",
+    "form": {
+      "addTitle": "리마인더 추가",
+      "editTitle": "리마인더 수정",
+      "label": "메모",
+      "labelPlaceholder": "예: 외화 예수금 점검",
+      "interval": "주기 (개월)",
+      "nextDate": "다음 알림일",
+      "note": "정한 주기로 알림을 보내드려요. 가계부처럼 지출을 기록하진 않아요.",
+      "save": "저장",
+      "delete": "삭제",
+      "deleteConfirm": "이 리마인더를 삭제할까요?",
+      "cancel": "취소"
+    }
   },
   "archive": {
     "title": "보관함",

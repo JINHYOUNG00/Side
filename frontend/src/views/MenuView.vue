@@ -22,6 +22,7 @@ const links = [
   { key: 'items', to: '/items' },
   { key: 'envelopes', to: '/envelopes' },
   { key: 'archive', to: '/archive' },
+  { key: 'reminders', to: '/reminders' },
 ] as const
 
 // 임포트 시트의 대상 통장 선택용 — 허브 진입 시 미리 읽어 둔다(실패해도 시트는 열리며 "통장 먼저" 안내).

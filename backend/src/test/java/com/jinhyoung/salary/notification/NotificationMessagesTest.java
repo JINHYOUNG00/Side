@@ -97,4 +97,50 @@ class NotificationMessagesTest {
         assertThat(subject).contains("January 25, 2026").containsIgnoringCase("check-in");
         assertThat(body).contains("January 25, 2026").containsIgnoringCase("balance");
     }
+
+    @Test
+    void 한국어_FX_CHECKUP_제목과_본문이_렌더된다() {
+        // {0}=점검일(분기 첫날).
+        Object[] args = {"2026년 4월 1일"};
+
+        String subject = messages.getMessage("notification.fx_checkup.subject", args, Locale.KOREAN);
+        String body = messages.getMessage("notification.fx_checkup.body", args, Locale.KOREAN);
+
+        assertThat(subject).contains("2026년 4월 1일").contains("외화");
+        assertThat(body).contains("2026년 4월 1일").contains("예수금");
+    }
+
+    @Test
+    void 영어_FX_CHECKUP_제목과_본문이_렌더된다() {
+        Object[] args = {"April 1, 2026"};
+
+        String subject = messages.getMessage("notification.fx_checkup.subject", args, Locale.ENGLISH);
+        String body = messages.getMessage("notification.fx_checkup.body", args, Locale.ENGLISH);
+
+        assertThat(subject).contains("April 1, 2026").containsIgnoringCase("foreign-currency");
+        assertThat(body).contains("April 1, 2026").containsIgnoringCase("deposit");
+    }
+
+    @Test
+    void 한국어_CUSTOM은_알림일과_사용자_메모를_렌더한다() {
+        // {0}=알림일, {1}=사용자 메모. 문장은 번들이 조립하고 메모만 데이터로 끼운다(규칙 7).
+        Object[] args = {"2026년 6월 14일", "전세 만기 점검"};
+
+        String subject = messages.getMessage("notification.custom.subject", args, Locale.KOREAN);
+        String body = messages.getMessage("notification.custom.body", args, Locale.KOREAN);
+
+        assertThat(subject).contains("전세 만기 점검");
+        assertThat(body).contains("2026년 6월 14일").contains("전세 만기 점검");
+    }
+
+    @Test
+    void 영어_CUSTOM도_알림일과_사용자_메모를_렌더한다() {
+        Object[] args = {"June 14, 2026", "Check lease renewal"};
+
+        String subject = messages.getMessage("notification.custom.subject", args, Locale.ENGLISH);
+        String body = messages.getMessage("notification.custom.body", args, Locale.ENGLISH);
+
+        assertThat(subject).contains("Check lease renewal");
+        assertThat(body).contains("June 14, 2026").contains("Check lease renewal");
+    }
 }

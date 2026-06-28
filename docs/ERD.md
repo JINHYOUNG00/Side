@@ -22,6 +22,7 @@ erDiagram
   USERS ||--o{ CYCLES : owns
   USERS ||--o{ SUGGESTIONS : receives
   USERS ||--o{ NOTIFICATION_LOGS : logs
+  USERS ||--o{ REMINDERS : owns
   ACCOUNTS ||--o{ BUDGET_ITEMS : target
   ACCOUNTS ||--o{ ENVELOPES : target
   ACCOUNTS |o--o{ PLAN_LINES : transfer
@@ -196,6 +197,19 @@ erDiagram
 | source_year | smallint | NN | 수집 기준 연도 |
 
 공공데이터포털 특일 API 연 1회 수집. 차년도 미수신·장애 시 PaydayResolver는 주말 회피만 수행(CYCLE-01).
+
+### reminders — 사용자 정의 리마인더 (NOTI-06, V2)
+| 컬럼 | 타입 | 제약 | 설명 |
+|---|---|---|---|
+| id | bigint | PK | |
+| user_id | bigint | FK→users | |
+| label | varchar(100) | NN | 사용자 메모(문구는 이 데이터로 클라가 조립) |
+| interval_months | smallint | NN | 사용자 정의 주기(개월), 1 이상 |
+| next_remind_date | date | NN | 다음 알림일(KST) |
+| status | varchar(20) | NN | ACTIVE / DELETED (soft delete, 규칙 5) |
+| created_at | timestamptz | NN | |
+
+메모 기반 사용자 정의 리마인더 저장소. 일일 배치가 next_remind_date 도래 시 1회 발송하고 interval_months만큼 다음 주기로 이월한다(ReminderSchedule). 분기 1회 외화 예수금 점검은 저장 없는 계산형 판정(QuarterlyCheckup — 활성 INVESTMENT 항목 보유자)이라 이 테이블을 쓰지 않는다.
 
 ## 3. 설계 결정 요약
 

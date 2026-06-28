@@ -30,6 +30,7 @@
     "ACCOUNT_LIMIT_EXCEEDED": "You can create up to 20 accounts",
     "ITEM_LIMIT_EXCEEDED": "You can create up to 100 items",
     "ENVELOPE_LIMIT_EXCEEDED": "You can create up to 50 envelopes",
+    "REMINDER_LIMIT_EXCEEDED": "You can create up to 50 reminders",
     "CHECK_IN_ALREADY_EXISTS": "You've already checked in for this cycle",
     "SUGGESTION_ALREADY_RESOLVED": "This suggestion is already handled",
     "INTERNAL_ERROR": "Something went wrong. Please try again later"
@@ -163,6 +164,7 @@
     "items": "Manage budget items",
     "envelopes": "Manage envelopes",
     "archive": "Archive",
+    "reminders": "Reminders",
     "import": "Import from Notion",
     "language": "Language",
     "languageError": "Couldn't change the language. Please try again.",
@@ -176,6 +178,29 @@
     "savingsInvestmentHint": "Choose whether investment items count toward your savings rate. Applies to home and reports.",
     "savingsInvestmentError": "Couldn't change the setting. Please try again.",
     "logout": "Sign out"
+  },
+  "reminders": {
+    "title": "Reminders",
+    "back": "Back",
+    "loading": "Loading",
+    "add": "Add reminder",
+    "fxNote": "If you have foreign-currency savings, we send a quarterly deposit checkup automatically. You can also add your own reminders below.",
+    "every": "Every {months} months",
+    "emptyTitle": "No reminders yet",
+    "emptyBody": "Add a reminder so you don't forget",
+    "form": {
+      "addTitle": "Add reminder",
+      "editTitle": "Edit reminder",
+      "label": "Memo",
+      "labelPlaceholder": "e.g. Foreign-currency deposit checkup",
+      "interval": "Interval (months)",
+      "nextDate": "Next reminder date",
+      "note": "We'll remind you on your chosen interval. We don't track spending like a ledger.",
+      "save": "Save",
+      "delete": "Delete",
+      "deleteConfirm": "Delete this reminder?",
+      "cancel": "Cancel"
+    }
   },
   "archive": {
     "title": "Archive",
