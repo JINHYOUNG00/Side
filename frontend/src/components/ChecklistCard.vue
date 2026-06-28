@@ -23,6 +23,11 @@ import {
 // 통장별 이체 체크/건너뛰기(CYCLE-06, PATCH /plan-lines/{id}) 동선. 자체적으로 조회·노출 판정하므로
 // HomeView는 그냥 얹기만 한다(스냅샷 미생성·구간 밖이면 아무것도 그리지 않음).
 
+// forceOpen: 지급일 구간 밖에도 강제로 펼친다(홈 "이번 사이클" 위젯에서 이체 확인을 언제든 열기 위함).
+// 구간 안에선 평소처럼 자동 노출되고, 강제로만 떠 있을 땐 닫기 버튼으로 닫을 수 있다.
+const props = withDefaults(defineProps<{ forceOpen?: boolean }>(), { forceOpen: false })
+const emit = defineEmits<{ close: [] }>()
+
 const { t, locale } = useI18n()
 
 // 카드 노출 구간 = 지급일부터 D+3까지(요구사항 2.5·화면흐름도 SCR-03). 오늘 KST가 이 범위면 노출.
@@ -66,6 +71,9 @@ const visible = computed(() => {
   const offset = dayDiff(cycle.value.cycleStart, kstToday())
   return offset >= 0 && offset <= WINDOW_DAYS
 })
+
+// 실제 렌더 여부 — 사이클이 있고, 지급일 구간이거나(자동) forceOpen(위젯에서 수동으로 연 경우).
+const show = computed(() => cycle.value !== null && (visible.value || props.forceOpen))
 
 // 모든 라인 평탄화 — 진행도 산출용.
 const allLines = computed(() => cycle.value?.checklist.flatMap((g) => g.lines) ?? [])
@@ -205,7 +213,11 @@ defineExpose({ load })
 </script>
 
 <template>
-  <Card v-if="visible && cycle" class="checklist-card">
+  <Card v-if="show && cycle" class="checklist-card">
+    <!-- 강제로 열린 경우(지급일 구간 밖)엔 닫기 제공 — 구간 안 자동 노출 땐 숨김. -->
+    <div v-if="forceOpen && !visible" class="forced-head">
+      <button class="close-forced" type="button" @click="emit('close')">{{ $t('checklist.close') }}</button>
+    </div>
     <!-- 헤더: 월급날 + 지급일 + 실수령액 확인 -->
     <p class="eyebrow">{{ $t('checklist.eyebrow', { date: paydayText }) }}</p>
     <div class="income-row">
@@ -305,6 +317,16 @@ defineExpose({ load })
 .checklist-card {
   margin-bottom: 14px;
   border: 1.5px solid var(--blue-soft);
+}
+.forced-head {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 4px;
+}
+.close-forced {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--sub);
 }
 .eyebrow {
   font-size: 13px;

@@ -120,6 +120,26 @@ describe('ChecklistCard (SCR-03b 월급날 체크리스트)', () => {
     expect(wrapper.find('.checklist-card').exists()).toBe(false)
   })
 
+  it('forceOpen이면 지급일 구간 밖에도 카드를 노출하고 닫기를 보여준다', async () => {
+    vi.setSystemTime(new Date('2026-06-30T10:00:00+09:00')) // D+5, 구간 밖
+    vi.mocked(cycleApi.getCurrentCycle).mockResolvedValue(fixture())
+    const wrapper = mount(ChecklistCard, { props: { forceOpen: true }, global: { plugins: [i18n] } })
+    await flushPromises()
+
+    expect(wrapper.find('.checklist-card').exists()).toBe(true)
+    expect(wrapper.find('.close-forced').exists()).toBe(true)
+  })
+
+  it('forceOpen 닫기를 누르면 close 이벤트를 낸다', async () => {
+    vi.setSystemTime(new Date('2026-06-30T10:00:00+09:00'))
+    vi.mocked(cycleApi.getCurrentCycle).mockResolvedValue(fixture())
+    const wrapper = mount(ChecklistCard, { props: { forceOpen: true }, global: { plugins: [i18n] } })
+    await flushPromises()
+
+    await wrapper.find('.close-forced').trigger('click')
+    expect(wrapper.emitted('close')).toBeTruthy()
+  })
+
   it('스냅샷이 없으면(404) 조용히 숨긴다', async () => {
     vi.setSystemTime(new Date('2026-06-25T10:00:00+09:00'))
     vi.mocked(cycleApi.getCurrentCycle).mockRejectedValue(new ApiError('NOT_FOUND', {}, 404))

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import Card from '@/components/base/Card.vue'
@@ -44,6 +44,17 @@ const nearestEnvelope = computed(() =>
 )
 // 보조 위젯이 하나라도 있을 때만 우측 단을 펼친다(없으면 본문 단일 폭 유지).
 const hasAside = computed(() => hasEnvelopes.value || cycle.value !== null)
+
+// 이체 확인 체크리스트를 지급일 구간 밖에도 열기 — "이번 사이클" 위젯 클릭 시 ChecklistCard를 강제로
+// 펼치고 최상단으로 스크롤한다(지급일 구간이면 어차피 자동 노출이라 무해). 체크리스트가 닫히면 해제.
+const checklistForced = ref(false)
+function openChecklist() {
+  checklistForced.value = true
+  nextTick(() => {
+    const el = document.querySelector('.checklist-card') as HTMLElement | null
+    el?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+  })
+}
 
 // 다음 월급일까지 일수 — 사이클 종료(다음 지급일 전날) 다음 날이 다음 월급일. 표시용 클라 계산이라
 // 날짜 문자열을 UTC 자정 기준 정수 일수로 비교해 TZ 드리프트를 피한다(ChecklistCard 윈도 계산과 동류).
@@ -212,8 +223,9 @@ onUnmounted(() => {
       <BrandLogo :size="26" />
     </header>
 
-    <!-- 지급일~D+3 월급날 체크리스트(SCR-03b). 구간 밖·스냅샷 미생성이면 스스로 미노출. -->
-    <ChecklistCard />
+    <!-- 지급일~D+3 월급날 체크리스트(SCR-03b). 구간 밖·스냅샷 미생성이면 스스로 미노출.
+         "이번 사이클" 위젯에서 forceOpen으로 구간 밖에도 열 수 있다(닫기는 카드가 자체 제공). -->
+    <ChecklistCard :force-open="checklistForced" @close="checklistForced = false" />
 
     <!-- 보정/리밸런싱 제안 카드(MOD-06) — 제안이 있을 때만 노출(SCR-03 "제안 존재 시 카드 노출"). -->
     <SuggestionCards />
@@ -326,8 +338,17 @@ onUnmounted(() => {
           </p>
         </Card>
 
-        <Card v-if="cycle" class="aside-card cycle-summary">
-          <p class="aside-title">{{ $t('home.cycleTitle') }}</p>
+        <Card
+          v-if="cycle"
+          class="aside-card cycle-summary"
+          role="button"
+          tabindex="0"
+          @click="openChecklist"
+          @keydown.enter="openChecklist"
+        >
+          <p class="aside-title">
+            {{ $t('home.cycleTitle') }}<span class="chev" aria-hidden="true">›</span>
+          </p>
           <p class="cycle-period">
             {{ $t('home.cyclePeriod', { start: cycle.cycleStart, end: cycle.cycleEnd }) }}
           </p>
@@ -390,7 +411,8 @@ onUnmounted(() => {
   font-size: 18px;
   color: var(--hint);
 }
-.env-summary {
+.env-summary,
+.cycle-summary {
   cursor: pointer;
 }
 .env-nums {

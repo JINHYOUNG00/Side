@@ -152,7 +152,8 @@
     "editTitle": "Edit take-home pay",
     "save": "Save",
     "wrongPayday": "Wrong payday? Rebuild this cycle",
-    "recalLocked": "You've already started transfers, so this cycle can't be rebuilt. The new payday applies from the next cycle."
+    "recalLocked": "You've already started transfers, so this cycle can't be rebuilt. The new payday applies from the next cycle.",
+    "close": "Close"
   },
   "onboarding": {
     "loading": "Loading",

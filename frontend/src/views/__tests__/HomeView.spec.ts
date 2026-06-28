@@ -234,6 +234,28 @@ describe('HomeView (SCR-03 홈 폭포)', () => {
     expect(cyc.text()).toContain('2026-06-05')
   })
 
+  it('사이클 위젯을 누르면 이체 체크리스트가 (지급일 구간 밖에도) 열린다', async () => {
+    vi.mocked(waterfallApi.getWaterfall).mockResolvedValue(NORMAL)
+    // 구간 밖(과거 지급일)이라 체크리스트는 처음엔 숨김 — 위젯 클릭으로 강제로 연다.
+    vi.mocked(cycleApi.getCurrentCycle).mockResolvedValue({
+      id: 1,
+      label: '2020-01',
+      cycleStart: '2020-01-01',
+      cycleEnd: '2020-02-01',
+      income: 2500000,
+      incomeConfirmed: true,
+      checklist: [],
+      progress: { done: 0, total: 0 },
+    })
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.find('.checklist-card').exists()).toBe(false)
+    await wrapper.find('.cycle-summary').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('.checklist-card').exists()).toBe(true)
+  })
+
   it('조회 실패 시 에러 코드를 표시한다', async () => {
     vi.mocked(waterfallApi.getWaterfall).mockRejectedValue(new ApiError('INTERNAL_ERROR', {}, 500))
     const wrapper = mountView()
