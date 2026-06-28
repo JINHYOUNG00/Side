@@ -190,6 +190,19 @@ async function submit() {
   flex-direction: column;
   padding-bottom: 24px;
 }
+/* 데스크톱(웹 대응) — 입력이 풀폭으로 늘어지지 않게 좁은 중앙 컬럼. 높이 채움(flex:1) 대신
+   자연 높이로 두고 버튼은 폼 바로 뒤에(모바일은 화면 하단 고정 유지). */
+@media (min-width: 900px) {
+  .onboarding {
+    flex: none;
+    max-width: 440px;
+    width: 100%;
+    margin: 40px auto 0;
+  }
+  .btn {
+    margin-top: 32px;
+  }
+}
 .state {
   font-size: 14px;
   color: var(--hint);

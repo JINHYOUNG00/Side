@@ -76,6 +76,14 @@ async function startDev() {
   padding-bottom: 40px;
   text-align: center;
 }
+/* 데스크톱(웹 대응) — 풀폭으로 늘어진 버튼 대신 좁은 중앙 컬럼(인증 플로우는 사이드바 없음). */
+@media (min-width: 900px) {
+  .login {
+    max-width: 380px;
+    width: 100%;
+    margin: 0 auto;
+  }
+}
 .brand {
   margin-bottom: 48px;
   display: flex;
