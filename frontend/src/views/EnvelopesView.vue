@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Card from '@/components/base/Card.vue'
+import EmptyState from '@/components/base/EmptyState.vue'
 import MoneyText from '@/components/base/MoneyText.vue'
 import ProgressBar from '@/components/base/ProgressBar.vue'
 import EnvelopeFormSheet from '@/components/EnvelopeFormSheet.vue'
@@ -140,10 +141,7 @@ onMounted(load)
         </Card>
       </template>
 
-      <Card v-else class="empty">
-        <p class="empty-title">{{ $t('envelopes.emptyTitle') }}</p>
-        <p class="empty-body">{{ $t('envelopes.emptyBody') }}</p>
-      </Card>
+      <EmptyState v-else :title="$t('envelopes.emptyTitle')" :body="$t('envelopes.emptyBody')" />
     </template>
 
     <button class="btn add" type="button" @click="openAdd">{{ $t('envelopes.add') }}</button>
@@ -280,21 +278,6 @@ onMounted(load)
 .btn.spend {
   background: var(--purple);
   color: #fff;
-}
-.empty {
-  text-align: center;
-  padding: 28px 12px;
-}
-.empty-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--ink);
-}
-.empty-body {
-  font-size: 13px;
-  color: var(--hint);
-  margin-top: 6px;
-  line-height: 1.6;
 }
 .btn.add {
   display: block;

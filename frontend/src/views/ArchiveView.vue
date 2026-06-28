@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Card from '@/components/base/Card.vue'
+import EmptyState from '@/components/base/EmptyState.vue'
 import MoneyText from '@/components/base/MoneyText.vue'
 import MaturityRecordSheet from '@/components/MaturityRecordSheet.vue'
 import { ApiError } from '@/api/client'
@@ -119,10 +120,7 @@ onMounted(load)
         </button>
       </Card>
 
-      <Card v-else class="empty">
-        <p class="empty-title">{{ $t('archive.emptyTitle') }}</p>
-        <p class="empty-body">{{ $t('archive.emptyBody') }}</p>
-      </Card>
+      <EmptyState v-else :title="$t('archive.emptyTitle')" :body="$t('archive.emptyBody')" />
     </template>
 
     <MaturityRecordSheet :open="sheetOpen" :item="editing" @close="closeSheet" @saved="onSaved" />
@@ -227,20 +225,5 @@ onMounted(load)
 .expected {
   font-size: 12px;
   color: var(--hint);
-}
-.empty {
-  text-align: center;
-  padding: 28px 12px;
-}
-.empty-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--ink);
-}
-.empty-body {
-  font-size: 13px;
-  color: var(--hint);
-  margin-top: 6px;
-  line-height: 1.6;
 }
 </style>

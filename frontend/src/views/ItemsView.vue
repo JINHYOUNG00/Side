@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Card from '@/components/base/Card.vue'
+import EmptyState from '@/components/base/EmptyState.vue'
 import MoneyText from '@/components/base/MoneyText.vue'
 import ItemFormSheet from '@/components/ItemFormSheet.vue'
 import { ApiError } from '@/api/client'
@@ -91,10 +92,7 @@ onMounted(load)
         </button>
       </Card>
 
-      <Card v-else class="empty">
-        <p class="empty-title">{{ $t('items.emptyTitle') }}</p>
-        <p class="empty-body">{{ $t('items.emptyBody') }}</p>
-      </Card>
+      <EmptyState v-else :title="$t('items.emptyTitle')" :body="$t('items.emptyBody')" />
     </template>
 
     <button class="btn add" type="button" @click="openAdd">{{ $t('items.add') }}</button>
@@ -172,21 +170,6 @@ onMounted(load)
 .amt {
   font-size: 15px;
   color: var(--ink);
-}
-.empty {
-  text-align: center;
-  padding: 28px 12px;
-}
-.empty-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--ink);
-}
-.empty-body {
-  font-size: 13px;
-  color: var(--hint);
-  margin-top: 6px;
-  line-height: 1.6;
 }
 .btn.add {
   display: block;

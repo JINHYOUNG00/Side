@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import Card from '@/components/base/Card.vue'
+import EmptyState from '@/components/base/EmptyState.vue'
 import MoneyText from '@/components/base/MoneyText.vue'
 import ChecklistCard from '@/components/ChecklistCard.vue'
 import SuggestionCards from '@/components/SuggestionCards.vue'
@@ -224,11 +225,8 @@ onUnmounted(() => {
         </div>
       </Card>
 
-      <!-- 배분 항목이 없을 때 -->
-      <Card v-else class="empty">
-        <p class="empty-title">{{ $t('home.emptyTitle') }}</p>
-        <p class="empty-body">{{ $t('home.emptyBody') }}</p>
-      </Card>
+      <!-- 배분 항목이 없을 때(RPT-03 공통 빈 상태) -->
+      <EmptyState v-else :title="$t('home.emptyTitle')" :body="$t('home.emptyBody')" />
     </template>
   </section>
 </template>
@@ -402,20 +400,5 @@ onUnmounted(() => {
   margin-left: auto;
   font-size: 14px;
   color: var(--ink);
-}
-.empty {
-  text-align: center;
-  padding: 28px 12px;
-}
-.empty-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--ink);
-}
-.empty-body {
-  font-size: 13px;
-  color: var(--hint);
-  margin-top: 6px;
-  line-height: 1.6;
 }
 </style>

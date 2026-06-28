@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import Card from '@/components/base/Card.vue'
+import EmptyState from '@/components/base/EmptyState.vue'
 import MoneyText from '@/components/base/MoneyText.vue'
 import CheckInSheet from '@/components/CheckInSheet.vue'
 import SuggestionCards from '@/components/SuggestionCards.vue'
@@ -144,10 +145,7 @@ onMounted(load)
       </Card>
 
       <!-- 빈 상태(RPT-03): 첫 체크인 후 추이가 쌓임을 예고 -->
-      <Card v-else class="empty">
-        <p class="empty-title">{{ $t('report.emptyTitle') }}</p>
-        <p class="empty-body">{{ $t('report.emptyBody') }}</p>
-      </Card>
+      <EmptyState v-else :title="$t('report.emptyTitle')" :body="$t('report.emptyBody')" />
 
       <!-- 월말 체크인 진입(MOD-05) — 현재 사이클이 있을 때만 -->
       <button v-if="currentCycle" type="button" class="checkin-btn" @click="openCheckIn">
@@ -302,22 +300,6 @@ onMounted(load)
   font-size: 11px;
   color: var(--hint);
   margin-top: 8px;
-}
-.empty {
-  text-align: center;
-  padding: 28px 12px;
-  margin-bottom: 14px;
-}
-.empty-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--ink);
-}
-.empty-body {
-  font-size: 13px;
-  color: var(--hint);
-  margin-top: 6px;
-  line-height: 1.6;
 }
 .checkin-btn {
   display: block;
