@@ -468,6 +468,62 @@
       "description": "여윳돈 배분(CYCLE-05, owner 위임 구현): 실수령액 확인(CYCLE-04) 시 평소(base_income)보다 windfall-threshold(30,000) 이상 크면 WINDFALL, 그만큼 작으면 SHORTFALL 제안을 생성(SuggestionRule.windfall, 사이클당 dedup)하고, 사용자가 인터랙티브 배분 시트에서 차액의 배분처(WINDFALL)·축소 대상(SHORTFALL)을 골라 적용하면 이번 사이클 plan_lines를 조정한다(POST /suggestions/{id}/allocate, 순수 WindfallAllocation: WINDFALL=대상↑·LIVING↓, SHORTFALL=대상↓·LIVING↑). 일회성 차액이라 반복 budget_items는 불변(이번 사이클 체크리스트만 조정), PENDING 라인만 조정(DONE/SKIPPED 불변, 규칙 4), LIVING은 직접 대상 불가. 프론트 WindfallAllocateSheet(보라).",
       "verify": "./gradlew verify(WindfallAllocation 단위: 배분/축소·cap·LIVING잔액·0미만·빈목록 + windfall 감지 단위 + 통합: 배분→plan_lines·LIVING 반영·APPLIED·차액초과 400·DONE 라인 400·LIVING 대상 400·타인 404·이미해소 409·빈목록 400 + 실수령액 확인→WINDFALL 적재) + npm run verify(배분 시트: 대상 필터·적용 호출·차액초과 비활성·빈 안내, 카드 반영하기→시트). 골든 무수정",
       "passes": true
+    },
+    {
+      "id": "ITEM-03",
+      "phase": 3,
+      "category": "backend",
+      "description": "일 단위 입력(ITEM-03): 매일 적립식 항목은 일 금액 입력 시 월 환산액을 자동 계산하고 원본 입력값은 보존한다(요구사항 2.3). budget_items의 input_cycle(MONTHLY|DAILY)·input_meta(jsonb, 원본 일금액·빈도) 컬럼은 V1에 이미 존재 — 매핑·환산 도메인·MOD-01 폼 일금액 입력만 추가. 환산은 순수 도메인(빈도별 월 평균 일수)으로, 저장은 월 환산 원화액. 원본 input_meta 보존으로 수정 시 프리필",
+      "verify": "./gradlew verify 통과(input_cycle/input_meta 영속·환산값·원본 보존 통합 + 환산 순수 단위) + npm run verify 통과(MOD-01 일 단위 토글·일금액 입력→월환산 미리보기·원본 프리필 뷰 테스트)",
+      "passes": false
+    },
+    {
+      "id": "RPT-03",
+      "phase": 5,
+      "category": "frontend",
+      "description": "빈 상태 설계(RPT-03): 데이터가 없는 신규 사용자에게 쌓일 가치를 예고하는 빈 상태 화면을 제공한다(요구사항 2.7). SCR-06 리포트가 이미 추이 결측 시 빈 상태 예고('첫 체크인 후 추이가 쌓입니다')를 두고 있으나, 홈(SCR-03)·봉투·항목 등 주요 화면의 신규 사용자 빈 상태를 i18n 키 기반으로 일관되게 정비(규칙 7). 문장 미생성·토큰 준수",
+      "verify": "npm run verify 통과(주요 화면 빈 상태 노출·i18n 키·데이터 존재 시 미노출 뷰 테스트)",
+      "passes": false
+    },
+    {
+      "id": "NOTI-06",
+      "phase": 6,
+      "category": "backend",
+      "description": "점검 리마인더(NOTI-06): 분기 1회 외화 예수금 점검 + 메모 기반 사용자 정의 리마인더를 제공한다(요구사항 2.9, 우선순위 C). NOTI-01 일일 판정·NOTI-04 멱등 게이트·NOTI-05 채널 어댑터 재사용. 문구는 메시지 번들(규칙 7). 비범위(가계부) 침범 없이 리마인더 발송만",
+      "verify": "./gradlew verify 통과(분기 1회 대상 판정·사용자 정의 주기 발송·멱등 중복 방지 통합(Clock 주입), 메시지 번들 ko/en 단위) + npm run verify(리마인더 설정 뷰 테스트)",
+      "passes": false
+    },
+    {
+      "id": "AUTH-02",
+      "phase": 7,
+      "category": "backend",
+      "description": "네이버 로그인(AUTH-02): 네이버 OAuth2 로그인을 지원한다(검수 후 활성화, 요구사항 2.1). NaverOAuthAttributesMapper·OAuthProvider.NAVER 어댑터는 이미 작성돼 있으나 비활성 상태 — 검수 통과 시 enabled 전환 + 코드 교환 클라이언트·프론트 로그인 버튼 활성화. AUTH-03 공급자 분리 규칙 그대로 적용",
+      "verify": "./gradlew verify 통과(네이버 로그인 흐름·신규/재로그인·공급자 분리 통합 테스트) + npm run verify 통과(네이버 로그인 버튼·콜백 동선 E2E)",
+      "passes": false
+    },
+    {
+      "id": "AUTH-04",
+      "phase": 7,
+      "category": "backend",
+      "description": "회원 탈퇴(AUTH-04): 탈퇴 시 모든 사용자 데이터를 즉시 영구 삭제한다(요구사항 2.1). soft delete가 아닌 유일한 물리 삭제 경로(절대 규칙 5) — users 기준 cascade로 accounts·budget_items·envelopes·cycles·plan_lines·check_ins·suggestions·notification_logs 전부 제거. DELETE /me + 소유권·인증 게이트. 멱등(이미 삭제 시 안전)",
+      "verify": "./gradlew verify 통과(탈퇴 시 전 도메인 cascade 물리 삭제·잔존 0건·타인 차단·401 통합 테스트) + npm run verify 통과(탈퇴 확인 동선 뷰 테스트)",
+      "passes": false
+    },
+    {
+      "id": "DATA-02",
+      "phase": 7,
+      "category": "backend",
+      "description": "내보내기(DATA-02): 전체 데이터를 마크다운 표/CSV로 내보낸다(요구사항 2.10). DATA-01 임포트와 포맷 스펙을 공유하며 라운드트립(내보내기→임포트 동일성)을 보장한다. 조회 전용·소유권 user_id 강제. 금융 식별정보 미포함(규칙 6), 문장 미생성 구조화 출력",
+      "verify": "./gradlew verify 통과(내보내기 포맷·소유권·라운드트립 동일성 통합 + 포맷 직렬화 순수 단위) + npm run verify 통과(내보내기 진입·다운로드 동선 뷰 테스트)",
+      "passes": false
+    },
+    {
+      "id": "RPT-04",
+      "phase": 7,
+      "category": "backend",
+      "description": "연간 리포트(RPT-04): 연 단위 결산(저축률·봉투 집행·만기 수령)을 제공한다(요구사항 2.7, 우선순위 C). RPT-02 추이/요약이 쓰는 순수 도메인(SavingsRate·MaturityArchiveStats·SPEND 집계)을 연 단위로 재사용. GET /reports/annual?year=N, 조회 전용·소유권 강제. 비율 BigDecimal(규칙 2)·문장 미생성(규칙 7)",
+      "verify": "./gradlew verify 통과(연 집계 저축률/봉투집행/만기수령·연도 범위·소유권·빈 사용자·401 통합, 연 집계 순수 단위) + npm run verify 통과(연간 리포트 표시 뷰 테스트). 골든 무수정",
+      "passes": false
     }
   ]
 }
