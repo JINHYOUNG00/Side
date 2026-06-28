@@ -95,50 +95,52 @@ onMounted(load)
           <p class="total-sub">{{ $t('envelopes.count', { n: envelopes.length }) }}</p>
         </Card>
 
-        <Card v-for="env in envelopes" :key="env.id" class="env">
-          <div class="env-top">
-            <span class="nm">{{ env.name }}</span>
-            <span class="meta">
-              {{
-                env.cycleMonths === null
-                  ? $t('envelopes.oneTime')
-                  : $t('envelopes.everyMonths', { n: env.cycleMonths })
-              }}
-              ·
-              {{
-                env.dDay > 0
-                  ? $t('envelopes.dday', { n: env.dDay })
-                  : env.dDay === 0
-                    ? $t('envelopes.dueToday')
-                    : $t('envelopes.dueAgo', { n: -env.dDay })
-              }}
-            </span>
-          </div>
+        <div class="card-grid-2">
+          <Card v-for="env in envelopes" :key="env.id" class="env">
+            <div class="env-top">
+              <span class="nm">{{ env.name }}</span>
+              <span class="meta">
+                {{
+                  env.cycleMonths === null
+                    ? $t('envelopes.oneTime')
+                    : $t('envelopes.everyMonths', { n: env.cycleMonths })
+                }}
+                ·
+                {{
+                  env.dDay > 0
+                    ? $t('envelopes.dday', { n: env.dDay })
+                    : env.dDay === 0
+                      ? $t('envelopes.dueToday')
+                      : $t('envelopes.dueAgo', { n: -env.dDay })
+                }}
+              </span>
+            </div>
 
-          <div class="env-amt">
-            <span class="saved">
-              <MoneyText :amount="env.savedAmount" />
-              <span class="slash">/</span>
-              <MoneyText :amount="env.targetAmount" :unit="$t('common.won')" />
-            </span>
-            <span class="pct">{{ env.progressPercent }}%</span>
-          </div>
-          <ProgressBar :value="env.progressPercent" />
+            <div class="env-amt">
+              <span class="saved">
+                <MoneyText :amount="env.savedAmount" />
+                <span class="slash">/</span>
+                <MoneyText :amount="env.targetAmount" :unit="$t('common.won')" />
+              </span>
+              <span class="pct">{{ env.progressPercent }}%</span>
+            </div>
+            <ProgressBar :value="env.progressPercent" />
 
-          <p class="monthly">
-            <span>{{ $t('envelopes.monthlyLabel') }}</span>
-            <MoneyText :amount="env.monthlyAmount" :unit="$t('common.won')" />
-          </p>
+            <p class="monthly">
+              <span>{{ $t('envelopes.monthlyLabel') }}</span>
+              <MoneyText :amount="env.monthlyAmount" :unit="$t('common.won')" />
+            </p>
 
-          <div class="env-foot">
-            <button class="btn ghost" type="button" @click="openEdit(env)">
-              {{ $t('envelopes.edit') }}
-            </button>
-            <button class="btn spend" type="button" @click="openSpend(env)">
-              {{ $t('envelopes.spend') }}
-            </button>
-          </div>
-        </Card>
+            <div class="env-foot">
+              <button class="btn ghost" type="button" @click="openEdit(env)">
+                {{ $t('envelopes.edit') }}
+              </button>
+              <button class="btn spend" type="button" @click="openSpend(env)">
+                {{ $t('envelopes.spend') }}
+              </button>
+            </div>
+          </Card>
+        </div>
       </template>
 
       <EmptyState v-else :title="$t('envelopes.emptyTitle')" :body="$t('envelopes.emptyBody')" />

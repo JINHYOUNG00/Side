@@ -88,3 +88,18 @@ button {
     animation: none;
   }
 }
+
+/* 반응형 카드 그리드(웹 대응) — 모바일은 단일 컬럼(카드가 자체 margin-bottom으로 쌓임, 기본),
+   데스크톱(≥900px, --bp-wide)에선 2열로 흘려 넓은 폭을 활용한다. grid gap과 카드 margin이
+   겹치지 않게 자식 .card margin은 0으로(전역 선택자라 Card 스코프와 무관하게 클래스로 매칭). */
+@media (min-width: 900px) {
+  .card-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    align-items: start;
+  }
+  .card-grid-2 > .card {
+    margin-bottom: 0;
+  }
+}
